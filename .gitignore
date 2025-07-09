@@ -1,7 +1,10 @@
 .env
+
+# Ignore everything in WordPress except the theme and the Prime Mover export files folder
 /WordPress/*
 !/WordPress/wp-content/
 /WordPress/wp-content/*
 !/WordPress/wp-content/themes/
 /WordPress/wp-content/themes/*
 !/WordPress/wp-content/themes/fr-mirror/
+
