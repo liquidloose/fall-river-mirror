@@ -11,12 +11,22 @@ if (!defined('ABSPATH')) {
     exit;
 }
 
-// Include custom post types
-require get_template_directory() . '/inc/custom-post-types.php';
+/**
+ * API endpoints
+ */
+
+include_once get_template_directory() . '/includes/ai-summary-endpoint.php';
+
+/**
+ * Custom post types
+ */
+
+require get_template_directory() . '/includes/custom-post-types.php';
 
 /**
  * Register custom block styles and enqueue block stylesheets
  */
+
 function my_theme_register_block_styles() {
     // Register the custom group style
     register_block_style(
