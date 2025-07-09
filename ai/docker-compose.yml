@@ -1,0 +1,19 @@
+version: '3.8'
+
+services:
+  mirror-ai:
+    image: fr-mirror-ai
+    container_name: mirror-ai
+    restart: unless-stopped
+    ports:
+      - "${PORT}:80"  # Assuming the container exposes port 8080 internally
+    volumes:
+      - ./data:/app/data  # Optional: Add volumes if your application needs persistence
+    env_file:
+      - .env
+    networks:
+      - mirror-network
+
+networks:
+  mirror-network:
+    driver: bridge

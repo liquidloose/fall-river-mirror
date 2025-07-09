@@ -1,0 +1,9 @@
+.env
+
+# Ignore everything in WordPress
+/WordPress/*
+
+# Except for the fr-mirror theme
+!/WordPress/wp-content/themes/fr-mirror/
+
+!/WordPress/wp-content/uploads/prime-mover-export-files/1/.htaccess
