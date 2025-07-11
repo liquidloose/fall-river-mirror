@@ -123,6 +123,13 @@ if ($configExtra = getenv_docker('WORDPRESS_CONFIG_EXTRA', '')) {
 	eval($configExtra);
 }
 
+/**
+ * JWT Authentication
+ */
+
+define('JWT_AUTH_SECRET_KEY', 'S(nik0QoJiSS4yqUfA8SPN0G]-URa>mEKYpD:+=$Nikp.i4Ei4jDELcypERB-qLf');
+define('JWT_AUTH_CORS_ENABLE', true);
+
 /* That's all, stop editing! Happy publishing. */
 
 /** Absolute path to the WordPress directory. */
