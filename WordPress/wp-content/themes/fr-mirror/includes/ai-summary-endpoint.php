@@ -1,11 +1,17 @@
 <?php
-// Add a custom REST API endpoint that accepts title, HTML body, and image parameters
-function summaries_api_endpoint() {
-    // Register the route
+
+/**
+ * FR Mirror AI Summary API Endpoint
+ * Description: Adds a custom REST API endpoint to create summaries with title, HTML body, and image.
+ * Version: 1.0
+ */
+
+add_action('rest_api_init', 'fr_mirror_summaries_api_endpoint');
+function fr_mirror_summaries_api_endpoint() {
     register_rest_route('summaries/v1', '/enter-summary', array(
         'methods' => 'POST',
-        'callback' => 'summaries_callback',
-        'permission_callback' => '__return_true',
+        'callback' => 'fr_mirror_summaries_callback',
+        'permission_callback' => 'fr_mirror_summaries_api_authentication',
         'args' => array(
             'title' => array(
                 'required' => false,
@@ -23,8 +29,31 @@ function summaries_api_endpoint() {
     ));
 }
 
-// Callback function for the endpoint
-function summaries_callback($request) {
+
+/**
+ * Permission callback for the custom REST API endpoint.
+ * This function can be used to implement authentication if needed.
+ * For now, it allows all requests.
+ *
+ * @return bool
+ */
+
+function fr_mirror_summaries_api_authentication($request) {
+    // This function can be used to implement authentication if needed.
+    // For now, it allows all requests.
+    return true;
+}
+
+
+/**
+ * Callback function for the custom REST API endpoint.
+ * It creates a new post with the provided title, body, and image.
+ *
+ * @param WP_REST_Request $request The request object.
+ * @return array The response data.
+ */
+
+function fr_mirror_summaries_callback($request) {
     // Get parameters from request
     $title = $request->get_param('title');
     $body = $request->get_param('body');
@@ -64,6 +93,3 @@ function summaries_callback($request) {
         );
     }
 }
-
-// Hook into the rest_api_init action to register our endpoint
-add_action('rest_api_init', 'summaries_api_endpoint');
