@@ -8,7 +8,7 @@
 
 add_action('rest_api_init', 'fr_mirror_summaries_api_endpoint');
 function fr_mirror_summaries_api_endpoint() {
-    register_rest_route('summaries/v1', '/enter-summary', array(
+    register_rest_route('summaries/v2', '/enter-summary', array(
         'methods' => 'POST',
         'callback' => 'fr_mirror_summaries_callback',
         'permission_callback' => 'fr_mirror_summaries_api_authentication',
@@ -70,26 +70,22 @@ function fr_mirror_summaries_callback($request) {
     // Insert the post into the database
     $post_id = wp_insert_post($post_data);
 
-    // Check if post was created successfully
-    if (!is_wp_error($post_id)) {
-        // If image URL is provided, set it as the featured image
-        if (!empty($image)) {
-            // Set the featured image URL as post meta
-            update_post_meta($post_id, '_thumbnail_url', esc_url_raw($image));
-
-            // You might also want to add a custom field to display the image in your theme
-            update_post_meta($post_id, 'featured_image_url', esc_url_raw($image));
-        }
-
-        return array(
-            'success' => true,
-            'message' => 'Article created successfully',
-            'post_id' => $post_id
-        );
+    // Add error handling and debugging
+    if (is_wp_error($post_id)) {
+        // If there's an error, return it
+        wp_send_json_error(array(
+            'message' => 'Post creation failed: ' . $post_id->get_error_message(),
+            'data' => $post_data
+        ), 500);
+    } else if ($post_id == 0) {
+        // If post ID is 0, the post wasn't created
+        wp_send_json_error(array(
+            'message' => 'Post creation failed - returned ID 0',
+            'data' => $post_data
+        ), 500);
     } else {
-        return array(
-            'success' => false,
-            'message' => $post_id->get_error_message()
-        );
+        // Log the successful post creation
+        error_log('AI Summary post created with ID: ' . $post_id);
+        // Continue with your success response
     }
 }
