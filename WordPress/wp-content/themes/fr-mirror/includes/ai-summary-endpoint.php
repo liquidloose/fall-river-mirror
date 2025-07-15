@@ -40,7 +40,7 @@ function fr_mirror_summaries_api_endpoint() {
 
 function fr_mirror_summaries_api_authentication($request) {
     // This function can be used to implement authentication if needed.
-    // For now, it allows all requests.
+    // For now, it allows all requests because the JWT plugin checks the token on all endpoints automatically.
     return true;
 }
 
