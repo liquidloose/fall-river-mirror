@@ -1,5 +1,5 @@
 # Use the official WordPress image as the base
-FROM wordpress:latest
+FROM wordpress:6.8.1-apache
 
 # Update apt-get repositories
 RUN apt update && apt install wget -y \
@@ -27,15 +27,6 @@ COPY composer.json composer.lock ./
 # --optimize-autoloader: Optimizes the Composer autoloader for better performance.
 RUN composer require firebase/php-jwt --optimize-autoloader
 
-# Set the working directory to the WordPress content directory.
-# This is a common and recommended place to install Composer dependencies
-# for WordPress plugins or themes, as it keeps them separate from core files.
-WORKDIR /var/www/html/wp-content
-
-
-# Change back to the main WordPress directory for subsequent operations
-# or if the default entrypoint expects this.
-WORKDIR /var/www/html
 
 # This creates a docker development environment.
 RUN cp /usr/local/etc/php/php.ini-development /usr/local/etc/php/php.ini

@@ -123,12 +123,9 @@ if ($configExtra = getenv_docker('WORDPRESS_CONFIG_EXTRA', '')) {
 	eval($configExtra);
 }
 
-/**
- * JWT Authentication
- */
-
-define('JWT_AUTH_SECRET_KEY', 'S(nik0QoJiSS4yqUfA8SPN0G]-URa>mEKYpD:+=$Nikp.i4Ei4jDELcypERB-qLf');
+define('JWT_AUTH_SECRET_KEY', 'Pi1[^BPm{NOsHEQf@$xl%x{!;Ey1k72^Nt_r$jft,OoG[v6KGWWip#blbZn@bEZI');
 define('JWT_AUTH_CORS_ENABLE', true);
+
 
 /* That's all, stop editing! Happy publishing. */
 
