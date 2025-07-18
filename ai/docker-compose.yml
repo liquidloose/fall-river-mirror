@@ -4,13 +4,13 @@ services:
     container_name: mirror-ai
     restart: unless-stopped
     ports:
-      - "${access_port}:80" 
+      - "${PORT}:80"  # Assuming the container exposes port 8080 internally
+    volumes:
+      - .:/code
     env_file:
       - .env
-    environment:
-      - XAI_API_KEY=${xai_api_key}
     networks:
-      - ${network}
+      - mirror-network
 
 networks:
   mirror-network:
