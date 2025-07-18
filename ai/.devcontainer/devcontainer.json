@@ -1,0 +1,22 @@
+{
+    "name": "Python Development",
+    "dockerComposeFile": "../docker-compose.yml",
+    "service": "mirror-ai",
+    "workspaceFolder": "/code",
+    "customizations": {
+        "vscode": {
+            "extensions": [
+                "ms-python.python",
+                "ms-python.vscode-pylance",
+                "ms-python.black-formatter"
+            ],
+            "settings": {
+                "python.formatting.provider": "black",
+                "editor.formatOnSave": true,
+                "python.linting.enabled": true,
+                "editor.defaultFormatter": "ms-python.black-formatter",
+                "notebook.defaultFormatter": "ms-python.black-formatter"
+            }
+        }
+    }
+}

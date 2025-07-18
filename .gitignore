@@ -4,5 +4,7 @@
 /WordPress/*
 !/WordPress/wp-content/themes/fr-mirror/
 
+/app/__pycache__/
+
 
 
