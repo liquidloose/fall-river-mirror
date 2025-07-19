@@ -63,5 +63,21 @@ services:
     depends_on:
       - db
 
+  mirror-ai:
+    image: fr-mirror-ai
+    container_name: mirror-ai
+    restart: unless-stopped
+    user: "$(id -u):$(id -g)"
+    ports:
+      - "${API_PORT}:80"  # Assuming the container exposes port 8080 internally
+    volumes:
+      - .:/app
+    env_file:
+      - .env
+    networks:
+      - mirror-network
 volumes:
   db_data: {}
+networks:
+  mirror-network:
+    driver: bridge
