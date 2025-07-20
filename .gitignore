@@ -1,10 +1,10 @@
 .env
 
-# Ignore everything in WordPress except the theme and the Prime Mover export files folder
+# Ignore everything in WordPress except the fr-mirror theme
 /WordPress/*
 !/WordPress/wp-content/themes/fr-mirror/
 
 /app/__pycache__/
 
-
+/vendor/*
 
