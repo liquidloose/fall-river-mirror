@@ -1,5 +1,5 @@
 {
-    "editor.defaultFormatter": "ms-python.black-formatter",
+    "editor.defaultFormatter": null,
     "editor.formatOnSave": true,
     "notebook.defaultFormatter": "ms-python.black-formatter",
     "editor.formatOnType": false,
@@ -10,6 +10,6 @@
         "editor.formatOnSave": true
     },
     "[dockercompose]": {
-        "editor.defaultFormatter": "docker.docker"
+        "editor.defaultFormatter": "ms-python.black-formatter"
     }
 }

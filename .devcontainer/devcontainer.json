@@ -12,6 +12,7 @@
             ],
             "settings": {
                 "python.formatting.provider": "black",
+                "python.formatting.blackPath": "/usr/local/bin/black",
                 "editor.formatOnSave": true,
                 "python.linting.enabled": true,
                 "editor.defaultFormatter": "ms-python.black-formatter",
