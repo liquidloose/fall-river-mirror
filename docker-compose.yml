@@ -67,7 +67,6 @@ services:
     image: fr-mirror-ai
     container_name: mirror-ai
     restart: unless-stopped
-    user: "$(id -u):$(id -g)"
     ports:
       - "${API_PORT}:80"  # Assuming the container exposes port 8080 internally
     volumes:
