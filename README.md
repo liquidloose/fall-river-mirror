@@ -1,4 +1,4 @@
-# fastApi-docker dev environment for The Fall River Mirror
+# FastAPI, Docker, and WordPress dev environment for The Fall River Mirror
 
 
 # Use this command to reload the server from inside the container. 
