@@ -26,7 +26,7 @@ from datetime import datetime
 @app.get("/experiments/")
 def experiments():
     response = JSONResponse(
-        content={"message": "THIS IS RONALDSsSs API ENDPOINTsss  DUDE", "timestamp": datetime.now().isoformat()},
+        content={"message": "THIS IS RONALDSsSs API ENDPOINTsss  DUDEsss", "timestamp": datetime.now().isoformat()},
         headers={"Cache-Control": "no-cache, no-store, must-revalidate"},
     )
     return response
