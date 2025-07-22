@@ -11,5 +11,6 @@
     },
     "[dockercompose]": {
         "editor.defaultFormatter": "ms-python.black-formatter"
-    }
+    },
+    "python.languageServer": "None"
 }
