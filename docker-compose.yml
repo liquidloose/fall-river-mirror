@@ -4,6 +4,8 @@
 services:
   db:
     image: mysql:latest
+    networks:
+      - fr-mirror-bridge
     volumes:
       - db_data:/var/lib/mysql
     environment:
@@ -16,6 +18,8 @@ services:
     depends_on:
       - db
     image: fr-mirror:latest
+    networks:
+      - fr-mirror-bridge
     ports:
       - "${WEB_PORT}:80"
     extra_hosts:
@@ -40,6 +44,8 @@ services:
 
   my-wpcli:
     image: wordpress:cli
+    networks:
+      - fr-mirror-bridge
     volumes_from:
       - wordpress
     links:
@@ -54,6 +60,8 @@ services:
 
   phpmyadmin:
     image: phpmyadmin/phpmyadmin
+    networks:
+      - fr-mirror-bridge
     ports:
       - "${PHP_MYADMIN_PORT}:80"  # You can change the first number (8080) to any port you prefer for accessing phpMyAdmin
     environment:
@@ -67,16 +75,19 @@ services:
     image: fr-mirror-ai
     container_name: mirror-ai
     restart: unless-stopped
+    networks:
+      - fr-mirror-bridge
     ports:
       - "${API_PORT}:80"  # Assuming the container exposes port 8080 internally
     volumes:
-      - .:/app
+      - .:/code
     env_file:
       - .env
-    networks:
-      - mirror-network
+    command: ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "80", "--reload"]
+
 volumes:
   db_data: {}
+
 networks:
-  mirror-network:
+  fr-mirror-bridge:
     driver: bridge
