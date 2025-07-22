@@ -2,29 +2,31 @@ from typing import Union
 import os
 import requests
 from fastapi import FastAPI
+from fastapi.responses import JSONResponse
 
 app = FastAPI()
 
 
 @app.get("/")
 def read_root():
-    xai_api_key = os.getenv("XAI_API_KEY")
-    url = "http://192.168.1.17:9004/wp-json/fr-mirror/v2/create-article"
+   
 
-    payload = "title=THIS%20IS%20RONALD&content=%3Cdiv%3E%20Hello%2C%20worlllllld!%20%3C%2Fdiv%3E&status=draft"
-    headers = {
-        "Authorization": f"Bearer {xai_api_key}",
-        "Content-Type": "application/x-www-form-urlencoded",
-    }
-
-    response = requests.request("POST", url, headers=headers, data=payload)
-
-    print(response.text)
-
-    return {"response": response.text}
+    return {"response"}
 
 
 @app.get("/items/{item_id}")
 def read_item(item_id: int, q: Union[str, None] = None):
 
     return {"item_id": item_id, "q": q}
+
+
+from datetime import datetime
+
+
+@app.get("/experiments/")
+def experiments():
+    response = JSONResponse(
+        content={"message": "THIS IS RONALDSsSs API ENDPOINTsss  DUDEsss", "timestamp": datetime.now().isoformat()},
+        headers={"Cache-Control": "no-cache, no-store, must-revalidate"},
+    )
+    return response
