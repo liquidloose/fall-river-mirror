@@ -2,9 +2,6 @@
 
 # Ignore everything in WordPress except the fall-river-mirror theme
 /WordPress/*
-!/WordPress/wp-content/
-!/WordPress/wp-content/themes/
-!/WordPress/wp-content/themes/fall-river-mirror/
 !/WordPress/wp-content/themes/fall-river-mirror/**
 
 # Explicitly ignore plugins and other directories
