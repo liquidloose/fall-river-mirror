@@ -1,8 +1,29 @@
 .env
 
-# Ignore everything in WordPress except the fr-mirror theme
+# Ignore everything in WordPress except the fall-river-mirror theme
 /WordPress/*
-!/WordPress/wp-content/themes/fr-mirror/
+!/WordPress/wp-content/
+!/WordPress/wp-content/themes/
+!/WordPress/wp-content/themes/fall-river-mirror/
+!/WordPress/wp-content/themes/fall-river-mirror/**
+
+# Explicitly ignore plugins and other directories
+/WordPress/wp-content/plugins/
+/WordPress/wp-content/uploads/
+/WordPress/wp-content/cache/
+/WordPress/wp-content/backup-db/
+/WordPress/wp-content/backups/
+/WordPress/wp-content/blogs.dir/
+/WordPress/wp-content/upgrade/
+/WordPress/wp-content/uploads/
+/WordPress/wp-content/advanced-cache.php
+/WordPress/wp-content/wp-cache-config.php
+/WordPress/wp-content/plugins/hello.php
+
+# Ignore default WordPress themes
+/WordPress/wp-content/themes/twentytwentyfive/
+/WordPress/wp-content/themes/twentytwentyfour/
+/WordPress/wp-content/themes/twentytwentythree/
 
 /app/__pycache__/
 
