@@ -2,7 +2,7 @@
     "name": "Python Development",
     "dockerComposeFile": "../docker-compose.yml",
     "service": "mirror-ai",
-    "workspaceFolder": "/app",
+    "workspaceFolder": "/code",
     "customizations": {
         "vscode": {
             "extensions": [
