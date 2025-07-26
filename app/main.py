@@ -4,7 +4,7 @@ import logging
 from fastapi import FastAPI
 from fastapi.responses import JSONResponse
 from youtube_transcript_api import YouTubeTranscriptApi
-from .utils import XAIProcessor, ArticleType, Tone
+from .xai_classes import XAIProcessor, ArticleType, Tone
 
 # Configure logging
 logging.basicConfig(
