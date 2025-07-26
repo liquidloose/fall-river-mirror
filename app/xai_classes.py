@@ -3,6 +3,7 @@ from enum import Enum
 from fastapi.responses import JSONResponse
 from xai_sdk import Client
 from xai_sdk.chat import user, system
+from .utils import read_context_file
 
 
 class ArticleType(str, Enum):

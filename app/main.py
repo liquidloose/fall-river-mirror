@@ -4,6 +4,8 @@ import logging
 from fastapi import FastAPI
 from fastapi.responses import JSONResponse
 from youtube_transcript_api import YouTubeTranscriptApi
+
+from app.utils import read_context_file
 from .xai_classes import XAIProcessor, ArticleType, Tone
 
 # Configure logging
@@ -36,13 +38,20 @@ def read_root(
     article_type: ArticleType = ArticleType.SUMMARY,
     tone: Tone = Tone.FORMAL,
 ):
+
+    # if article_type is op-ed, then here's op_ed.txt
+    if article_type == ArticleType.OP_ED:
+        final_context = context + read_context_file("article_types", "op_ed.txt")
+    else:
+        final_context = context
+
     logger.info(
-        f"Received request: context={context}, prompt={prompt}, type={article_type}, tone={tone}"
+        f"Received request: context={context},final_context={final_context}, prompt={prompt}, type={article_type}, tone={tone}"
     )
     xai_processor = XAIProcessor()
-    full_prompt = f"Write a {article_type.value} article in {tone.value} tone. Context: {context}. Prompt: {prompt}"
+    full_prompt = f"This is the type of article: {article_type.value} This is the tone: {tone.value} This is the context: {context}. This is the user's prompt: {prompt}"
     logger.debug(f"Full prompt: {full_prompt}")
-    response = xai_processor.get_response(context, full_prompt)
+    response = xai_processor.get_response(final_context, full_prompt)
     logger.debug(f"Response: {response}")
     return response
 
