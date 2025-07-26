@@ -2,7 +2,7 @@
 
 
 Use this command to reload the server from inside the container: 
-`uvicorn main:app --host 0.0.0.0 --port 8000 --reload --log-level info `
+`uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload --log-level info `
 
 Here are the log levels:
 1. debug: Shows the most detailed information, useful for development and troubleshooting
