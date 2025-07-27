@@ -81,7 +81,12 @@ services:
       - ~/.ssh:/root/.ssh:ro
     env_file:
       - .env
-    command: ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "80", "--reload"]
+    command: >
+      sh -c "
+        git config --global user.email '${GIT_USER_EMAIL}' &&
+        git config --global user.name '${GIT_USER_NAME}' && 
+        uvicorn app.main:app --host 0.0.0.0 --port 80 --reload
+      "
 
 volumes:
   db_data: {}
