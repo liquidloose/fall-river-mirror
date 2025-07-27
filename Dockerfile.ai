@@ -17,6 +17,3 @@ RUN git config --global --add safe.directory /code
 # Copy the app code (this will be overridden by volume mount in development)
 COPY ./app /code/app
 
-# Set the default command
-CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "80", "--reload"]
-
