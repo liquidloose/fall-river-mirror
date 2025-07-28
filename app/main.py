@@ -1,53 +1,81 @@
-from typing import Union
-import os
-import requests
+from datetime import datetime
+from enum import Enum
+import logging
 from fastapi import FastAPI
 from fastapi.responses import JSONResponse
-from xai_sdk import Client
-from xai_sdk.chat import user, system
+from youtube_transcript_api import YouTubeTranscriptApi
 
+from app.utils import read_context_file
+from .xai_classes import XAIProcessor, ArticleType, Tone
+
+# Configure logging
+logging.basicConfig(
+    level=logging.DEBUG,
+    format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
+    handlers=[
+        logging.StreamHandler(),  # Console output
+        logging.FileHandler("app.log"),  # File output
+    ],
+)
+logger = logging.getLogger(__name__)
 
 app = FastAPI()
-
+xai_processor = XAIProcessor()
+logger.info("FastAPI app initialized!")
 
 @app.get("/")
-def read_root():
-    api_key = os.getenv("XAI_API_KEY")
-    if not api_key:
-        return JSONResponse(
-            status_code=500,
-            content={"error": "XAI_API_KEY environment variable is not set"},
-        )
-
-    try:
-        client = Client(api_key=api_key, timeout=3600)
-        chat = client.chat.create(model="grok-4")
-        chat.append(system("You are Grok, a highly intelligent, helpful AI assistant."))
-        chat.append(user("What is the meaning of life, the universe, and everything?"))
-        response = chat.sample()
-
-        # The response.content is already a string, not an object with .text
-        return {"response": response.content}
-    except Exception as e:
-        return JSONResponse(
-            status_code=500,
-            content={"error": f"Failed to get response from xAI: {str(e)}"},
-        )
+def health_check():
+    logger.info("Health check endpoint called!")
+    return {"status": "ok", "message": "Server is running"}
 
 
-@app.get("/items/{item_id}")
-def read_item(item_id: int, q: Union[str, None] = None):
+@app.get("/article/writer/{context}/{prompt}")
+def read_root(
+    context: str,
+    prompt: str,
+    article_type: ArticleType = ArticleType.SUMMARY,
+    tone: Tone = Tone.FORMAL,
+):
 
-    return {"item_id": item_id, "q": q}
+    # if article_type is op-ed, then here's op_ed.txt and summary.txt files for context
+    match article_type:
+        case ArticleType.OP_ED:
+            final_context = context + read_context_file("article_types", "op_ed.txt")
+        case ArticleType.SUMMARY:
+            final_context = context + read_context_file("article_types", "summary.txt")
 
+    # if tone is friendly, then here's friendly.txt, professional.txt, casual.txt, and formal.txt files for context
+    match tone:
+        case Tone.FRIENDLY:
+            final_context = final_context + read_context_file("tone", "friendly.txt")
+        case Tone.PROFESSIONAL:
+            final_context = final_context + read_context_file("tone", "professional.txt")
+        case Tone.CASUAL:
+            final_context = final_context + read_context_file("tone", "casual.txt")
+        case Tone.FORMAL:
+            final_context = final_context + read_context_file("tone", "formal.txt")
 
-from datetime import datetime
+    logger.info(
+        f"Received request: context={context},final_context={final_context}, prompt={prompt}, type={article_type}, tone={tone}"
+    )
+    xai_processor = XAIProcessor()
+    full_prompt = f"This is the type of article: {article_type.value} This is the tone: {tone.value} This is the context: {context}. This is the user's prompt: {prompt}"
+    logger.debug(f"Full prompt: {full_prompt}")
+    response = xai_processor.get_response(final_context, full_prompt)
+    logger.debug(f"Response: {response}")
+    return response
 
 
 @app.get("/experiments/")
-def experiments():
-    response = JSONResponse(
-        content={"message": "YEAAAA  asdasfasfasfBOOYYYYEEEEE"},
-        headers={"Cache-Control": "no-cache, no-store, must-revalidate"},
-    )
-    return response
+def get_transcript(video_id: str = "VjaU4DAxP6s"):
+
+    try:
+        ytt_api = YouTubeTranscriptApi()
+        transcript = ytt_api.fetch(video_id)
+    except Exception as e:
+        return JSONResponse(
+            status_code=500,
+            content={"error": f"Failed to get transcript from YouTube: {str(e)}"},
+        )
+
+    return transcript
