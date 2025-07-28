@@ -4,15 +4,16 @@ FROM python:3.13
 
 WORKDIR /code
 
-
+# Copy requirements first for better caching
 COPY ./requirements.txt /code/requirements.txt
 
+# Install Python packages
+RUN pip install --no-cache-dir --upgrade pip
+RUN pip install --no-cache-dir -r /code/requirements.txt
 
-RUN pip install --no-cache-dir --upgrade -r /code/requirements.txt
-
-
+# Configure git for the working directory
 RUN git config --global --add safe.directory /code
 
-
+# Copy the app code (this will be overridden by volume mount in development)
 COPY ./app /code/app
 
