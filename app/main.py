@@ -21,9 +21,7 @@ logger = logging.getLogger(__name__)
 
 app = FastAPI()
 xai_processor = XAIProcessor()
-
 logger.info("FastAPI app initialized!")
-
 
 @app.get("/")
 def health_check():
@@ -39,11 +37,23 @@ def read_root(
     tone: Tone = Tone.FORMAL,
 ):
 
-    # if article_type is op-ed, then here's op_ed.txt
-    if article_type == ArticleType.OP_ED:
-        final_context = context + read_context_file("article_types", "op_ed.txt")
-    else:
-        final_context = context
+    # if article_type is op-ed, then here's op_ed.txt and summary.txt files for context
+    match article_type:
+        case ArticleType.OP_ED:
+            final_context = context + read_context_file("article_types", "op_ed.txt")
+        case ArticleType.SUMMARY:
+            final_context = context + read_context_file("article_types", "summary.txt")
+
+    # if tone is friendly, then here's friendly.txt, professional.txt, casual.txt, and formal.txt files for context
+    match tone:
+        case Tone.FRIENDLY:
+            final_context = final_context + read_context_file("tone", "friendly.txt")
+        case Tone.PROFESSIONAL:
+            final_context = final_context + read_context_file("tone", "professional.txt")
+        case Tone.CASUAL:
+            final_context = final_context + read_context_file("tone", "casual.txt")
+        case Tone.FORMAL:
+            final_context = final_context + read_context_file("tone", "formal.txt")
 
     logger.info(
         f"Received request: context={context},final_context={final_context}, prompt={prompt}, type={article_type}, tone={tone}"
