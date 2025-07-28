@@ -21,7 +21,7 @@ docker build -f Dockerfile.ai -t fr-mirror-ai .
 
 ### Running the Environment
 
-Now you are ready to create the environment! Type `docker compose up` in your terminal from inside the directory where the Dockerfiles live. The sites will be available at localhost: `<your-ip-goes-here>`
+Now you are ready to create the environment! Type `docker compose up` in your terminal from inside the directory where the Dockerfiles live. The sites will be available at localhost running on the ports that you specified in your .env file: `<your-ip/localhost-goes-here>:<your-port-number-goes-here>`
 
 ## Helpful Tips
 
