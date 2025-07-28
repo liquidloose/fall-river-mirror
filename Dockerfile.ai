@@ -1,4 +1,3 @@
-
 FROM python:3.13
 
 
@@ -10,9 +9,11 @@ COPY ./requirements.txt /code/requirements.txt
 # Install Python packages
 RUN pip install --no-cache-dir --upgrade pip
 RUN pip install --no-cache-dir -r /code/requirements.txt
+RUN code --install-extension ms-python.python
 
 # Configure git for the working directory
 RUN git config --global --add safe.directory /code
+
 
 # Copy the app code (this will be overridden by volume mount in development)
 COPY ./app /code/app
