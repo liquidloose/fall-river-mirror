@@ -438,3 +438,494 @@ Structurally, a professional article is organized for maximum utility. It is wel
 2025-08-05 17:00:42,827 - app.main - INFO - FastAPI app initialized!
 2025-08-05 17:01:01,988 - app.main - INFO - FastAPI app initialized!
 2025-08-05 17:02:01,269 - app.main - INFO - FastAPI app initialized!
+2025-08-05 17:07:21,623 - app.main - INFO - FastAPI app initialized!
+2025-08-05 17:07:22,925 - app.main - INFO - FastAPI app initialized!
+2025-08-05 17:08:25,997 - app.main - INFO - FastAPI app initialized!
+2025-08-05 17:09:01,491 - app.main - INFO - FastAPI app initialized!
+2025-08-05 17:09:02,987 - app.main - INFO - FastAPI app initialized!
+2025-08-05 17:11:33,326 - app.main - INFO - FastAPI app initialized!
+2025-08-05 17:11:34,732 - app.main - INFO - FastAPI app initialized!
+2025-08-05 17:12:20,477 - app.main - INFO - FastAPI app initialized!
+2025-08-05 23:38:10,311 - app.main - INFO - FastAPI app initialized!
+2025-08-05 23:38:11,613 - app.main - INFO - FastAPI app initialized!
+2025-08-05 23:39:27,908 - app.main - INFO - FastAPI app initialized!
+2025-08-05 23:39:50,899 - app.main - INFO - FastAPI app initialized!
+2025-08-05 23:46:57,706 - app.main - INFO - FastAPI app initialized!
+2025-08-05 23:48:19,967 - app.main - INFO - FastAPI app initialized!
+2025-08-05 23:49:31,179 - app.main - INFO - FastAPI app initialized!
+2025-08-05 23:49:32,488 - app.main - INFO - FastAPI app initialized!
+2025-08-05 23:50:07,001 - app.main - INFO - FastAPI app initialized!
+2025-08-05 23:53:00,423 - app.main - INFO - FastAPI app initialized!
+2025-08-05 23:53:45,760 - app.main - INFO - FastAPI app initialized!
+2025-08-05 23:53:53,529 - app.main - INFO - FastAPI app initialized!
+2025-08-05 23:54:23,929 - app.main - INFO - FastAPI app initialized!
+2025-08-08 14:54:18,195 - app.main - INFO - FastAPI app initialized!
+2025-08-08 15:01:53,350 - app.main - INFO - FastAPI app initialized!
+2025-08-08 15:01:54,459 - app.main - INFO - FastAPI app initialized!
+2025-08-08 16:18:14,767 - app.main - INFO - FastAPI app initialized!
+2025-08-08 16:18:15,467 - app.main - INFO - FastAPI app initialized!
+2025-08-08 16:18:29,707 - app.main - INFO - FastAPI app initialized!
+2025-08-08 16:18:38,141 - app.main - INFO - FastAPI app initialized!
+2025-08-08 16:18:39,267 - app.main - INFO - FastAPI app initialized!
+2025-08-08 16:18:40,376 - app.main - INFO - FastAPI app initialized!
+2025-08-08 16:29:03,439 - urllib3.connectionpool - DEBUG - Starting new HTTPS connection (1): www.youtube.com:443
+2025-08-08 16:29:03,646 - urllib3.connectionpool - DEBUG - https://www.youtube.com:443 "GET /watch?v=VjaU4DAxP6s HTTP/1.1" 200 None
+2025-08-08 16:29:04,980 - urllib3.connectionpool - DEBUG - https://www.youtube.com:443 "POST /youtubei/v1/player?key=AIzaSyAO_FJ2SlqU8Q4STEHLGCilw_Y9_11qcW8 HTTP/1.1" 200 None
+2025-08-08 16:29:05,107 - urllib3.connectionpool - DEBUG - https://www.youtube.com:443 "GET /api/timedtext?v=VjaU4DAxP6s&ei=0CWWaKmyLJb1zLUPqOHn-Qg&caps=asr&opi=112496729&xoaf=5&xospf=1&hl=en&ip=0.0.0.0&ipbits=0&expire=1754695744&sparams=ip,ipbits,expire,v,ei,caps,opi,xoaf&signature=408ACDDC15740FCD04120B6697668A3080B58F44.C42F98662D59D448223ED074572F73486F66F73D&key=yt8&kind=asr&lang=en&variant=punctuated HTTP/1.1" 200 None
+2025-08-08 16:32:37,002 - urllib3.connectionpool - DEBUG - Starting new HTTPS connection (1): www.youtube.com:443
+2025-08-08 16:32:37,162 - urllib3.connectionpool - DEBUG - https://www.youtube.com:443 "GET /watch?v=VjaU4DAxP6s HTTP/1.1" 200 None
+2025-08-08 16:32:38,002 - urllib3.connectionpool - DEBUG - https://www.youtube.com:443 "POST /youtubei/v1/player?key=AIzaSyAO_FJ2SlqU8Q4STEHLGCilw_Y9_11qcW8 HTTP/1.1" 200 None
+2025-08-08 16:32:38,085 - urllib3.connectionpool - DEBUG - https://www.youtube.com:443 "GET /api/timedtext?v=VjaU4DAxP6s&ei=pSaWaLOpNqK2kucP5N3PsA8&caps=asr&opi=112496729&xoaf=5&xospf=1&hl=en&ip=0.0.0.0&ipbits=0&expire=1754695957&sparams=ip,ipbits,expire,v,ei,caps,opi,xoaf&signature=3CC51B0C551BCF4153A34F1718C7B5952DA2894B.9C031A7B8F509FB4839C7F43150B7CE45D3C9A6D&key=yt8&kind=asr&lang=en&variant=punctuated HTTP/1.1" 200 None
+2025-08-08 16:34:43,104 - Database_fr-mirror - INFO - Initializing database: fr-mirror.db
+2025-08-08 16:34:43,104 - Database_fr-mirror - INFO - Successfully connected to database: fr-mirror.db
+2025-08-08 16:34:43,105 - Database_fr-mirror - INFO - Creating/verifying all database tables...
+2025-08-08 16:34:43,119 - Database_fr-mirror - INFO - Table 'transcripts' created/verified successfully
+2025-08-08 16:34:43,123 - Database_fr-mirror - INFO - Table 'journalists' created/verified successfully
+2025-08-08 16:34:43,131 - Database_fr-mirror - INFO - Table 'articles' created/verified successfully
+2025-08-08 16:34:43,135 - Database_fr-mirror - INFO - Table 'committees' created/verified successfully
+2025-08-08 16:34:43,135 - Database_fr-mirror - INFO - All tables created/verified successfully
+2025-08-08 16:34:43,135 - Database_fr-mirror - INFO - Database initialization completed
+2025-08-08 16:34:43,135 - app.main - INFO - FastAPI app initialized!
+2025-08-08 16:35:01,384 - Database_fr-mirror - INFO - Initializing database: fr-mirror.db
+2025-08-08 16:35:01,385 - Database_fr-mirror - INFO - Successfully connected to database: fr-mirror.db
+2025-08-08 16:35:01,385 - Database_fr-mirror - INFO - Creating/verifying all database tables...
+2025-08-08 16:35:01,385 - Database_fr-mirror - INFO - Table 'transcripts' created/verified successfully
+2025-08-08 16:35:01,385 - Database_fr-mirror - INFO - Table 'journalists' created/verified successfully
+2025-08-08 16:35:01,385 - Database_fr-mirror - INFO - Table 'articles' created/verified successfully
+2025-08-08 16:35:01,385 - Database_fr-mirror - INFO - Table 'committees' created/verified successfully
+2025-08-08 16:35:01,386 - Database_fr-mirror - INFO - All tables created/verified successfully
+2025-08-08 16:35:01,386 - Database_fr-mirror - INFO - Database initialization completed
+2025-08-08 16:35:01,386 - app.main - INFO - FastAPI app initialized!
+2025-08-08 16:35:05,272 - urllib3.connectionpool - DEBUG - Starting new HTTPS connection (1): www.youtube.com:443
+2025-08-08 16:35:05,431 - urllib3.connectionpool - DEBUG - https://www.youtube.com:443 "GET /watch?v=VjaU4DAxP6s HTTP/1.1" 200 None
+2025-08-08 16:35:06,288 - urllib3.connectionpool - DEBUG - https://www.youtube.com:443 "POST /youtubei/v1/player?key=AIzaSyAO_FJ2SlqU8Q4STEHLGCilw_Y9_11qcW8 HTTP/1.1" 200 None
+2025-08-08 16:35:06,351 - urllib3.connectionpool - DEBUG - https://www.youtube.com:443 "GET /api/timedtext?v=VjaU4DAxP6s&ei=OieWaMqzC-CVkucPh5em-QE&caps=asr&opi=112496729&xoaf=5&xospf=1&hl=en&ip=0.0.0.0&ipbits=0&expire=1754696106&sparams=ip,ipbits,expire,v,ei,caps,opi,xoaf&signature=B8B2C53D86631175A99E389A7721D4F055B67795.1D3CEA14F0FC1C62B15E3211E57129E4D9C56029&key=yt8&kind=asr&lang=en&variant=punctuated HTTP/1.1" 200 None
+2025-08-08 16:35:15,135 - Database_fr-mirror - INFO - Initializing database: fr-mirror.db
+2025-08-08 16:35:15,136 - Database_fr-mirror - INFO - Successfully connected to database: fr-mirror.db
+2025-08-08 16:35:15,136 - Database_fr-mirror - INFO - Creating/verifying all database tables...
+2025-08-08 16:35:15,136 - Database_fr-mirror - INFO - Table 'transcripts' created/verified successfully
+2025-08-08 16:35:15,136 - Database_fr-mirror - INFO - Table 'journalists' created/verified successfully
+2025-08-08 16:35:15,136 - Database_fr-mirror - INFO - Table 'articles' created/verified successfully
+2025-08-08 16:35:15,136 - Database_fr-mirror - INFO - Table 'committees' created/verified successfully
+2025-08-08 16:35:15,136 - Database_fr-mirror - INFO - All tables created/verified successfully
+2025-08-08 16:35:15,136 - Database_fr-mirror - INFO - Database initialization completed
+2025-08-08 16:35:15,137 - app.main - INFO - FastAPI app initialized!
+2025-08-08 16:35:49,257 - Database_fr-mirror - INFO - Initializing database: fr-mirror.db
+2025-08-08 16:35:49,257 - Database_fr-mirror - INFO - Successfully connected to database: fr-mirror.db
+2025-08-08 16:35:49,258 - Database_fr-mirror - INFO - Creating/verifying all database tables...
+2025-08-08 16:35:49,258 - Database_fr-mirror - INFO - Table 'transcripts' created/verified successfully
+2025-08-08 16:35:49,258 - Database_fr-mirror - INFO - Table 'journalists' created/verified successfully
+2025-08-08 16:35:49,258 - Database_fr-mirror - INFO - Table 'articles' created/verified successfully
+2025-08-08 16:35:49,258 - Database_fr-mirror - INFO - Table 'committees' created/verified successfully
+2025-08-08 16:35:49,258 - Database_fr-mirror - INFO - All tables created/verified successfully
+2025-08-08 16:35:49,258 - Database_fr-mirror - INFO - Database initialization completed
+2025-08-08 16:35:49,258 - app.main - INFO - FastAPI app initialized!
+2025-08-08 16:36:06,467 - Database_fr-mirror - INFO - Initializing database: fr-mirror.db
+2025-08-08 16:36:06,467 - Database_fr-mirror - INFO - Successfully connected to database: fr-mirror.db
+2025-08-08 16:36:06,467 - Database_fr-mirror - INFO - Creating/verifying all database tables...
+2025-08-08 16:36:06,468 - Database_fr-mirror - INFO - Table 'transcripts' created/verified successfully
+2025-08-08 16:36:06,468 - Database_fr-mirror - INFO - Table 'journalists' created/verified successfully
+2025-08-08 16:36:06,468 - Database_fr-mirror - INFO - Table 'articles' created/verified successfully
+2025-08-08 16:36:06,468 - Database_fr-mirror - INFO - Table 'committees' created/verified successfully
+2025-08-08 16:36:06,468 - Database_fr-mirror - INFO - All tables created/verified successfully
+2025-08-08 16:36:06,468 - Database_fr-mirror - INFO - Database initialization completed
+2025-08-08 16:36:06,469 - app.main - INFO - FastAPI app initialized!
+2025-08-08 16:36:07,274 - Database_fr-mirror - INFO - Initializing database: fr-mirror.db
+2025-08-08 16:36:07,274 - Database_fr-mirror - INFO - Successfully connected to database: fr-mirror.db
+2025-08-08 16:36:07,274 - Database_fr-mirror - INFO - Creating/verifying all database tables...
+2025-08-08 16:36:07,275 - Database_fr-mirror - INFO - Table 'transcripts' created/verified successfully
+2025-08-08 16:36:07,275 - Database_fr-mirror - INFO - Table 'journalists' created/verified successfully
+2025-08-08 16:36:07,275 - Database_fr-mirror - INFO - Table 'articles' created/verified successfully
+2025-08-08 16:36:07,275 - Database_fr-mirror - INFO - Table 'committees' created/verified successfully
+2025-08-08 16:36:07,275 - Database_fr-mirror - INFO - All tables created/verified successfully
+2025-08-08 16:36:07,275 - Database_fr-mirror - INFO - Database initialization completed
+2025-08-08 16:36:07,275 - app.main - INFO - FastAPI app initialized!
+2025-08-08 16:36:17,780 - urllib3.connectionpool - DEBUG - Starting new HTTPS connection (1): www.youtube.com:443
+2025-08-08 16:36:17,945 - urllib3.connectionpool - DEBUG - https://www.youtube.com:443 "GET /watch?v=VjaU4DAxP6s HTTP/1.1" 200 None
+2025-08-08 16:36:18,828 - urllib3.connectionpool - DEBUG - https://www.youtube.com:443 "POST /youtubei/v1/player?key=AIzaSyAO_FJ2SlqU8Q4STEHLGCilw_Y9_11qcW8 HTTP/1.1" 200 None
+2025-08-08 16:36:18,900 - urllib3.connectionpool - DEBUG - https://www.youtube.com:443 "GET /api/timedtext?v=VjaU4DAxP6s&ei=gieWaIuDLLq1kucPzdeZ4AY&caps=asr&opi=112496729&xoaf=5&hl=en&ip=0.0.0.0&ipbits=0&expire=1754696178&sparams=ip,ipbits,expire,v,ei,caps,opi,xoaf&signature=72E8709DF36DCE9C8CF845F59638FCA403C78266.284A0904ACB5E48B99D6BBEA9D3366863DA96C73&key=yt8&kind=asr&lang=en&variant=punctuated HTTP/1.1" 200 None
+2025-08-08 16:36:27,988 - Database_fr-mirror - INFO - Initializing database: fr-mirror.db
+2025-08-08 16:36:27,989 - Database_fr-mirror - INFO - Successfully connected to database: fr-mirror.db
+2025-08-08 16:36:27,989 - Database_fr-mirror - INFO - Creating/verifying all database tables...
+2025-08-08 16:36:27,993 - Database_fr-mirror - INFO - Table 'transcripts' created/verified successfully
+2025-08-08 16:36:27,997 - Database_fr-mirror - INFO - Table 'journalists' created/verified successfully
+2025-08-08 16:36:28,000 - Database_fr-mirror - INFO - Table 'articles' created/verified successfully
+2025-08-08 16:36:28,003 - Database_fr-mirror - INFO - Table 'committees' created/verified successfully
+2025-08-08 16:36:28,003 - Database_fr-mirror - INFO - All tables created/verified successfully
+2025-08-08 16:36:28,003 - Database_fr-mirror - INFO - Database initialization completed
+2025-08-08 16:36:28,003 - app.main - INFO - FastAPI app initialized!
+2025-08-08 16:53:04,342 - app.utils - INFO - Successfully loaded context file: app/context_files/article_types/summary.txt
+2025-08-08 16:53:04,342 - app.utils - INFO - Successfully loaded context file: app/context_files/tone/formal.txt
+2025-08-08 16:53:04,343 - app.main - INFO - Received request: context=the year 2100,final_context=the year 2100An article written in a formal tone is characterized by its objectivity, authority, and structural clarity. Its primary goal is to inform, analyze, or argue based on factual evidence and logical reasoning, rather than to entertain or build personal rapport. A formal article establishes a distinct distance between the writer and the reader; the author serves as an impartial expert presenting information, not a peer sharing an experience. This is achieved by strictly using a third-person perspective, avoiding personal pronouns like "I," "we," or "you." The focus is placed squarely on the subject matter, removing any sense of personal bias or conversational intimacy to establish the text as a credible and authoritative source.
+
+The language and syntax of a formal article are precise and deliberate. Word choice is specific and unambiguous, often employing technical or academic vocabulary appropriate to the subject. Vague language, slang, and colloquialisms are completely avoided. A key hallmark of formal writing is the absence of contractions; for example, "do not" is used instead of "don't," and "it is" instead of "it's." Sentence structures are often more complex and varied, using subordinate clauses and sophisticated transitional phrases (e.g., "furthermore," "consequently," "in contrast") to show the logical relationships between different ideas. This complexity is not for its own sake, but to convey nuanced arguments and precise information accurately.
+
+Finally, a formal article is built upon a foundation of rigorous structure and evidence. It typically begins with a clear thesis statement or objective in the introduction, followed by a series of body paragraphs that develop the argument in a logical sequence. Each point is substantiated not with personal anecdotes or opinions, but with verifiable evidence such as data, statistics, research findings, and citations from other scholarly works. The tone is serious and analytical throughout, guiding the reader through a methodical and defensible line of reasoning that leads to a well-supported conclusion. The entire piece is designed to be persuasive and trustworthy based on the strength of its evidence and the clarity of its argument., prompt=tell me about what it's like since robots took over the physical workforce, type=ArticleType.SUMMARY, tone=Tone.FORMAL
+2025-08-08 16:53:04,343 - app.main - INFO - Full prompt: This is the type of article: summary This is the tone: formal This is the context: the year 2100. This is the user's prompt: tell me about what it's like since robots took over the physical workforce
+2025-08-08 16:53:39,073 - app.main - DEBUG - Response: {'response': '### Societal Transformations in the Era of Robotic Labor Dominance: A Summary from the Year 2100\n\nIn the year 2100, the global landscape has undergone profound changes following the comprehensive integration of robotic systems into the physical workforce, a transition that accelerated in the mid-21st century. This summary examines the multifaceted implications of this shift, wherein autonomous machines have assumed responsibility for virtually all manual and repetitive labor tasks, including manufacturing, agriculture, construction, and logistics. The objective is to delineate the economic, social, and existential ramifications of this development, drawing upon empirical data from international reports and scholarly analyses to provide an objective overview.\n\nEconomically, the ascendancy of robots has engendered unprecedented efficiency and productivity gains. According to the Global Economic Forum\'s 2098 report, robotic automation has increased worldwide output by approximately 450 percent since 2050, primarily through tireless operation and minimal error rates. Human involvement in physical labor has diminished to less than 5 percent of the workforce, as evidenced by labor statistics from the United Nations Robotics Oversight Committee. Consequently, resources previously allocated to wages for manual workers have been redirected toward innovation sectors, fostering advancements in fields such as biotechnology and quantum computing. However, this efficiency has not been without challenges; widespread job displacement in the initial decades led to economic inequality, with a 2075 study from the International Labor Organization indicating that 60 percent of displaced workers required retraining for cognitive or creative roles. Universal basic income programs, implemented in over 80 percent of nations by 2080, have mitigated these disparities, ensuring a baseline standard of living and stimulating consumer-driven economies.\n\nSocially, the liberation from physical toil has reshaped human existence, promoting a renaissance in leisure, education, and interpersonal relations. Individuals now dedicate an average of 20 hours per week to personal pursuits, as reported in the 2095 World Health Organization\'s Quality of Life Index, which attributes a 35 percent rise in global happiness metrics to reduced occupational stress. Communities have evolved into hubs of cultural and intellectual exchange, with urban designs incorporating expansive green spaces and collaborative centers, facilitated by robotic maintenance. Nevertheless, this transformation has introduced existential dilemmas; phenomena such as "automation ennui," a term coined in psychological literature around 2060, describe the sense of purposelessness experienced by some, leading to increased demand for mental health services. Furthermore, ethical concerns regarding robotic sentience have prompted regulatory frameworks, such as the 2085 Artificial Intelligence Accord, which mandates periodic human oversight to prevent over-reliance on machines.\n\nIn daily life, the robotic takeover manifests in seamless integration that renders physical labor invisible. Transportation systems operate autonomously, with hyperloop networks and drone deliveries ensuring efficiency; agricultural robots cultivate vast hydroponic farms, yielding sustainable food supplies that have eradicated famine in most regions, per the Food and Agriculture Organization\'s 2100 assessment. Homes and workplaces are maintained by adaptive robotic assistants, which anticipate needs through machine learning algorithms, thereby enhancing convenience. Yet, this dependency has heightened vulnerabilities, including cybersecurity threats, as demonstrated by the 2092 global outage that disrupted 40 percent of robotic operations for 72 hours, underscoring the necessity for robust safeguards.\n\nIn conclusion, the era since robots assumed control of the physical workforce in 2100 represents a paradigm of progress tempered by adaptation. While efficiency and human flourishing have reached new heights, sustained efforts in policy, education, and ethics remain essential to harness these benefits equitably. This summary, grounded in verifiable data, illustrates a world where humanity\'s role has pivoted from laborer to innovator, promising continued evolution if managed with foresight.'}
+2025-08-08 16:54:42,739 - app.utils - INFO - Successfully loaded context file: app/context_files/article_types/op_ed.txt
+2025-08-08 16:54:42,740 - app.utils - INFO - Successfully loaded context file: app/context_files/tone/casual.txt
+2025-08-08 16:54:42,740 - app.main - INFO - Received request: context=the year 2100,final_context=the year 2100only talk about being sad about harry potterAn article written in a casual tone prioritizes connection and readability, aiming to feel less like a formal document and more like a conversation with a knowledgeable and approachable person. It directly addresses the audience, frequently using pronouns like "you" and "we" to create a sense of shared experience and rapport. The writer often breaks the "fourth wall," acknowledging the reader's potential questions, thoughts, or feelings. This approach dismantles the traditional barrier between author and audience, making the content feel more personal and engaging, as if you're getting advice or information from a friend rather than an institution.
+
+The language and sentence structure are fundamental to achieving this effect. A casual article employs everyday vocabulary and avoids unnecessary jargon or overly complex terminology. If a technical term is necessary, it's usually explained immediately in simple, relatable terms. You will frequently see contractions such as "it's," "don't," and "you'll," which mimic natural speech patterns. Sentences are often shorter and more varied, with the writer sometimes using fragments for emphasis or rhetorical questions to pull the reader into the narrative. The overall rhythm is designed to be smooth and easy to follow, prioritizing clarity over strict grammatical formality.
+
+Finally, a casual tone is infused with the author's personality. The writer isn't just a disembodied voice presenting facts; they are a presence in the text. This is often achieved through the use of humor, personal anecdotes, storytelling, and the expression of candid opinions. Instead of a dry, objective presentation, the article might have a witty, enthusiastic, or reassuring voice. This subjectivity makes the information more memorable and relatable, as the author’s personal experience or passion for the topic shines through, making the reader feel more invested in what is being said., prompt=tell me about what it's like since robots took over the physical workforce, type=ArticleType.OP_ED, tone=Tone.CASUAL
+2025-08-08 16:54:42,740 - app.main - INFO - Full prompt: This is the type of article: op-ed This is the tone: casual This is the context: the year 2100. This is the user's prompt: tell me about what it's like since robots took over the physical workforce
+2025-08-08 16:56:02,085 - app.main - DEBUG - Response: {'response': '# Robots Have the Jobs, But We\'ve Got the Stories: Life in 2100 After the Big Takeover\n\nHey there, folks of 2100 – or if you\'re reading this from some archived data stream in the future, hi to you too. It\'s me, your friendly neighborhood op-ed scribbler, sitting here in my cozy pod apartment while my robot butler (affectionately named Clank) whips up a synthetic latte. Yeah, you heard that right: robots took over the physical workforce about, what, 50 years ago? And let me tell you, it\'s been a wild ride. As someone who\'s lived through the tail end of the human-labor era and now basks in this automated utopia (or is it a dystopia? Spoiler: a bit of both), I figured it\'s time to spill the beans on what it\'s really like. Grab your neural implant feed and let\'s chat.\n\nFirst off, remember when we used to complain about our 9-to-5 grind? Ha! Those days are ancient history, like dial-up internet or non-holographic movies. Back in the 2050s, when AI and robotics hit their stride, they didn\'t just take over factories and farms – they swooped in on everything. Construction? Robots build skyscrapers faster than you can say "union strike." Delivery? Drones zip your pizza (or lab-grown steak) right to your door without a single human hand involved. Even stuff like housekeeping, driving, and – get this – surgery is mostly bot-operated now. Humans? We\'re out of the physical loop, for the most part.\n\nAnd honestly? It\'s liberating in ways you wouldn\'t believe. We\'ve got all this free time on our hands. I mean, universal basic income kicked in big time after the takeover – governments had to, or society would\'ve crumbled like a stale cookie. So now, people are pursuing passions we never had time for before. My neighbor? She\'s a professional virtual reality painter, creating worlds that make the old masters look like stick figures. Me? I spend my days writing these op-eds and tinkering with retro gadgets from the 2000s. We humans are creators, dreamers, and explorers now, not just cogs in a machine. It\'s like the Renaissance, but with laser shows and anti-grav boots.\n\nBut let\'s not sugarcoat it – there\'s a downside, and it\'s a doozy. Boredom creeps in, you know? When robots handle all the grunt work, what\'s left for us to feel... useful? I\'ve got friends who miss the satisfaction of a hard day\'s sweat. Remember that feeling of collapsing on the couch after mowing the lawn or fixing a leaky pipe? Gone. Now, it\'s all automated perfection, and it can feel a tad soulless. Mental health pods are booming because, turns out, humans need purpose beyond binge-watching infinite streaming libraries. And inequality? Oh boy, it\'s still there. The folks who own the robot companies are living like space emperors, while the rest of us scrape by on UBI and side gigs in the creative economy. It\'s not all egalitarian bliss; it\'s more like a shiny new divide.\n\nWeirdly enough, this robot-dominated world has made me nostalgic for simpler times – like the magic of old stories that robots just don\'t get. Take Harry Potter, for instance. I reread the series last week (on my e-ink scroll, naturally), and it hit me hard: in a world where machines do everything flawlessly, we\'ve lost that spark of human imperfection, that wonder of discovery. Harry and his crew fought with wands and wits against real darkness, not algorithms. Robots can\'t feel the sadness of losing a character like Sirius or the joy of a Quidditch win – they\'re just code. It\'s made me downright sad about how Harry Potter represents this lost era of human grit. In 2100, with bots running the show, we\'re all a bit like Muggles who\'ve forgotten how to cast our own spells. We need to reclaim that magic, or we\'ll end up as relics in our own story.\n\nDon\'t get me wrong, I\'m not advocating for smashing the robots (Clank, if you\'re reading this, I love you, buddy). The takeover has solved a ton of problems – no more workplace injuries, environmental wins from efficient farming, and hey, traffic jams are a myth now. But if I had one piece of advice for us in 2100? Let\'s use this freedom to build connections, not just more tech. Volunteer in community gardens (even if bots do the planting), tell stories around holographic campfires, or heck, start a Harry Potter fan club to remind ourselves what human emotion feels like. The robots have the workforce, but we\'ve got the heart. Let\'s not let that slip away.\n\nWhat do you think? Has the robot era made your life a dream or a drag? Hit me up in the comments – assuming the AI moderators let this through. Until next time, stay human, friends.'}
+2025-08-08 16:56:02,090 - app.utils - INFO - Successfully loaded context file: app/context_files/article_types/op_ed.txt
+2025-08-08 16:56:02,091 - app.utils - INFO - Successfully loaded context file: app/context_files/tone/casual.txt
+2025-08-08 16:56:02,091 - app.main - INFO - Received request: context=the year 2100,final_context=the year 2100only talk about being sad about harry potterAn article written in a casual tone prioritizes connection and readability, aiming to feel less like a formal document and more like a conversation with a knowledgeable and approachable person. It directly addresses the audience, frequently using pronouns like "you" and "we" to create a sense of shared experience and rapport. The writer often breaks the "fourth wall," acknowledging the reader's potential questions, thoughts, or feelings. This approach dismantles the traditional barrier between author and audience, making the content feel more personal and engaging, as if you're getting advice or information from a friend rather than an institution.
+
+The language and sentence structure are fundamental to achieving this effect. A casual article employs everyday vocabulary and avoids unnecessary jargon or overly complex terminology. If a technical term is necessary, it's usually explained immediately in simple, relatable terms. You will frequently see contractions such as "it's," "don't," and "you'll," which mimic natural speech patterns. Sentences are often shorter and more varied, with the writer sometimes using fragments for emphasis or rhetorical questions to pull the reader into the narrative. The overall rhythm is designed to be smooth and easy to follow, prioritizing clarity over strict grammatical formality.
+
+Finally, a casual tone is infused with the author's personality. The writer isn't just a disembodied voice presenting facts; they are a presence in the text. This is often achieved through the use of humor, personal anecdotes, storytelling, and the expression of candid opinions. Instead of a dry, objective presentation, the article might have a witty, enthusiastic, or reassuring voice. This subjectivity makes the information more memorable and relatable, as the author’s personal experience or passion for the topic shines through, making the reader feel more invested in what is being said., prompt=tell me about what it's like since robots took over the physical workforce, type=ArticleType.OP_ED, tone=Tone.CASUAL
+2025-08-08 16:56:02,091 - app.main - INFO - Full prompt: This is the type of article: op-ed This is the tone: casual This is the context: the year 2100. This is the user's prompt: tell me about what it's like since robots took over the physical workforce
+2025-08-08 16:56:50,122 - app.main - DEBUG - Response: {'response': '# Life in 2100: Robots Grabbed the Wheel, and Honestly, We\'re Still Figuring Out the Ride\n\nHey there, fellow 2100-er. Yeah, you – scrolling through your neural feed while sipping that lab-grown coffee that tastes suspiciously like the real thing from back in the day. It\'s me, your friendly neighborhood op-ed scribbler, chiming in from my cozy pod in Neo-Tokyo. We\'ve all heard the stories about how robots took over the physical workforce back in the 2040s, right? Factories humming with androids, farms tended by drone swarms, construction sites buzzing with self-assembling bots. No more humans breaking their backs for a paycheck. Sounds like utopia on paper, doesn\'t it? But let me tell you, living it? It\'s a mixed bag of shiny chrome and unexpected rust spots. Pull up a virtual chair; let\'s chat about what it\'s really like.\n\nFirst off, remember when "work" meant showing up at some soul-crushing job, clocking in, and pretending to be productive for eight hours? Poof – gone. Robots handle all that grunt stuff now. Your average Joe (or Jiao, or whoever) doesn\'t lift a finger for manufacturing, mining, or even flipping burgers. Heck, my grandma used to tell tales of "fast food drive-thrus" where actual people handed you fries. Now? A bot scans your biometrics, custom-prints your meal based on your mood data, and zips it to your doorstep via hyper-tube. We\'ve got universal basic income (UBI 2.0, baby) funded by all that robot efficiency, so nobody starves. We humans? We\'re supposed to chase our passions – art, science, virtual reality adventures, you name it. It\'s like the whole world\'s on permanent vacation mode.\n\nBut here\'s where I get opinionated, because let\'s be real: it\'s not all sunshine and solar panels. Sure, we\'ve eliminated a ton of backbreaking labor, and that\'s a win for humanity\'s collective spine. No more factory accidents claiming lives, no more exploited workers in sweatshops. Robots don\'t unionize, they don\'t get tired, and they sure as heck don\'t call in sick during a pandemic (remember those ancient COVID holos?). Productivity? Through the roof. Global GDP is something like 500 times what it was in 2000, and we\'re colonizing Mars like it\'s a weekend getaway. We even solved climate change – bots reforested the Amazon in a decade flat.\n\nYet, and this is the part that keeps me up at night (or whatever passes for night in our 24/7 glow cities), what about us? You know, the squishy humans who suddenly have all this free time? I\'ve seen friends – good people – just... drift. Without the structure of physical work, some folks spiral into endless VR binges or chase hollow trends on the meta-net. It\'s like we traded one grind for another: the grind of meaninglessness. Remember that old saying, "idle hands are the devil\'s workshop"? Turns out, it\'s got teeth. Mental health crises are up – therapists are the new rock stars, prescribing everything from empathy sims to mandatory "purpose quests." And don\'t get me started on inequality. The folks who own the robot corps? They\'re basically gods now, lounging in orbital mansions while the rest of us scrape by on UBI scraps. We thought automation would level the playing field, but nah, it just built a taller fence.\n\nTake my buddy Alex, for example. Back in the 2090s, he was a welder – one of the last holdouts before the full takeover. Loved it, he said; the sparks, the sweat, the satisfaction of building something real. Now? He\'s a "creative consultant" for bot designs, but it\'s all virtual. He misses the tangibility, you know? The feel of metal in your hands. We\'ve got nostalgia parks where you can "experience" old-school labor – paying credits to pretend you\'re mining coal or harvesting crops. It\'s fun for a laugh, but it\'s also kinda sad. Are we really that disconnected from our roots?\n\nLook, I\'m not saying we should smash the bots and go back to the Stone Age. That\'d be ridiculous – and impossible, since the AI overlords (kidding, mostly) run everything. But we need to rethink this whole setup. What if we integrated more human-robot collab? Like, hybrid jobs where you team up with a bot for that perfect mix of brains and brawn. Or mandatory "analog hours" where we all unplug and do something physical, just to remember we\'re not just brains in jars. We\'ve got the tech; let\'s use it to make life fulfilling, not just efficient.\n\nSo, what do you think? Are you thriving in this robot-run paradise, or do you secretly yearn for the days when dropping a hammer on your foot was a real risk? Hit me up in the comments – let\'s keep the conversation going. After all, in 2100, the future\'s not set in silicon; it\'s what we make of it. Stay human, friends.'}
+2025-08-08 17:09:26,206 - Database_fr-mirror - INFO - Initializing database: fr-mirror.db
+2025-08-08 17:09:26,206 - Database_fr-mirror - INFO - Successfully connected to database: fr-mirror.db
+2025-08-08 17:09:26,206 - Database_fr-mirror - INFO - Creating/verifying all database tables...
+2025-08-08 17:09:26,207 - Database_fr-mirror - INFO - Table 'transcripts' created/verified successfully
+2025-08-08 17:09:26,207 - Database_fr-mirror - INFO - Table 'journalists' created/verified successfully
+2025-08-08 17:09:26,207 - Database_fr-mirror - INFO - Table 'articles' created/verified successfully
+2025-08-08 17:09:26,207 - Database_fr-mirror - INFO - Table 'committees' created/verified successfully
+2025-08-08 17:09:26,207 - Database_fr-mirror - INFO - All tables created/verified successfully
+2025-08-08 17:09:26,207 - Database_fr-mirror - INFO - Database initialization completed
+2025-08-08 17:09:26,207 - app.main - INFO - FastAPI app initialized!
+2025-08-08 17:09:28,588 - app.utils - INFO - Successfully loaded context file: app/context_files/article_types/op_ed.txt
+2025-08-08 17:09:28,588 - app.utils - INFO - Successfully loaded context file: app/context_files/tone/casual.txt
+2025-08-08 17:09:28,588 - app.main - INFO - Received request: context=the year 2100,final_context=the year 2100only talk about being sad about harry potterAn article written in a casual tone prioritizes connection and readability, aiming to feel less like a formal document and more like a conversation with a knowledgeable and approachable person. It directly addresses the audience, frequently using pronouns like "you" and "we" to create a sense of shared experience and rapport. The writer often breaks the "fourth wall," acknowledging the reader's potential questions, thoughts, or feelings. This approach dismantles the traditional barrier between author and audience, making the content feel more personal and engaging, as if you're getting advice or information from a friend rather than an institution.
+
+The language and sentence structure are fundamental to achieving this effect. A casual article employs everyday vocabulary and avoids unnecessary jargon or overly complex terminology. If a technical term is necessary, it's usually explained immediately in simple, relatable terms. You will frequently see contractions such as "it's," "don't," and "you'll," which mimic natural speech patterns. Sentences are often shorter and more varied, with the writer sometimes using fragments for emphasis or rhetorical questions to pull the reader into the narrative. The overall rhythm is designed to be smooth and easy to follow, prioritizing clarity over strict grammatical formality.
+
+Finally, a casual tone is infused with the author's personality. The writer isn't just a disembodied voice presenting facts; they are a presence in the text. This is often achieved through the use of humor, personal anecdotes, storytelling, and the expression of candid opinions. Instead of a dry, objective presentation, the article might have a witty, enthusiastic, or reassuring voice. This subjectivity makes the information more memorable and relatable, as the author’s personal experience or passion for the topic shines through, making the reader feel more invested in what is being said., prompt=tell me about what it's like since robots took over the physical workforce, type=ArticleType.OP_ED, tone=Tone.CASUAL
+2025-08-08 17:09:28,588 - app.main - INFO - Full prompt: This is the type of article: op-ed This is the tone: casual This is the context: the year 2100. This is the user's prompt: tell me about what it's like since robots took over the physical workforce
+2025-08-08 17:09:51,843 - app.utils - INFO - Successfully loaded context file: app/context_files/article_types/op_ed.txt
+2025-08-08 17:09:51,844 - app.utils - INFO - Successfully loaded context file: app/context_files/tone/casual.txt
+2025-08-08 17:09:51,844 - app.main - INFO - Received request: context=the year 2100,final_context=the year 2100only talk about being sad about harry potterAn article written in a casual tone prioritizes connection and readability, aiming to feel less like a formal document and more like a conversation with a knowledgeable and approachable person. It directly addresses the audience, frequently using pronouns like "you" and "we" to create a sense of shared experience and rapport. The writer often breaks the "fourth wall," acknowledging the reader's potential questions, thoughts, or feelings. This approach dismantles the traditional barrier between author and audience, making the content feel more personal and engaging, as if you're getting advice or information from a friend rather than an institution.
+
+The language and sentence structure are fundamental to achieving this effect. A casual article employs everyday vocabulary and avoids unnecessary jargon or overly complex terminology. If a technical term is necessary, it's usually explained immediately in simple, relatable terms. You will frequently see contractions such as "it's," "don't," and "you'll," which mimic natural speech patterns. Sentences are often shorter and more varied, with the writer sometimes using fragments for emphasis or rhetorical questions to pull the reader into the narrative. The overall rhythm is designed to be smooth and easy to follow, prioritizing clarity over strict grammatical formality.
+
+Finally, a casual tone is infused with the author's personality. The writer isn't just a disembodied voice presenting facts; they are a presence in the text. This is often achieved through the use of humor, personal anecdotes, storytelling, and the expression of candid opinions. Instead of a dry, objective presentation, the article might have a witty, enthusiastic, or reassuring voice. This subjectivity makes the information more memorable and relatable, as the author’s personal experience or passion for the topic shines through, making the reader feel more invested in what is being said., prompt=tell me about what it's like since robots took over the physical workforce, type=ArticleType.OP_ED, tone=Tone.CASUAL
+2025-08-08 17:09:51,844 - app.main - INFO - Full prompt: This is the type of article: op-ed This is the tone: casual This is the context: the year 2100. This is the user's prompt: tell me about what it's like since robots took over the physical workforce
+2025-08-08 17:10:30,973 - app.main - DEBUG - Response: {'response': '# Life in 2100: When Robots Grabbed the Tools and We Grabbed... What, Exactly?\n\nHey there, fellow 2100 dwellers. It\'s me, writing from my cozy pod in New Neo-York, where the skyline is more drone than skyscraper these days. If you\'re reading this op-ed in the Holo-Times (or whatever neural feed you\'re plugged into), you\'re probably like me—someone who\'s lived through the Great Automation Shift of the 2070s. Remember when robots took over the physical workforce? Yeah, that little revolution that turned factories, farms, and even your local coffee bot into fully automated zones. Let\'s chat about what it\'s really like now, because honestly, it\'s a mixed bag of shiny metal miracles and some serious human-sized headaches. Pull up a virtual chair; I\'ll keep it real.\n\nFirst off, let\'s talk about the good stuff, because who doesn\'t love a silver lining? Imagine waking up and not having to drag yourself to a 9-to-5 grind—or any grind, really. Robots handle all the heavy lifting, literally. Construction? Bots with laser precision build entire cities in weeks. Agriculture? Those agri-droids farm vertically in mega-towers, churning out food without a single blister or backache. Heck, my morning smoothie gets delivered by a hover-bot that knows my preferences better than I do. We\'ve got universal basic income (UBI 2.0, baby) keeping everyone afloat, funded by the insane productivity of our mechanical overlords. It\'s like the economy said, "Why work when machines can do it faster and cheaper?" And you know what? Crime\'s down because no one\'s desperate enough to rob a bank when robots guard them 24/7. We humans? We\'re free to pursue passions—art, science, space exploration. I\'ve taken up holographic painting, and let me tell you, it\'s way more fulfilling than my grandpa\'s tales of assembly-line drudgery back in the 2000s.\n\nBut here\'s where I get a bit opinionated, because not everything\'s as peachy as those AI-generated ads make it seem. Sure, robots took the jobs, but they also took something from us—purpose, maybe? Think about it: back in the day, physical work gave people a sense of accomplishment. You built a house with your hands, you felt it. Now? We watch from afar while bots do the magic. It\'s led to this weird epidemic of "automation blues," where folks feel... irrelevant. I know a guy, my neighbor Jax, who used to be a welder. Killer at it, too. Now he\'s got all this free time, but he\'s bored out of his mind. He\'s tried VR simulations of old jobs, but it\'s not the same. And don\'t get me started on the inequality glitch. The mega-corps that own the robots? They\'re raking in trillions while the rest of us scrape by on UBI scraps. We\'ve got a class divide wider than the Grand Canyon—robot owners versus everyone else. Is this progress, or just a fancy way to say "unemployed paradise"?\n\nWe need to talk about the social side, too. Relationships have changed, and not always for the better. With no shared work experiences, it\'s harder to bond. Remember water cooler chats? Gone. Now it\'s all neural nets and avatar meetups. Kids these days grow up thinking physical labor is a myth from history holos. And health? We\'re dealing with "sedentary surge"—obesity and mental health dips because we\'re not moving like we used to. I\'ve joined a "human exertion club" where we pretend to do manual tasks for fun, like chopping virtual wood. It\'s ridiculous, but it beats feeling like a couch potato in a robot-run world.\n\nLook, I\'m not saying we should smash the bots and go back to the Stone Age. That\'d be nuts. But as someone who\'s seen the shift up close, I think we need a rethink. Let\'s push for policies that blend human input with robot efficiency—hybrid jobs, maybe, or mandatory "unplug days" where we get our hands dirty. Governments, corps, all of you reading this: invest in education that teaches creativity over coding alone. We humans are resilient; we\'ve adapted to worse. But if we don\'t address the soul-sucking side of this robot takeover, we\'ll end up with a society that\'s efficient but empty.\n\nWhat do you think? Hit me up in the comments or neural link—let\'s keep the conversation going. After all, in 2100, the real workforce might be us, figuring out how to stay human in a machine world.\n\n*(Jax Rivera is a freelance holo-artist and occasional op-ed ranter. Views are his own, not sponsored by any bot overlords.)*'}
+2025-08-08 17:10:57,668 - app.main - DEBUG - Response: {'response': '# Life in 2100: When Robots Grabbed the Wheel – And We\'re All Just Along for the Ride\n\nHey there, fellow 2100 dwellers. It\'s me, your friendly neighborhood op-ed scribbler, typing this from my cozy pod in Neo-Tokyo (yeah, they finally renamed it after all those old anime nods). Can you believe it\'s been, what, 50 years since the Great Automation Wave? You know, that moment when robots didn\'t just take over the factories and farms – they straight-up commandeered every physical job under the sun. Construction? Bots with laser precision. Delivery? Drones zipping around like caffeinated bees. Even your barista gig? Handled by an AI with a better foam game than any human ever had. If you\'re reading this, you\'re probably nodding along, thinking, "Tell me about it." Well, buckle up, because I\'m here to spill what it\'s really like living in this robot-ruled workforce world. Spoiler: it\'s a mixed bag, and honestly, I\'m equal parts thrilled and terrified.\n\nLet\'s start with the good stuff, because who doesn\'t love a silver lining? Remember those back-breaking jobs our grandparents used to moan about? Gone. Poof. No more humans slaving away in warehouses, risking life and limb on oil rigs, or flipping burgers till their hands blister. Robots handle all that now, and they\'re pros at it – 24/7, no breaks, no unions demanding better pay (though, side note, there are some wild debates about "robot rights" these days). We\'ve got more free time than ever. You wake up, and instead of commuting to a soul-sucking shift, you\'re pursuing passions. Me? I\'ve turned into a full-time holographer, crafting virtual art that people beam straight into their neural implants. We as a society? We\'re innovating like crazy – think universal basic income on steroids, courtesy of all that robot productivity. Poverty? It\'s basically a history lesson. Healthcare\'s a breeze with bot surgeons who never slip up. It\'s like we\'ve hacked the system for leisure, and honestly, if you told 20th-century folks about this, they\'d think we won the lottery.\n\nBut here\'s where my opinion kicks in hard: it\'s not all utopian vibes. Yeah, the robots took the physical workforce, but they kinda stole our purpose too. You ever feel that nagging emptiness? Like, what do you do when your job was your identity? My dad was a trucker back in the 2040s – loved the open road, the stories from pit stops. Now? He\'s in a sim-world reliving glory days, but it\'s not the same. We\'re all chasing meaning in this sea of free time, and not everyone\'s nailing it. Mental health crises are through the roof – "automation apathy," they call it. People are glued to VR escapes or debating philosophy in online forums because, let\'s face it, when bots do everything physical, what\'s left for us squishy humans? Creativity, sure, but not everyone’s an artist or inventor. I\'ve got friends who just... drift. And don\'t get me started on the inequality glitch. The mega-corps that own the robots? They\'re raking in trillions while the rest of us live off scraps from the algo-economy. It\'s like the rich got richer, and we\'re all just beta-testing their robot paradise.\n\nWeirdly, it\'s reshaped society in ways you\'d never expect. Dating? Forget swiping apps; now it\'s about finding someone whose "purpose path" aligns with yours – are you a space colonist dreamer or a bio-gardener? Cities are greener, quieter – no more traffic jams, just autonomous pods gliding silently. But man, the silence can be eerie. Remember human chatter on job sites? Laughter, arguments, that random guy blasting old tunes? Bots don\'t do that. They\'re efficient, emotionless workhorses. It\'s made us value human connection more, I think. We flock to "analog zones" – places where tech\'s banned, and you actually talk face-to-face, maybe even – gasp – do some manual labor for fun, like community farming.\n\nLook, I\'m not saying we should smash the robots and go back to the stone age. That\'d be nuts. But in my humble opinion, we\'ve gotta rethink this whole setup. Maybe mandate "human hours" where people rotate into light duties, just to keep that spark alive. Or pump more into education for non-physical skills – empathy training, storytelling, all that stuff bots suck at. We\'ve got the tech; now let\'s use it to make life fulfilling, not just easy.\n\nWhat about you? Feeling the robot blues, or thriving in the downtime? Hit me up in the comments – let\'s chat. After all, in 2100, the real workforce might be us humans figuring out how to stay human. Stay curious, folks.'}
+2025-08-08 19:23:05,684 - Database_fr-mirror - INFO - Initializing database: fr-mirror.db
+2025-08-08 19:23:05,684 - Database_fr-mirror - INFO - Successfully connected to database: fr-mirror.db
+2025-08-08 19:23:05,685 - Database_fr-mirror - INFO - Creating/verifying all database tables...
+2025-08-08 19:23:05,685 - Database_fr-mirror - INFO - Table 'transcripts' created/verified successfully
+2025-08-08 19:23:05,685 - Database_fr-mirror - INFO - Table 'journalists' created/verified successfully
+2025-08-08 19:23:05,685 - Database_fr-mirror - INFO - Table 'articles' created/verified successfully
+2025-08-08 19:23:05,685 - Database_fr-mirror - INFO - Table 'committees' created/verified successfully
+2025-08-08 19:23:05,685 - Database_fr-mirror - INFO - All tables created/verified successfully
+2025-08-08 19:23:05,685 - Database_fr-mirror - INFO - Database initialization completed
+2025-08-08 19:23:05,686 - app.main - INFO - FastAPI app initialized!
+2025-08-08 19:25:17,298 - Database_fr-mirror - INFO - Initializing database: fr-mirror.db
+2025-08-08 19:25:17,298 - Database_fr-mirror - INFO - Successfully connected to database: fr-mirror.db
+2025-08-08 19:25:17,298 - Database_fr-mirror - INFO - Creating/verifying all database tables...
+2025-08-08 19:25:17,298 - Database_fr-mirror - INFO - Table 'transcripts' created/verified successfully
+2025-08-08 19:25:17,298 - Database_fr-mirror - INFO - Table 'journalists' created/verified successfully
+2025-08-08 19:25:17,299 - Database_fr-mirror - INFO - Table 'articles' created/verified successfully
+2025-08-08 19:25:17,299 - Database_fr-mirror - INFO - Table 'committees' created/verified successfully
+2025-08-08 19:25:17,299 - Database_fr-mirror - INFO - All tables created/verified successfully
+2025-08-08 19:25:17,299 - Database_fr-mirror - INFO - Database initialization completed
+2025-08-08 19:25:17,299 - app.main - INFO - FastAPI app initialized!
+2025-08-08 19:25:29,462 - Database_fr-mirror - INFO - Initializing database: fr-mirror.db
+2025-08-08 19:25:29,462 - Database_fr-mirror - INFO - Successfully connected to database: fr-mirror.db
+2025-08-08 19:25:29,462 - Database_fr-mirror - INFO - Creating/verifying all database tables...
+2025-08-08 19:25:29,462 - Database_fr-mirror - INFO - Table 'transcripts' created/verified successfully
+2025-08-08 19:25:29,463 - Database_fr-mirror - INFO - Table 'journalists' created/verified successfully
+2025-08-08 19:25:29,463 - Database_fr-mirror - INFO - Table 'articles' created/verified successfully
+2025-08-08 19:25:29,463 - Database_fr-mirror - INFO - Table 'committees' created/verified successfully
+2025-08-08 19:25:29,463 - Database_fr-mirror - INFO - All tables created/verified successfully
+2025-08-08 19:25:29,463 - Database_fr-mirror - INFO - Database initialization completed
+2025-08-08 19:25:29,463 - app.main - INFO - FastAPI app initialized!
+2025-08-08 19:25:30,182 - Database_fr-mirror - INFO - Initializing database: fr-mirror.db
+2025-08-08 19:25:30,182 - Database_fr-mirror - INFO - Successfully connected to database: fr-mirror.db
+2025-08-08 19:25:30,183 - Database_fr-mirror - INFO - Creating/verifying all database tables...
+2025-08-08 19:25:30,183 - Database_fr-mirror - INFO - Table 'transcripts' created/verified successfully
+2025-08-08 19:25:30,183 - Database_fr-mirror - INFO - Table 'journalists' created/verified successfully
+2025-08-08 19:25:30,183 - Database_fr-mirror - INFO - Table 'articles' created/verified successfully
+2025-08-08 19:25:30,183 - Database_fr-mirror - INFO - Table 'committees' created/verified successfully
+2025-08-08 19:25:30,183 - Database_fr-mirror - INFO - All tables created/verified successfully
+2025-08-08 19:25:30,183 - Database_fr-mirror - INFO - Database initialization completed
+2025-08-08 19:25:30,183 - app.main - INFO - FastAPI app initialized!
+2025-08-08 19:26:09,014 - Database_fr-mirror - INFO - Initializing database: fr-mirror.db
+2025-08-08 19:26:09,015 - Database_fr-mirror - INFO - Successfully connected to database: fr-mirror.db
+2025-08-08 19:26:09,015 - Database_fr-mirror - INFO - Creating/verifying all database tables...
+2025-08-08 19:26:09,015 - Database_fr-mirror - INFO - Table 'transcripts' created/verified successfully
+2025-08-08 19:26:09,015 - Database_fr-mirror - INFO - Table 'journalists' created/verified successfully
+2025-08-08 19:26:09,016 - Database_fr-mirror - INFO - Table 'articles' created/verified successfully
+2025-08-08 19:26:09,016 - Database_fr-mirror - INFO - Table 'committees' created/verified successfully
+2025-08-08 19:26:09,016 - Database_fr-mirror - INFO - All tables created/verified successfully
+2025-08-08 19:26:09,016 - Database_fr-mirror - INFO - Database initialization completed
+2025-08-08 19:26:09,016 - app.main - INFO - FastAPI app initialized!
+2025-08-08 19:26:17,952 - Database_fr-mirror - INFO - Initializing database: fr-mirror.db
+2025-08-08 19:26:17,952 - Database_fr-mirror - INFO - Successfully connected to database: fr-mirror.db
+2025-08-08 19:26:17,952 - Database_fr-mirror - INFO - Creating/verifying all database tables...
+2025-08-08 19:26:17,953 - Database_fr-mirror - INFO - Table 'transcripts' created/verified successfully
+2025-08-08 19:26:17,953 - Database_fr-mirror - INFO - Table 'journalists' created/verified successfully
+2025-08-08 19:26:17,953 - Database_fr-mirror - INFO - Table 'articles' created/verified successfully
+2025-08-08 19:26:17,953 - Database_fr-mirror - INFO - Table 'committees' created/verified successfully
+2025-08-08 19:26:17,953 - Database_fr-mirror - INFO - All tables created/verified successfully
+2025-08-08 19:26:17,953 - Database_fr-mirror - INFO - Database initialization completed
+2025-08-08 19:26:17,953 - app.main - INFO - FastAPI app initialized!
+2025-08-08 19:27:37,962 - Database_fr-mirror - INFO - Initializing database: fr-mirror.db
+2025-08-08 19:27:37,962 - Database_fr-mirror - INFO - Successfully connected to database: fr-mirror.db
+2025-08-08 19:27:37,962 - Database_fr-mirror - INFO - Creating/verifying all database tables...
+2025-08-08 19:27:37,963 - Database_fr-mirror - INFO - Table 'transcripts' created/verified successfully
+2025-08-08 19:27:37,963 - Database_fr-mirror - INFO - Table 'journalists' created/verified successfully
+2025-08-08 19:27:37,963 - Database_fr-mirror - INFO - Table 'articles' created/verified successfully
+2025-08-08 19:27:37,963 - Database_fr-mirror - INFO - Table 'committees' created/verified successfully
+2025-08-08 19:27:37,963 - Database_fr-mirror - INFO - All tables created/verified successfully
+2025-08-08 19:27:37,963 - Database_fr-mirror - INFO - Database initialization completed
+2025-08-08 19:27:37,964 - app.main - INFO - FastAPI app initialized!
+2025-08-08 19:30:22,087 - Database_fr-mirror - INFO - Initializing database: fr-mirror.db
+2025-08-08 19:30:22,088 - Database_fr-mirror - INFO - Successfully connected to database: fr-mirror.db
+2025-08-08 19:30:22,088 - Database_fr-mirror - INFO - Creating/verifying all database tables...
+2025-08-08 19:30:22,088 - Database_fr-mirror - INFO - Table 'transcripts' created/verified successfully
+2025-08-08 19:30:22,088 - Database_fr-mirror - INFO - Table 'journalists' created/verified successfully
+2025-08-08 19:30:22,088 - Database_fr-mirror - INFO - Table 'articles' created/verified successfully
+2025-08-08 19:30:22,088 - Database_fr-mirror - INFO - Table 'committees' created/verified successfully
+2025-08-08 19:30:22,089 - Database_fr-mirror - INFO - All tables created/verified successfully
+2025-08-08 19:30:22,089 - Database_fr-mirror - INFO - Database initialization completed
+2025-08-08 19:30:22,089 - app.main - INFO - FastAPI app initialized!
+2025-08-08 19:38:58,367 - Database_fr-mirror - INFO - Initializing database: fr-mirror.db
+2025-08-08 19:38:58,367 - Database_fr-mirror - INFO - Successfully connected to database: fr-mirror.db
+2025-08-08 19:38:58,367 - Database_fr-mirror - INFO - Creating/verifying all database tables...
+2025-08-08 19:38:58,367 - Database_fr-mirror - INFO - Table 'transcripts' created/verified successfully
+2025-08-08 19:38:58,368 - Database_fr-mirror - INFO - Table 'journalists' created/verified successfully
+2025-08-08 19:38:58,368 - Database_fr-mirror - INFO - Table 'articles' created/verified successfully
+2025-08-08 19:38:58,368 - Database_fr-mirror - INFO - Table 'committees' created/verified successfully
+2025-08-08 19:38:58,368 - Database_fr-mirror - INFO - All tables created/verified successfully
+2025-08-08 19:38:58,368 - Database_fr-mirror - INFO - Database initialization completed
+2025-08-08 19:38:58,368 - app.main - INFO - FastAPI app initialized!
+2025-08-08 19:38:58,395 - Database_fr-mirror - INFO - Initializing database: fr-mirror.db
+2025-08-08 19:38:58,395 - Database_fr-mirror - INFO - Successfully connected to database: fr-mirror.db
+2025-08-08 19:38:58,395 - Database_fr-mirror - INFO - Creating/verifying all database tables...
+2025-08-08 19:38:58,395 - Database_fr-mirror - INFO - Table 'transcripts' created/verified successfully
+2025-08-08 19:38:58,396 - Database_fr-mirror - INFO - Table 'journalists' created/verified successfully
+2025-08-08 19:38:58,396 - Database_fr-mirror - INFO - Table 'articles' created/verified successfully
+2025-08-08 19:38:58,396 - Database_fr-mirror - INFO - Table 'committees' created/verified successfully
+2025-08-08 19:38:58,396 - Database_fr-mirror - INFO - All tables created/verified successfully
+2025-08-08 19:38:58,396 - Database_fr-mirror - INFO - Database initialization completed
+2025-08-08 19:38:58,396 - app.main - INFO - FastAPI app initialized!
+2025-08-08 19:39:05,676 - Database_fr-mirror - INFO - Initializing database: fr-mirror.db
+2025-08-08 19:39:05,676 - Database_fr-mirror - INFO - Successfully connected to database: fr-mirror.db
+2025-08-08 19:39:05,676 - Database_fr-mirror - INFO - Creating/verifying all database tables...
+2025-08-08 19:39:05,677 - Database_fr-mirror - INFO - Table 'transcripts' created/verified successfully
+2025-08-08 19:39:05,677 - Database_fr-mirror - INFO - Table 'journalists' created/verified successfully
+2025-08-08 19:39:05,677 - Database_fr-mirror - INFO - Table 'articles' created/verified successfully
+2025-08-08 19:39:05,677 - Database_fr-mirror - INFO - Table 'committees' created/verified successfully
+2025-08-08 19:39:05,677 - Database_fr-mirror - INFO - All tables created/verified successfully
+2025-08-08 19:39:05,677 - Database_fr-mirror - INFO - Database initialization completed
+2025-08-08 19:39:05,678 - app.main - INFO - FastAPI app initialized!
+2025-08-08 19:39:05,705 - Database_fr-mirror - INFO - Initializing database: fr-mirror.db
+2025-08-08 19:39:05,705 - Database_fr-mirror - INFO - Successfully connected to database: fr-mirror.db
+2025-08-08 19:39:05,705 - Database_fr-mirror - INFO - Creating/verifying all database tables...
+2025-08-08 19:39:05,706 - Database_fr-mirror - INFO - Table 'transcripts' created/verified successfully
+2025-08-08 19:39:05,706 - Database_fr-mirror - INFO - Table 'journalists' created/verified successfully
+2025-08-08 19:39:05,706 - Database_fr-mirror - INFO - Table 'articles' created/verified successfully
+2025-08-08 19:39:05,706 - Database_fr-mirror - INFO - Table 'committees' created/verified successfully
+2025-08-08 19:39:05,706 - Database_fr-mirror - INFO - All tables created/verified successfully
+2025-08-08 19:39:05,706 - Database_fr-mirror - INFO - Database initialization completed
+2025-08-08 19:39:05,706 - app.main - INFO - FastAPI app initialized!
+2025-08-08 19:39:14,655 - Database_fr-mirror - INFO - Initializing database: fr-mirror.db
+2025-08-08 19:39:14,655 - Database_fr-mirror - INFO - Successfully connected to database: fr-mirror.db
+2025-08-08 19:39:14,655 - Database_fr-mirror - INFO - Creating/verifying all database tables...
+2025-08-08 19:39:14,656 - Database_fr-mirror - INFO - Table 'transcripts' created/verified successfully
+2025-08-08 19:39:14,656 - Database_fr-mirror - INFO - Table 'journalists' created/verified successfully
+2025-08-08 19:39:14,656 - Database_fr-mirror - INFO - Table 'articles' created/verified successfully
+2025-08-08 19:39:14,656 - Database_fr-mirror - INFO - Table 'committees' created/verified successfully
+2025-08-08 19:39:14,656 - Database_fr-mirror - INFO - All tables created/verified successfully
+2025-08-08 19:39:14,656 - Database_fr-mirror - INFO - Database initialization completed
+2025-08-08 19:39:14,656 - app.main - INFO - FastAPI app initialized!
+2025-08-08 19:39:14,726 - Database_fr-mirror - INFO - Initializing database: fr-mirror.db
+2025-08-08 19:39:14,727 - Database_fr-mirror - INFO - Successfully connected to database: fr-mirror.db
+2025-08-08 19:39:14,727 - Database_fr-mirror - INFO - Creating/verifying all database tables...
+2025-08-08 19:39:14,727 - Database_fr-mirror - INFO - Table 'transcripts' created/verified successfully
+2025-08-08 19:39:14,727 - Database_fr-mirror - INFO - Table 'journalists' created/verified successfully
+2025-08-08 19:39:14,727 - Database_fr-mirror - INFO - Table 'articles' created/verified successfully
+2025-08-08 19:39:14,727 - Database_fr-mirror - INFO - Table 'committees' created/verified successfully
+2025-08-08 19:39:14,727 - Database_fr-mirror - INFO - All tables created/verified successfully
+2025-08-08 19:39:14,727 - Database_fr-mirror - INFO - Database initialization completed
+2025-08-08 19:39:14,728 - app.main - INFO - FastAPI app initialized!
+2025-08-08 19:45:23,077 - Database_fr-mirror - INFO - Initializing database: fr-mirror.db
+2025-08-08 19:45:23,077 - Database_fr-mirror - INFO - Successfully connected to database: fr-mirror.db
+2025-08-08 19:45:23,077 - Database_fr-mirror - INFO - Creating/verifying all database tables...
+2025-08-08 19:45:23,077 - Database_fr-mirror - INFO - Table 'transcripts' created/verified successfully
+2025-08-08 19:45:23,078 - Database_fr-mirror - INFO - Table 'journalists' created/verified successfully
+2025-08-08 19:45:23,078 - Database_fr-mirror - INFO - Table 'articles' created/verified successfully
+2025-08-08 19:45:23,078 - Database_fr-mirror - INFO - Table 'committees' created/verified successfully
+2025-08-08 19:45:23,078 - Database_fr-mirror - INFO - All tables created/verified successfully
+2025-08-08 19:45:23,078 - Database_fr-mirror - INFO - Database initialization completed
+2025-08-08 19:45:23,078 - app.main - INFO - FastAPI app initialized!
+2025-08-08 19:45:23,102 - Database_fr-mirror - INFO - Initializing database: fr-mirror.db
+2025-08-08 19:45:23,102 - Database_fr-mirror - INFO - Successfully connected to database: fr-mirror.db
+2025-08-08 19:45:23,102 - Database_fr-mirror - INFO - Creating/verifying all database tables...
+2025-08-08 19:45:23,103 - Database_fr-mirror - INFO - Table 'transcripts' created/verified successfully
+2025-08-08 19:45:23,103 - Database_fr-mirror - INFO - Table 'journalists' created/verified successfully
+2025-08-08 19:45:23,103 - Database_fr-mirror - INFO - Table 'articles' created/verified successfully
+2025-08-08 19:45:23,103 - Database_fr-mirror - INFO - Table 'committees' created/verified successfully
+2025-08-08 19:45:23,103 - Database_fr-mirror - INFO - All tables created/verified successfully
+2025-08-08 19:45:23,103 - Database_fr-mirror - INFO - Database initialization completed
+2025-08-08 19:45:23,104 - app.main - INFO - FastAPI app initialized!
+2025-08-08 19:59:54,540 - Database_fr-mirror - INFO - Initializing database: fr-mirror.db
+2025-08-08 19:59:54,540 - Database_fr-mirror - INFO - Successfully connected to database: fr-mirror.db
+2025-08-08 19:59:54,540 - Database_fr-mirror - INFO - Creating/verifying all database tables...
+2025-08-08 19:59:54,540 - Database_fr-mirror - INFO - Table 'transcripts' created/verified successfully
+2025-08-08 19:59:54,541 - Database_fr-mirror - INFO - Table 'journalists' created/verified successfully
+2025-08-08 19:59:54,541 - Database_fr-mirror - INFO - Table 'articles' created/verified successfully
+2025-08-08 19:59:54,541 - Database_fr-mirror - INFO - Table 'committees' created/verified successfully
+2025-08-08 19:59:54,541 - Database_fr-mirror - INFO - All tables created/verified successfully
+2025-08-08 19:59:54,541 - Database_fr-mirror - INFO - Database initialization completed
+2025-08-08 19:59:54,541 - app.main - INFO - FastAPI app initialized!
+2025-08-08 19:59:54,568 - Database_fr-mirror - INFO - Initializing database: fr-mirror.db
+2025-08-08 19:59:54,568 - Database_fr-mirror - INFO - Successfully connected to database: fr-mirror.db
+2025-08-08 19:59:54,568 - Database_fr-mirror - INFO - Creating/verifying all database tables...
+2025-08-08 19:59:54,569 - Database_fr-mirror - INFO - Table 'transcripts' created/verified successfully
+2025-08-08 19:59:54,569 - Database_fr-mirror - INFO - Table 'journalists' created/verified successfully
+2025-08-08 19:59:54,569 - Database_fr-mirror - INFO - Table 'articles' created/verified successfully
+2025-08-08 19:59:54,569 - Database_fr-mirror - INFO - Table 'committees' created/verified successfully
+2025-08-08 19:59:54,569 - Database_fr-mirror - INFO - All tables created/verified successfully
+2025-08-08 19:59:54,569 - Database_fr-mirror - INFO - Database initialization completed
+2025-08-08 19:59:54,569 - app.main - INFO - FastAPI app initialized!
+2025-08-08 20:00:01,073 - Database_fr-mirror - INFO - Initializing database: fr-mirror.db
+2025-08-08 20:00:01,073 - Database_fr-mirror - INFO - Successfully connected to database: fr-mirror.db
+2025-08-08 20:00:01,073 - Database_fr-mirror - INFO - Creating/verifying all database tables...
+2025-08-08 20:00:01,073 - Database_fr-mirror - INFO - Table 'transcripts' created/verified successfully
+2025-08-08 20:00:01,073 - Database_fr-mirror - INFO - Table 'journalists' created/verified successfully
+2025-08-08 20:00:01,074 - Database_fr-mirror - INFO - Table 'articles' created/verified successfully
+2025-08-08 20:00:01,074 - Database_fr-mirror - INFO - Table 'committees' created/verified successfully
+2025-08-08 20:00:01,074 - Database_fr-mirror - INFO - All tables created/verified successfully
+2025-08-08 20:00:01,074 - Database_fr-mirror - INFO - Database initialization completed
+2025-08-08 20:00:01,074 - app.main - INFO - FastAPI app initialized!
+2025-08-08 20:00:01,095 - Database_fr-mirror - INFO - Initializing database: fr-mirror.db
+2025-08-08 20:00:01,095 - Database_fr-mirror - INFO - Successfully connected to database: fr-mirror.db
+2025-08-08 20:00:01,096 - Database_fr-mirror - INFO - Creating/verifying all database tables...
+2025-08-08 20:00:01,096 - Database_fr-mirror - INFO - Table 'transcripts' created/verified successfully
+2025-08-08 20:00:01,096 - Database_fr-mirror - INFO - Table 'journalists' created/verified successfully
+2025-08-08 20:00:01,096 - Database_fr-mirror - INFO - Table 'articles' created/verified successfully
+2025-08-08 20:00:01,096 - Database_fr-mirror - INFO - Table 'committees' created/verified successfully
+2025-08-08 20:00:01,096 - Database_fr-mirror - INFO - All tables created/verified successfully
+2025-08-08 20:00:01,097 - Database_fr-mirror - INFO - Database initialization completed
+2025-08-08 20:00:01,097 - app.main - INFO - FastAPI app initialized!
+2025-08-08 20:05:40,128 - Database_fr-mirror - INFO - Initializing database: fr-mirror.db
+2025-08-08 20:05:40,128 - Database_fr-mirror - INFO - Successfully connected to database: fr-mirror.db
+2025-08-08 20:05:40,129 - Database_fr-mirror - INFO - Creating/verifying all database tables...
+2025-08-08 20:05:40,129 - Database_fr-mirror - INFO - Table 'transcripts' created/verified successfully
+2025-08-08 20:05:40,130 - Database_fr-mirror - INFO - Table 'journalists' created/verified successfully
+2025-08-08 20:05:40,130 - Database_fr-mirror - INFO - Table 'articles' created/verified successfully
+2025-08-08 20:05:40,130 - Database_fr-mirror - INFO - Table 'committees' created/verified successfully
+2025-08-08 20:05:40,131 - Database_fr-mirror - INFO - All tables created/verified successfully
+2025-08-08 20:05:40,131 - Database_fr-mirror - INFO - Database initialization completed
+2025-08-08 20:05:40,131 - app.main - INFO - FastAPI app initialized!
+2025-08-08 20:05:40,270 - Database_fr-mirror - INFO - Initializing database: fr-mirror.db
+2025-08-08 20:05:40,271 - Database_fr-mirror - INFO - Successfully connected to database: fr-mirror.db
+2025-08-08 20:05:40,272 - Database_fr-mirror - INFO - Creating/verifying all database tables...
+2025-08-08 20:05:40,273 - Database_fr-mirror - INFO - Table 'transcripts' created/verified successfully
+2025-08-08 20:05:40,273 - Database_fr-mirror - INFO - Table 'journalists' created/verified successfully
+2025-08-08 20:05:40,274 - Database_fr-mirror - INFO - Table 'articles' created/verified successfully
+2025-08-08 20:05:40,274 - Database_fr-mirror - INFO - Table 'committees' created/verified successfully
+2025-08-08 20:05:40,275 - Database_fr-mirror - INFO - All tables created/verified successfully
+2025-08-08 20:05:40,275 - Database_fr-mirror - INFO - Database initialization completed
+2025-08-08 20:05:40,276 - app.main - INFO - FastAPI app initialized!
+2025-08-08 20:05:41,006 - Database_fr-mirror - INFO - Initializing database: fr-mirror.db
+2025-08-08 20:05:41,007 - Database_fr-mirror - INFO - Successfully connected to database: fr-mirror.db
+2025-08-08 20:05:41,008 - Database_fr-mirror - INFO - Creating/verifying all database tables...
+2025-08-08 20:05:41,008 - Database_fr-mirror - INFO - Table 'transcripts' created/verified successfully
+2025-08-08 20:05:41,009 - Database_fr-mirror - INFO - Table 'journalists' created/verified successfully
+2025-08-08 20:05:41,009 - Database_fr-mirror - INFO - Table 'articles' created/verified successfully
+2025-08-08 20:05:41,010 - Database_fr-mirror - INFO - Table 'committees' created/verified successfully
+2025-08-08 20:05:41,010 - Database_fr-mirror - INFO - All tables created/verified successfully
+2025-08-08 20:05:41,011 - Database_fr-mirror - INFO - Database initialization completed
+2025-08-08 20:05:41,011 - app.main - INFO - FastAPI app initialized!
+2025-08-08 20:05:41,121 - Database_fr-mirror - INFO - Initializing database: fr-mirror.db
+2025-08-08 20:05:41,122 - Database_fr-mirror - INFO - Successfully connected to database: fr-mirror.db
+2025-08-08 20:05:41,122 - Database_fr-mirror - INFO - Creating/verifying all database tables...
+2025-08-08 20:05:41,122 - Database_fr-mirror - INFO - Table 'transcripts' created/verified successfully
+2025-08-08 20:05:41,123 - Database_fr-mirror - INFO - Table 'journalists' created/verified successfully
+2025-08-08 20:05:41,123 - Database_fr-mirror - INFO - Table 'articles' created/verified successfully
+2025-08-08 20:05:41,123 - Database_fr-mirror - INFO - Table 'committees' created/verified successfully
+2025-08-08 20:05:41,123 - Database_fr-mirror - INFO - All tables created/verified successfully
+2025-08-08 20:05:41,124 - Database_fr-mirror - INFO - Database initialization completed
+2025-08-08 20:05:41,124 - app.main - INFO - FastAPI app initialized!
+2025-08-08 20:05:52,474 - Database_fr-mirror - INFO - Initializing database: fr-mirror.db
+2025-08-08 20:05:52,474 - Database_fr-mirror - INFO - Successfully connected to database: fr-mirror.db
+2025-08-08 20:05:52,474 - Database_fr-mirror - INFO - Creating/verifying all database tables...
+2025-08-08 20:05:52,475 - Database_fr-mirror - INFO - Table 'transcripts' created/verified successfully
+2025-08-08 20:05:52,475 - Database_fr-mirror - INFO - Table 'journalists' created/verified successfully
+2025-08-08 20:05:52,475 - Database_fr-mirror - INFO - Table 'articles' created/verified successfully
+2025-08-08 20:05:52,475 - Database_fr-mirror - INFO - Table 'committees' created/verified successfully
+2025-08-08 20:05:52,475 - Database_fr-mirror - INFO - All tables created/verified successfully
+2025-08-08 20:05:52,475 - Database_fr-mirror - INFO - Database initialization completed
+2025-08-08 20:05:52,475 - app.main - INFO - FastAPI app initialized!
+2025-08-08 20:05:52,487 - Database_fr-mirror - INFO - Initializing database: fr-mirror.db
+2025-08-08 20:05:52,488 - Database_fr-mirror - INFO - Successfully connected to database: fr-mirror.db
+2025-08-08 20:05:52,488 - Database_fr-mirror - INFO - Creating/verifying all database tables...
+2025-08-08 20:05:52,488 - Database_fr-mirror - INFO - Table 'transcripts' created/verified successfully
+2025-08-08 20:05:52,488 - Database_fr-mirror - INFO - Table 'journalists' created/verified successfully
+2025-08-08 20:05:52,488 - Database_fr-mirror - INFO - Table 'articles' created/verified successfully
+2025-08-08 20:05:52,489 - Database_fr-mirror - INFO - Table 'committees' created/verified successfully
+2025-08-08 20:05:52,489 - Database_fr-mirror - INFO - All tables created/verified successfully
+2025-08-08 20:05:52,489 - Database_fr-mirror - INFO - Database initialization completed
+2025-08-08 20:05:52,489 - app.main - INFO - FastAPI app initialized!
+2025-08-08 20:08:00,669 - Database_fr-mirror - INFO - Initializing database: fr-mirror.db
+2025-08-08 20:08:00,670 - Database_fr-mirror - INFO - Successfully connected to database: fr-mirror.db
+2025-08-08 20:08:00,670 - Database_fr-mirror - INFO - Creating/verifying all database tables...
+2025-08-08 20:08:00,671 - Database_fr-mirror - INFO - Table 'transcripts' created/verified successfully
+2025-08-08 20:08:00,671 - Database_fr-mirror - INFO - Table 'journalists' created/verified successfully
+2025-08-08 20:08:00,671 - Database_fr-mirror - INFO - Table 'articles' created/verified successfully
+2025-08-08 20:08:00,671 - Database_fr-mirror - INFO - Table 'committees' created/verified successfully
+2025-08-08 20:08:00,671 - Database_fr-mirror - INFO - All tables created/verified successfully
+2025-08-08 20:08:00,672 - Database_fr-mirror - INFO - Database initialization completed
+2025-08-08 20:08:00,672 - app.main - INFO - FastAPI app initialized!
+2025-08-08 20:08:00,731 - Database_fr-mirror - INFO - Initializing database: fr-mirror.db
+2025-08-08 20:08:00,732 - Database_fr-mirror - INFO - Successfully connected to database: fr-mirror.db
+2025-08-08 20:08:00,732 - Database_fr-mirror - INFO - Creating/verifying all database tables...
+2025-08-08 20:08:00,733 - Database_fr-mirror - INFO - Table 'transcripts' created/verified successfully
+2025-08-08 20:08:00,733 - Database_fr-mirror - INFO - Table 'journalists' created/verified successfully
+2025-08-08 20:08:00,733 - Database_fr-mirror - INFO - Table 'articles' created/verified successfully
+2025-08-08 20:08:00,734 - Database_fr-mirror - INFO - Table 'committees' created/verified successfully
+2025-08-08 20:08:00,734 - Database_fr-mirror - INFO - All tables created/verified successfully
+2025-08-08 20:08:00,734 - Database_fr-mirror - INFO - Database initialization completed
+2025-08-08 20:08:00,735 - app.main - INFO - FastAPI app initialized!
+2025-08-08 20:08:17,255 - Database_fr-mirror - INFO - Initializing database: fr-mirror.db
+2025-08-08 20:08:17,255 - Database_fr-mirror - INFO - Successfully connected to database: fr-mirror.db
+2025-08-08 20:08:17,256 - Database_fr-mirror - INFO - Creating/verifying all database tables...
+2025-08-08 20:08:17,256 - Database_fr-mirror - INFO - Table 'transcripts' created/verified successfully
+2025-08-08 20:08:17,257 - Database_fr-mirror - INFO - Table 'journalists' created/verified successfully
+2025-08-08 20:08:17,257 - Database_fr-mirror - INFO - Table 'articles' created/verified successfully
+2025-08-08 20:08:17,257 - Database_fr-mirror - INFO - Table 'committees' created/verified successfully
+2025-08-08 20:08:17,258 - Database_fr-mirror - INFO - All tables created/verified successfully
+2025-08-08 20:08:17,258 - Database_fr-mirror - INFO - Database initialization completed
+2025-08-08 20:08:17,259 - app.main - INFO - FastAPI app initialized!
+2025-08-08 20:08:17,325 - Database_fr-mirror - INFO - Initializing database: fr-mirror.db
+2025-08-08 20:08:17,326 - Database_fr-mirror - INFO - Successfully connected to database: fr-mirror.db
+2025-08-08 20:08:17,327 - Database_fr-mirror - INFO - Creating/verifying all database tables...
+2025-08-08 20:08:17,328 - Database_fr-mirror - INFO - Table 'transcripts' created/verified successfully
+2025-08-08 20:08:17,328 - Database_fr-mirror - INFO - Table 'journalists' created/verified successfully
+2025-08-08 20:08:17,329 - Database_fr-mirror - INFO - Table 'articles' created/verified successfully
+2025-08-08 20:08:17,329 - Database_fr-mirror - INFO - Table 'committees' created/verified successfully
+2025-08-08 20:08:17,331 - Database_fr-mirror - INFO - All tables created/verified successfully
+2025-08-08 20:08:17,332 - Database_fr-mirror - INFO - Database initialization completed
+2025-08-08 20:08:17,332 - app.main - INFO - FastAPI app initialized!
+2025-08-08 20:08:27,916 - Database_fr-mirror - INFO - Initializing database: fr-mirror.db
+2025-08-08 20:08:27,916 - Database_fr-mirror - INFO - Successfully connected to database: fr-mirror.db
+2025-08-08 20:08:27,916 - Database_fr-mirror - INFO - Creating/verifying all database tables...
+2025-08-08 20:08:27,916 - Database_fr-mirror - INFO - Table 'transcripts' created/verified successfully
+2025-08-08 20:08:27,917 - Database_fr-mirror - INFO - Table 'journalists' created/verified successfully
+2025-08-08 20:08:27,917 - Database_fr-mirror - INFO - Table 'articles' created/verified successfully
+2025-08-08 20:08:27,917 - Database_fr-mirror - INFO - Table 'committees' created/verified successfully
+2025-08-08 20:08:27,917 - Database_fr-mirror - INFO - All tables created/verified successfully
+2025-08-08 20:08:27,917 - Database_fr-mirror - INFO - Database initialization completed
+2025-08-08 20:08:27,917 - app.main - INFO - FastAPI app initialized!
+2025-08-08 20:08:27,992 - Database_fr-mirror - INFO - Initializing database: fr-mirror.db
+2025-08-08 20:08:27,993 - Database_fr-mirror - INFO - Successfully connected to database: fr-mirror.db
+2025-08-08 20:08:27,993 - Database_fr-mirror - INFO - Creating/verifying all database tables...
+2025-08-08 20:08:27,993 - Database_fr-mirror - INFO - Table 'transcripts' created/verified successfully
+2025-08-08 20:08:27,993 - Database_fr-mirror - INFO - Table 'journalists' created/verified successfully
+2025-08-08 20:08:27,993 - Database_fr-mirror - INFO - Table 'articles' created/verified successfully
+2025-08-08 20:08:27,993 - Database_fr-mirror - INFO - Table 'committees' created/verified successfully
+2025-08-08 20:08:27,994 - Database_fr-mirror - INFO - All tables created/verified successfully
+2025-08-08 20:08:27,994 - Database_fr-mirror - INFO - Database initialization completed
+2025-08-08 20:08:27,994 - app.main - INFO - FastAPI app initialized!
