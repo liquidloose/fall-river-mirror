@@ -2,6 +2,7 @@
 from datetime import datetime
 from enum import Enum
 import logging
+from typing import Dict, Any, Union
 
 # Third-party imports
 from fastapi import FastAPI
@@ -32,7 +33,7 @@ xai_processor = XAIProcessor()
 logger.info("FastAPI app initialized!")
 
 @app.get("/")
-def health_check():
+def health_check() -> Dict[str, str]:
     """
     Health check endpoint to verify the server is running.
     
@@ -43,13 +44,13 @@ def health_check():
     return {"status": "ok", "message": "Server is running"}
 
 
-@app.get("/article/writer/{context}/{prompt}")
-def read_root(
+@app.get("/write/article/{context}/{prompt}", response_model=None)
+def write_article(
     context: str,
     prompt: str,
     article_type: ArticleType = ArticleType.SUMMARY,
     tone: Tone = Tone.FORMAL,
-):
+) -> Union[Dict[str, str], JSONResponse]:
     """
     Main article writing endpoint that generates content based on context and parameters.
     
@@ -60,10 +61,11 @@ def read_root(
         tone (Tone): Writing tone to use (default: FORMAL)
     
     Returns:
-        dict: Generated article content from the XAI processor
+        Union[Dict[str, str], JSONResponse]: Generated article content from the XAI processor or error response
     """
     # Build context based on article type
     # Add specific context files for different article types
+    final_context = context  # Initialize with base context
     match article_type:
         case ArticleType.OP_ED:
             final_context = context + read_context_file("article_types", "op_ed.txt")
@@ -98,8 +100,8 @@ def read_root(
     return response
 
 
-@app.get("/experiments/")
-def get_transcript(video_id: str = "VjaU4DAxP6s"):
+@app.get("/get/transcript/{video_id}", response_model=None)
+def get_transcript(video_id: str = "VjaU4DAxP6s") -> Union[Dict[str, Any], JSONResponse]:
     """
     Experimental endpoint to fetch YouTube video transcripts.
     
@@ -107,7 +109,7 @@ def get_transcript(video_id: str = "VjaU4DAxP6s"):
         video_id (str): YouTube video ID (default: "VjaU4DAxP6s")
     
     Returns:
-        dict: YouTube transcript data or error response
+        Union[Dict[str, Any], JSONResponse]: YouTube transcript data or error response
     """
     try:
         # Initialize YouTube Transcript API and fetch transcript

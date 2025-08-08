@@ -1,5 +1,7 @@
 import sqlite3
+import logging
 from typing import List, Tuple, Optional, Union
+from datetime import datetime
 
 class Database:
     """
@@ -22,10 +24,43 @@ class Database:
         Args:
             db_name: Name of the database file (without .db extension)
         """
+        # Set up logging
+        self.logger = logging.getLogger(f"Database_{db_name}")
+        self.logger.setLevel(logging.INFO)
+        
+        # Create console handler if none exists
+        if not self.logger.handlers:
+            handler = logging.StreamHandler()
+            formatter = logging.Formatter(
+                '%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+            )
+            handler.setFormatter(formatter)
+            self.logger.addHandler(handler)
+        
         self.db_path: str = db_name + ".db"
-        self.conn: sqlite3.Connection = sqlite3.connect(self.db_path)
-        self.cursor: sqlite3.Cursor = self.conn.cursor()
-        self._create_all_tables()   
+        self.conn: Optional[sqlite3.Connection] = None
+        self.cursor: Optional[sqlite3.Cursor] = None
+        self.is_connected: bool = False
+        self.tables_created: bool = False
+        
+        self.logger.info(f"Initializing database: {self.db_path}")
+        self._connect()
+        self._create_all_tables()
+        self.logger.info("Database initialization completed")
+
+    def _connect(self) -> None:
+        """
+        Establish database connection and update state.
+        """
+        try:
+            self.conn = sqlite3.connect(self.db_path)
+            self.cursor = self.conn.cursor()
+            self.is_connected = True
+            self.logger.info(f"Successfully connected to database: {self.db_path}")
+        except Exception as e:
+            self.is_connected = False
+            self.logger.error(f"Failed to connect to database {self.db_path}: {str(e)}")
+            raise
 
     def _create_table(self, table_name: str, columns: str) -> None:
         """
@@ -35,8 +70,13 @@ class Database:
             table_name: Name of the table to create
             columns: SQL column definitions
         """
-        self.cursor.execute(f"CREATE TABLE IF NOT EXISTS {table_name} ({columns})")
-        self.conn.commit()
+        try:
+            self.cursor.execute(f"CREATE TABLE IF NOT EXISTS {table_name} ({columns})")
+            self.conn.commit()
+            self.logger.info(f"Table '{table_name}' created/verified successfully")
+        except Exception as e:
+            self.logger.error(f"Failed to create table '{table_name}': {str(e)}")
+            raise
 
     def _create_all_tables(self) -> None:
         """
@@ -48,6 +88,8 @@ class Database:
         - transcripts: Meeting transcripts and records
         - articles: News articles with foreign key relationships
         """
+        self.logger.info("Creating/verifying all database tables...")
+        
         # Transcripts table - stores meeting transcripts with committee reference
         self._create_table("transcripts", 
             "id INTEGER PRIMARY KEY AUTOINCREMENT, "
@@ -86,7 +128,197 @@ class Database:
             "name TEXT NOT NULL, "     # Committee name (required)
             "description TEXT, "       # Committee description
             "created_date TEXT")       # When committee was established
-    
+        
+        self.tables_created = True
+        self.logger.info("All tables created/verified successfully")
+
+    def get_database_state(self) -> dict:
+        """
+        Get current database state information.
+        
+        Returns:
+            dict: Dictionary containing database state information
+        """
+        state = {
+            "database_path": self.db_path,
+            "is_connected": self.is_connected,
+            "tables_created": self.tables_created,
+            "connection_status": "Connected" if self.is_connected else "Disconnected",
+            "timestamp": datetime.now().isoformat()
+        }
+        
+        if self.is_connected and self.cursor:
+            try:
+                # Get table counts
+                tables = ["committees", "journalists", "transcripts", "articles"]
+                table_counts = {}
+                
+                for table in tables:
+                    try:
+                        self.cursor.execute(f"SELECT COUNT(*) FROM {table}")
+                        count = self.cursor.fetchone()[0]
+                        table_counts[table] = count
+                    except sqlite3.OperationalError:
+                        table_counts[table] = "Table not found"
+                
+                state["table_counts"] = table_counts
+                
+                # Get database file size
+                import os
+                if os.path.exists(self.db_path):
+                    file_size_bytes = os.path.getsize(self.db_path)
+                    state["file_size_mb"] = round(file_size_bytes / (1024 * 1024), 2)
+                    state["file_size_bytes"] = file_size_bytes
+                else:
+                    state["file_size_mb"] = "File not found"
+                    state["file_size_bytes"] = "File not found"
+                
+                # Get database schema information
+                try:
+                    self.cursor.execute("SELECT name FROM sqlite_master WHERE type='table'")
+                    existing_tables = [row[0] for row in self.cursor.fetchall()]
+                    state["existing_tables"] = existing_tables
+                except Exception as e:
+                    state["existing_tables"] = f"Error retrieving tables: {str(e)}"
+                    
+            except Exception as e:
+                state["error"] = f"Failed to get detailed state: {str(e)}"
+        
+        return state
+
+    def log_database_state(self) -> None:
+        """
+        Log current database state information.
+        """
+        state = self.get_database_state()
+        self.logger.info(f"Database state: {state}")
+
+    def get_table_info(self, table_name: str) -> dict:
+        """
+        Get detailed information about a specific table.
+        
+        Args:
+            table_name: Name of the table to get info for
+            
+        Returns:
+            dict: Dictionary containing table information
+        """
+        if not self.is_connected:
+            self.logger.error("Cannot get table info - database not connected")
+            return {"error": "Database not connected"}
+        
+        try:
+            # Get table schema
+            self.cursor.execute(f"PRAGMA table_info({table_name})")
+            columns = self.cursor.fetchall()
+            
+            # Get row count
+            self.cursor.execute(f"SELECT COUNT(*) FROM {table_name}")
+            row_count = self.cursor.fetchone()[0]
+            
+            table_info = {
+                "table_name": table_name,
+                "row_count": row_count,
+                "columns": [{"name": col[1], "type": col[2], "not_null": bool(col[3]), "primary_key": bool(col[5])} for col in columns]
+            }
+            
+            self.logger.info(f"Retrieved table info for '{table_name}': {row_count} rows, {len(columns)} columns")
+            return table_info
+            
+        except Exception as e:
+            error_msg = f"Failed to get table info for '{table_name}': {str(e)}"
+            self.logger.error(error_msg)
+            return {"error": error_msg}
+
+    def check_database_health(self) -> dict:
+        """
+        Perform a comprehensive health check on the database.
+        
+        Returns:
+            dict: Dictionary containing health check results
+        """
+        health_status = {
+            "timestamp": datetime.now().isoformat(),
+            "overall_status": "unknown",
+            "checks": {}
+        }
+        
+        # Check connection
+        if not self.is_connected:
+            health_status["checks"]["connection"] = {"status": "failed", "message": "Database not connected"}
+            health_status["overall_status"] = "unhealthy"
+        else:
+            health_status["checks"]["connection"] = {"status": "passed", "message": "Database connected"}
+        
+        # Check if tables exist
+        if self.is_connected:
+            try:
+                self.cursor.execute("SELECT name FROM sqlite_master WHERE type='table'")
+                existing_tables = [row[0] for row in self.cursor.fetchall()]
+                expected_tables = ["committees", "journalists", "transcripts", "articles"]
+                
+                missing_tables = [table for table in expected_tables if table not in existing_tables]
+                
+                if missing_tables:
+                    health_status["checks"]["tables"] = {
+                        "status": "failed", 
+                        "message": f"Missing tables: {missing_tables}",
+                        "existing_tables": existing_tables
+                    }
+                else:
+                    health_status["checks"]["tables"] = {
+                        "status": "passed", 
+                        "message": "All expected tables exist",
+                        "existing_tables": existing_tables
+                    }
+                    
+            except Exception as e:
+                health_status["checks"]["tables"] = {
+                    "status": "error", 
+                    "message": f"Error checking tables: {str(e)}"
+                }
+        
+        # Determine overall status
+        failed_checks = [check for check in health_status["checks"].values() if check["status"] == "failed"]
+        error_checks = [check for check in health_status["checks"].values() if check["status"] == "error"]
+        
+        if failed_checks:
+            health_status["overall_status"] = "unhealthy"
+        elif error_checks:
+            health_status["overall_status"] = "error"
+        else:
+            health_status["overall_status"] = "healthy"
+        
+        self.logger.info(f"Database health check completed: {health_status['overall_status']}")
+        return health_status
+
+    def _log_operation(self, operation: str, details: dict = None) -> None:
+        """
+        Log database operations with consistent formatting.
+        
+        Args:
+            operation: Name of the operation being performed
+            details: Additional details about the operation
+        """
+        log_message = f"Database operation: {operation}"
+        if details:
+            log_message += f" - Details: {details}"
+        self.logger.info(log_message)
+
+    def _log_error(self, operation: str, error: Exception, details: dict = None) -> None:
+        """
+        Log database errors with consistent formatting.
+        
+        Args:
+            operation: Name of the operation that failed
+            error: The exception that occurred
+            details: Additional details about the operation
+        """
+        log_message = f"Database operation failed: {operation} - Error: {str(error)}"
+        if details:
+            log_message += f" - Details: {details}"
+        self.logger.error(log_message)
+
     def add_transcript(self, committee: str, title: str, content: str, date: str, category: str) -> None:
         """
         Add a new transcript to the database.
@@ -98,11 +330,20 @@ class Database:
             date: Date of the meeting
             category: Category of the transcript
         """
-        self.cursor.execute(
-            "INSERT INTO transcripts (committee, title, content, date, category) VALUES (?, ?, ?, ?, ?)", 
-            (committee, title, content, date, category)
-        )
-        self.conn.commit()
+        operation_details = {"committee": committee, "title": title, "date": date, "category": category}
+        self._log_operation("add_transcript", operation_details)
+        
+        try:
+            self.cursor.execute(
+                "INSERT INTO transcripts (committee, title, content, date, category) VALUES (?, ?, ?, ?, ?)", 
+                (committee, title, content, date, category)
+            )
+            self.conn.commit()
+            transcript_id = self.cursor.lastrowid
+            self.logger.info(f"Added transcript '{title}' for committee '{committee}' (ID: {transcript_id})")
+        except Exception as e:
+            self._log_error("add_transcript", e, operation_details)
+            raise
 
     def add_journalist(self, first_name: str, last_name: str, organization: Optional[str], bio: Optional[str], articles: Optional[str]) -> None:
         """
@@ -115,11 +356,20 @@ class Database:
             bio: Journalist biography (optional)
             articles: List of articles as JSON string (optional)
         """
-        self.cursor.execute(
-            "INSERT INTO journalists (first_name, last_name, organization, bio, articles) VALUES (?, ?, ?, ?, ?)", 
-            (first_name, last_name, organization, bio, articles)
-        )
-        self.conn.commit()
+        operation_details = {"first_name": first_name, "last_name": last_name, "organization": organization}
+        self._log_operation("add_journalist", operation_details)
+        
+        try:
+            self.cursor.execute(
+                "INSERT INTO journalists (first_name, last_name, organization, bio, articles) VALUES (?, ?, ?, ?, ?)", 
+                (first_name, last_name, organization, bio, articles)
+            )
+            self.conn.commit()
+            journalist_id = self.cursor.lastrowid
+            self.logger.info(f"Added journalist '{first_name} {last_name}' (ID: {journalist_id})")
+        except Exception as e:
+            self._log_error("add_journalist", e, operation_details)
+            raise
 
     def add_article(self, committee_id: int, youtube_id: str, journalist_id: int, content: str, transcript_id: int, date: str, category: Optional[str]) -> None: 
         """
@@ -140,11 +390,27 @@ class Database:
         Raises:
             sqlite3.IntegrityError: If any foreign key references don't exist
         """
-        self.cursor.execute(
-            "INSERT INTO articles (committee_id, youtube_id, journalist_id, content, transcript_id, date, category) VALUES (?, ?, ?, ?, ?, ?, ?)", 
-            (committee_id, youtube_id, journalist_id, content, transcript_id, date, category)
-        )
-        self.conn.commit()
+        operation_details = {
+            "committee_id": committee_id, 
+            "youtube_id": youtube_id, 
+            "journalist_id": journalist_id, 
+            "transcript_id": transcript_id,
+            "date": date,
+            "category": category
+        }
+        self._log_operation("add_article", operation_details)
+        
+        try:
+            self.cursor.execute(
+                "INSERT INTO articles (committee_id, youtube_id, journalist_id, content, transcript_id, date, category) VALUES (?, ?, ?, ?, ?, ?, ?)", 
+                (committee_id, youtube_id, journalist_id, content, transcript_id, date, category)
+            )
+            self.conn.commit()
+            article_id = self.cursor.lastrowid
+            self.logger.info(f"Added article (ID: {article_id}) for committee_id: {committee_id}, journalist_id: {journalist_id}")
+        except Exception as e:
+            self._log_error("add_article", e, operation_details)
+            raise
 
     def add_committee(self, name: str, description: Optional[str], created_date: Optional[str]) -> None:
         """
@@ -155,11 +421,20 @@ class Database:
             description: Description of the committee (optional)
             created_date: Date when committee was established (optional)
         """
-        self.cursor.execute(
-            "INSERT INTO committees (name, description, created_date) VALUES (?, ?, ?)", 
-            (name, description, created_date)
-        )
-        self.conn.commit()
+        operation_details = {"name": name, "description": description, "created_date": created_date}
+        self._log_operation("add_committee", operation_details)
+        
+        try:
+            self.cursor.execute(
+                "INSERT INTO committees (name, description, created_date) VALUES (?, ?, ?)", 
+                (name, description, created_date)
+            )
+            self.conn.commit()
+            committee_id = self.cursor.lastrowid
+            self.logger.info(f"Added committee '{name}' (ID: {committee_id})")
+        except Exception as e:
+            self._log_error("add_committee", e, operation_details)
+            raise
 
     def get_transcripts(self) -> List[Tuple[Union[int, str]]]:
         """
@@ -169,8 +444,16 @@ class Database:
             List of tuples containing transcript data.
             Each tuple contains: (id, committee, title, content, date, category)
         """
-        self.cursor.execute("SELECT * FROM transcripts")
-        return self.cursor.fetchall()
+        self._log_operation("get_transcripts")
+        
+        try:
+            self.cursor.execute("SELECT * FROM transcripts")
+            transcripts = self.cursor.fetchall()
+            self.logger.info(f"Retrieved {len(transcripts)} transcripts from database")
+            return transcripts
+        except Exception as e:
+            self._log_error("get_transcripts", e)
+            raise
     
     def close(self) -> None:
         """
@@ -178,7 +461,13 @@ class Database:
         
         Call this method when you're done using the database to free up resources.
         """
-        self.conn.close()
+        if self.is_connected and self.conn:
+            self.conn.close()
+            self.is_connected = False
+            self.cursor = None
+            self.logger.info("Database connection closed")
+        else:
+            self.logger.warning("Attempted to close database that was already closed")
     
     def reconnect(self) -> None:
         """
@@ -187,5 +476,10 @@ class Database:
         This method creates a new connection to the same database file.
         Useful when you need to close and reopen the connection.
         """
-        self.conn = sqlite3.connect(self.db_path)
-        self.cursor = self.conn.cursor()
+        if self.is_connected:
+            self.logger.warning("Attempted to reconnect to database that was already connected")
+            return
+        
+        self.logger.info("Reconnecting to database...")
+        self._connect()
+        self.logger.info("Database reconnection completed")
