@@ -1,6 +1,5 @@
 # Standard library imports
 import os
-from enum import Enum
 
 # Third-party imports
 from fastapi.responses import JSONResponse
@@ -31,7 +30,7 @@ class XAIProcessor:
         """
         self.api_key = os.getenv("XAI_API_KEY")
 
-    def get_response(self, context: str, message: str):
+    def get_response(self, context: str, message: str, committee: str = None, article_type: str = None, tone: str = None):
         """
         Generate a response using the xAI API based on provided context and message.
         
@@ -46,7 +45,9 @@ class XAIProcessor:
         
         Returns:
             dict: A dictionary containing the AI-generated response in the format:
-                  {"response": "generated_text"}
+                  {"response": "generated_text", "committee": "committee_name", 
+                   "context": "full_context", "prompt": "full_prompt", 
+                   "article_type": "article_type", "tone": "tone"}
                   
         Raises:
             JSONResponse: Returns a 500 status code with error details if:
@@ -74,9 +75,18 @@ class XAIProcessor:
             # Generate response from the AI model
             response = chat.sample()
             
-            # Return the response content as a dictionary
+            # Return the response content as a dictionary with all context information
             # Note: response.content is already a string, not an object with .text
-            return {"response": response.content}
+            result = {
+                "article_type": article_type,
+                "tone": tone,
+                "committee": committee,
+                "context": context,
+                "prompt": message,
+                "response": response.content,
+            }
+            
+            return result
             
         except Exception as e:
             # Handle any API communication errors

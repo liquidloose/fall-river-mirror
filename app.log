@@ -929,3 +929,863 @@ Finally, a casual tone is infused with the author's personality. The writer isn'
 2025-08-08 20:08:27,994 - Database_fr-mirror - INFO - All tables created/verified successfully
 2025-08-08 20:08:27,994 - Database_fr-mirror - INFO - Database initialization completed
 2025-08-08 20:08:27,994 - app.main - INFO - FastAPI app initialized!
+2025-08-08 20:17:12,587 - Database_fr-mirror - INFO - Initializing database: fr-mirror.db
+2025-08-08 20:17:12,587 - Database_fr-mirror - INFO - Successfully connected to database: fr-mirror.db
+2025-08-08 20:17:12,587 - Database_fr-mirror - INFO - Creating/verifying all database tables...
+2025-08-08 20:17:12,587 - Database_fr-mirror - INFO - Table 'transcripts' created/verified successfully
+2025-08-08 20:17:12,588 - Database_fr-mirror - INFO - Table 'journalists' created/verified successfully
+2025-08-08 20:17:12,588 - Database_fr-mirror - INFO - Table 'articles' created/verified successfully
+2025-08-08 20:17:12,588 - Database_fr-mirror - INFO - Table 'committees' created/verified successfully
+2025-08-08 20:17:12,588 - Database_fr-mirror - INFO - All tables created/verified successfully
+2025-08-08 20:17:12,588 - Database_fr-mirror - INFO - Database initialization completed
+2025-08-08 20:17:12,588 - app.main - INFO - FastAPI app initialized!
+2025-08-08 20:17:12,591 - Database_fr-mirror - INFO - Initializing database: fr-mirror.db
+2025-08-08 20:17:12,591 - Database_fr-mirror - INFO - Successfully connected to database: fr-mirror.db
+2025-08-08 20:17:12,591 - Database_fr-mirror - INFO - Creating/verifying all database tables...
+2025-08-08 20:17:12,591 - Database_fr-mirror - INFO - Table 'transcripts' created/verified successfully
+2025-08-08 20:17:12,592 - Database_fr-mirror - INFO - Table 'journalists' created/verified successfully
+2025-08-08 20:17:12,592 - Database_fr-mirror - INFO - Table 'articles' created/verified successfully
+2025-08-08 20:17:12,592 - Database_fr-mirror - INFO - Table 'committees' created/verified successfully
+2025-08-08 20:17:12,592 - Database_fr-mirror - INFO - All tables created/verified successfully
+2025-08-08 20:17:12,592 - Database_fr-mirror - INFO - Database initialization completed
+2025-08-08 20:17:12,592 - app.main - INFO - FastAPI app initialized!
+2025-08-08 20:17:23,684 - Database_fr-mirror - INFO - Initializing database: fr-mirror.db
+2025-08-08 20:17:23,685 - Database_fr-mirror - INFO - Successfully connected to database: fr-mirror.db
+2025-08-08 20:17:23,685 - Database_fr-mirror - INFO - Creating/verifying all database tables...
+2025-08-08 20:17:23,685 - Database_fr-mirror - INFO - Initializing database: fr-mirror.db
+2025-08-08 20:17:23,685 - Database_fr-mirror - INFO - Table 'transcripts' created/verified successfully
+2025-08-08 20:17:23,685 - Database_fr-mirror - INFO - Successfully connected to database: fr-mirror.db
+2025-08-08 20:17:23,685 - Database_fr-mirror - INFO - Creating/verifying all database tables...
+2025-08-08 20:17:23,685 - Database_fr-mirror - INFO - Table 'journalists' created/verified successfully
+2025-08-08 20:17:23,685 - Database_fr-mirror - INFO - Table 'articles' created/verified successfully
+2025-08-08 20:17:23,686 - Database_fr-mirror - INFO - Table 'transcripts' created/verified successfully
+2025-08-08 20:17:23,686 - Database_fr-mirror - INFO - Table 'committees' created/verified successfully
+2025-08-08 20:17:23,686 - Database_fr-mirror - INFO - Table 'journalists' created/verified successfully
+2025-08-08 20:17:23,686 - Database_fr-mirror - INFO - All tables created/verified successfully
+2025-08-08 20:17:23,686 - Database_fr-mirror - INFO - Table 'articles' created/verified successfully
+2025-08-08 20:17:23,686 - Database_fr-mirror - INFO - Database initialization completed
+2025-08-08 20:17:23,686 - Database_fr-mirror - INFO - Table 'committees' created/verified successfully
+2025-08-08 20:17:23,686 - Database_fr-mirror - INFO - All tables created/verified successfully
+2025-08-08 20:17:23,686 - app.main - INFO - FastAPI app initialized!
+2025-08-08 20:17:23,686 - Database_fr-mirror - INFO - Database initialization completed
+2025-08-08 20:17:23,686 - app.main - INFO - FastAPI app initialized!
+2025-08-08 20:17:35,611 - Database_fr-mirror - INFO - Initializing database: fr-mirror.db
+2025-08-08 20:17:35,611 - Database_fr-mirror - INFO - Successfully connected to database: fr-mirror.db
+2025-08-08 20:17:35,611 - Database_fr-mirror - INFO - Creating/verifying all database tables...
+2025-08-08 20:17:35,611 - Database_fr-mirror - INFO - Table 'transcripts' created/verified successfully
+2025-08-08 20:17:35,612 - Database_fr-mirror - INFO - Table 'journalists' created/verified successfully
+2025-08-08 20:17:35,612 - Database_fr-mirror - INFO - Table 'articles' created/verified successfully
+2025-08-08 20:17:35,612 - Database_fr-mirror - INFO - Table 'committees' created/verified successfully
+2025-08-08 20:17:35,612 - Database_fr-mirror - INFO - All tables created/verified successfully
+2025-08-08 20:17:35,612 - Database_fr-mirror - INFO - Database initialization completed
+2025-08-08 20:17:35,612 - app.main - INFO - FastAPI app initialized!
+2025-08-08 20:17:35,674 - Database_fr-mirror - INFO - Initializing database: fr-mirror.db
+2025-08-08 20:17:35,674 - Database_fr-mirror - INFO - Successfully connected to database: fr-mirror.db
+2025-08-08 20:17:35,674 - Database_fr-mirror - INFO - Creating/verifying all database tables...
+2025-08-08 20:17:35,674 - Database_fr-mirror - INFO - Table 'transcripts' created/verified successfully
+2025-08-08 20:17:35,675 - Database_fr-mirror - INFO - Table 'journalists' created/verified successfully
+2025-08-08 20:17:35,675 - Database_fr-mirror - INFO - Table 'articles' created/verified successfully
+2025-08-08 20:17:35,675 - Database_fr-mirror - INFO - Table 'committees' created/verified successfully
+2025-08-08 20:17:35,675 - Database_fr-mirror - INFO - All tables created/verified successfully
+2025-08-08 20:17:35,675 - Database_fr-mirror - INFO - Database initialization completed
+2025-08-08 20:17:35,675 - app.main - INFO - FastAPI app initialized!
+2025-08-08 20:17:47,471 - Database_fr-mirror - INFO - Initializing database: fr-mirror.db
+2025-08-08 20:17:47,471 - Database_fr-mirror - INFO - Successfully connected to database: fr-mirror.db
+2025-08-08 20:17:47,472 - Database_fr-mirror - INFO - Creating/verifying all database tables...
+2025-08-08 20:17:47,472 - Database_fr-mirror - INFO - Table 'transcripts' created/verified successfully
+2025-08-08 20:17:47,472 - Database_fr-mirror - INFO - Table 'journalists' created/verified successfully
+2025-08-08 20:17:47,472 - Database_fr-mirror - INFO - Table 'articles' created/verified successfully
+2025-08-08 20:17:47,472 - Database_fr-mirror - INFO - Table 'committees' created/verified successfully
+2025-08-08 20:17:47,472 - Database_fr-mirror - INFO - All tables created/verified successfully
+2025-08-08 20:17:47,472 - Database_fr-mirror - INFO - Database initialization completed
+2025-08-08 20:17:47,472 - app.main - INFO - FastAPI app initialized!
+2025-08-08 20:17:47,515 - Database_fr-mirror - INFO - Initializing database: fr-mirror.db
+2025-08-08 20:17:47,515 - Database_fr-mirror - INFO - Successfully connected to database: fr-mirror.db
+2025-08-08 20:17:47,515 - Database_fr-mirror - INFO - Creating/verifying all database tables...
+2025-08-08 20:17:47,515 - Database_fr-mirror - INFO - Table 'transcripts' created/verified successfully
+2025-08-08 20:17:47,515 - Database_fr-mirror - INFO - Table 'journalists' created/verified successfully
+2025-08-08 20:17:47,516 - Database_fr-mirror - INFO - Table 'articles' created/verified successfully
+2025-08-08 20:17:47,516 - Database_fr-mirror - INFO - Table 'committees' created/verified successfully
+2025-08-08 20:17:47,516 - Database_fr-mirror - INFO - All tables created/verified successfully
+2025-08-08 20:17:47,516 - Database_fr-mirror - INFO - Database initialization completed
+2025-08-08 20:17:47,516 - app.main - INFO - FastAPI app initialized!
+2025-08-08 20:18:23,729 - Database_fr-mirror - INFO - Initializing database: fr-mirror.db
+2025-08-08 20:18:23,729 - Database_fr-mirror - INFO - Successfully connected to database: fr-mirror.db
+2025-08-08 20:18:23,730 - Database_fr-mirror - INFO - Creating/verifying all database tables...
+2025-08-08 20:18:23,730 - Database_fr-mirror - INFO - Table 'transcripts' created/verified successfully
+2025-08-08 20:18:23,730 - Database_fr-mirror - INFO - Table 'journalists' created/verified successfully
+2025-08-08 20:18:23,730 - Database_fr-mirror - INFO - Table 'articles' created/verified successfully
+2025-08-08 20:18:23,730 - Database_fr-mirror - INFO - Table 'committees' created/verified successfully
+2025-08-08 20:18:23,731 - Database_fr-mirror - INFO - All tables created/verified successfully
+2025-08-08 20:18:23,731 - Database_fr-mirror - INFO - Database initialization completed
+2025-08-08 20:18:23,731 - app.main - INFO - FastAPI app initialized!
+2025-08-08 20:18:23,768 - Database_fr-mirror - INFO - Initializing database: fr-mirror.db
+2025-08-08 20:18:23,769 - Database_fr-mirror - INFO - Successfully connected to database: fr-mirror.db
+2025-08-08 20:18:23,769 - Database_fr-mirror - INFO - Creating/verifying all database tables...
+2025-08-08 20:18:23,769 - Database_fr-mirror - INFO - Table 'transcripts' created/verified successfully
+2025-08-08 20:18:23,769 - Database_fr-mirror - INFO - Table 'journalists' created/verified successfully
+2025-08-08 20:18:23,769 - Database_fr-mirror - INFO - Table 'articles' created/verified successfully
+2025-08-08 20:18:23,769 - Database_fr-mirror - INFO - Table 'committees' created/verified successfully
+2025-08-08 20:18:23,770 - Database_fr-mirror - INFO - All tables created/verified successfully
+2025-08-08 20:18:23,770 - Database_fr-mirror - INFO - Database initialization completed
+2025-08-08 20:18:23,770 - app.main - INFO - FastAPI app initialized!
+2025-08-08 20:18:39,887 - Database_fr-mirror - INFO - Initializing database: fr-mirror.db
+2025-08-08 20:18:39,887 - Database_fr-mirror - INFO - Successfully connected to database: fr-mirror.db
+2025-08-08 20:18:39,887 - Database_fr-mirror - INFO - Creating/verifying all database tables...
+2025-08-08 20:18:39,887 - Database_fr-mirror - INFO - Table 'transcripts' created/verified successfully
+2025-08-08 20:18:39,888 - Database_fr-mirror - INFO - Table 'journalists' created/verified successfully
+2025-08-08 20:18:39,888 - Database_fr-mirror - INFO - Table 'articles' created/verified successfully
+2025-08-08 20:18:39,888 - Database_fr-mirror - INFO - Table 'committees' created/verified successfully
+2025-08-08 20:18:39,888 - Database_fr-mirror - INFO - All tables created/verified successfully
+2025-08-08 20:18:39,888 - Database_fr-mirror - INFO - Database initialization completed
+2025-08-08 20:18:39,888 - app.main - INFO - FastAPI app initialized!
+2025-08-08 20:18:39,918 - Database_fr-mirror - INFO - Initializing database: fr-mirror.db
+2025-08-08 20:18:39,918 - Database_fr-mirror - INFO - Successfully connected to database: fr-mirror.db
+2025-08-08 20:18:39,918 - Database_fr-mirror - INFO - Creating/verifying all database tables...
+2025-08-08 20:18:39,919 - Database_fr-mirror - INFO - Table 'transcripts' created/verified successfully
+2025-08-08 20:18:39,919 - Database_fr-mirror - INFO - Table 'journalists' created/verified successfully
+2025-08-08 20:18:39,919 - Database_fr-mirror - INFO - Table 'articles' created/verified successfully
+2025-08-08 20:18:39,919 - Database_fr-mirror - INFO - Table 'committees' created/verified successfully
+2025-08-08 20:18:39,919 - Database_fr-mirror - INFO - All tables created/verified successfully
+2025-08-08 20:18:39,919 - Database_fr-mirror - INFO - Database initialization completed
+2025-08-08 20:18:39,919 - app.main - INFO - FastAPI app initialized!
+2025-08-08 20:18:57,677 - Database_fr-mirror - INFO - Initializing database: fr-mirror.db
+2025-08-08 20:18:57,678 - Database_fr-mirror - INFO - Successfully connected to database: fr-mirror.db
+2025-08-08 20:18:57,678 - Database_fr-mirror - INFO - Creating/verifying all database tables...
+2025-08-08 20:18:57,678 - Database_fr-mirror - INFO - Table 'transcripts' created/verified successfully
+2025-08-08 20:18:57,678 - Database_fr-mirror - INFO - Table 'journalists' created/verified successfully
+2025-08-08 20:18:57,679 - Database_fr-mirror - INFO - Table 'articles' created/verified successfully
+2025-08-08 20:18:57,679 - Database_fr-mirror - INFO - Table 'committees' created/verified successfully
+2025-08-08 20:18:57,679 - Database_fr-mirror - INFO - All tables created/verified successfully
+2025-08-08 20:18:57,679 - Database_fr-mirror - INFO - Database initialization completed
+2025-08-08 20:18:57,679 - app.main - INFO - FastAPI app initialized!
+2025-08-08 20:18:57,711 - Database_fr-mirror - INFO - Initializing database: fr-mirror.db
+2025-08-08 20:18:57,711 - Database_fr-mirror - INFO - Successfully connected to database: fr-mirror.db
+2025-08-08 20:18:57,711 - Database_fr-mirror - INFO - Creating/verifying all database tables...
+2025-08-08 20:18:57,711 - Database_fr-mirror - INFO - Table 'transcripts' created/verified successfully
+2025-08-08 20:18:57,711 - Database_fr-mirror - INFO - Table 'journalists' created/verified successfully
+2025-08-08 20:18:57,712 - Database_fr-mirror - INFO - Table 'articles' created/verified successfully
+2025-08-08 20:18:57,712 - Database_fr-mirror - INFO - Table 'committees' created/verified successfully
+2025-08-08 20:18:57,712 - Database_fr-mirror - INFO - All tables created/verified successfully
+2025-08-08 20:18:57,712 - Database_fr-mirror - INFO - Database initialization completed
+2025-08-08 20:18:57,712 - app.main - INFO - FastAPI app initialized!
+2025-08-08 20:18:58,452 - Database_fr-mirror - INFO - Initializing database: fr-mirror.db
+2025-08-08 20:18:58,453 - Database_fr-mirror - INFO - Successfully connected to database: fr-mirror.db
+2025-08-08 20:18:58,453 - Database_fr-mirror - INFO - Creating/verifying all database tables...
+2025-08-08 20:18:58,453 - Database_fr-mirror - INFO - Table 'transcripts' created/verified successfully
+2025-08-08 20:18:58,453 - Database_fr-mirror - INFO - Table 'journalists' created/verified successfully
+2025-08-08 20:18:58,453 - Database_fr-mirror - INFO - Table 'articles' created/verified successfully
+2025-08-08 20:18:58,454 - Database_fr-mirror - INFO - Table 'committees' created/verified successfully
+2025-08-08 20:18:58,454 - Database_fr-mirror - INFO - All tables created/verified successfully
+2025-08-08 20:18:58,454 - Database_fr-mirror - INFO - Database initialization completed
+2025-08-08 20:18:58,454 - app.main - INFO - FastAPI app initialized!
+2025-08-08 20:18:58,484 - Database_fr-mirror - INFO - Initializing database: fr-mirror.db
+2025-08-08 20:18:58,485 - Database_fr-mirror - INFO - Successfully connected to database: fr-mirror.db
+2025-08-08 20:18:58,485 - Database_fr-mirror - INFO - Creating/verifying all database tables...
+2025-08-08 20:18:58,485 - Database_fr-mirror - INFO - Table 'transcripts' created/verified successfully
+2025-08-08 20:18:58,485 - Database_fr-mirror - INFO - Table 'journalists' created/verified successfully
+2025-08-08 20:18:58,485 - Database_fr-mirror - INFO - Table 'articles' created/verified successfully
+2025-08-08 20:18:58,486 - Database_fr-mirror - INFO - Table 'committees' created/verified successfully
+2025-08-08 20:18:58,486 - Database_fr-mirror - INFO - All tables created/verified successfully
+2025-08-08 20:18:58,486 - Database_fr-mirror - INFO - Database initialization completed
+2025-08-08 20:18:58,486 - app.main - INFO - FastAPI app initialized!
+2025-08-08 20:19:02,065 - Database_fr-mirror - INFO - Initializing database: fr-mirror.db
+2025-08-08 20:19:02,065 - Database_fr-mirror - INFO - Successfully connected to database: fr-mirror.db
+2025-08-08 20:19:02,065 - Database_fr-mirror - INFO - Creating/verifying all database tables...
+2025-08-08 20:19:02,066 - Database_fr-mirror - INFO - Table 'transcripts' created/verified successfully
+2025-08-08 20:19:02,066 - Database_fr-mirror - INFO - Table 'journalists' created/verified successfully
+2025-08-08 20:19:02,066 - Database_fr-mirror - INFO - Table 'articles' created/verified successfully
+2025-08-08 20:19:02,066 - Database_fr-mirror - INFO - Table 'committees' created/verified successfully
+2025-08-08 20:19:02,066 - Database_fr-mirror - INFO - All tables created/verified successfully
+2025-08-08 20:19:02,066 - Database_fr-mirror - INFO - Database initialization completed
+2025-08-08 20:19:02,066 - app.main - INFO - FastAPI app initialized!
+2025-08-08 20:19:02,130 - Database_fr-mirror - INFO - Initializing database: fr-mirror.db
+2025-08-08 20:19:02,130 - Database_fr-mirror - INFO - Successfully connected to database: fr-mirror.db
+2025-08-08 20:19:02,130 - Database_fr-mirror - INFO - Creating/verifying all database tables...
+2025-08-08 20:19:02,131 - Database_fr-mirror - INFO - Table 'transcripts' created/verified successfully
+2025-08-08 20:19:02,131 - Database_fr-mirror - INFO - Table 'journalists' created/verified successfully
+2025-08-08 20:19:02,131 - Database_fr-mirror - INFO - Table 'articles' created/verified successfully
+2025-08-08 20:19:02,131 - Database_fr-mirror - INFO - Table 'committees' created/verified successfully
+2025-08-08 20:19:02,131 - Database_fr-mirror - INFO - All tables created/verified successfully
+2025-08-08 20:19:02,131 - Database_fr-mirror - INFO - Database initialization completed
+2025-08-08 20:19:02,131 - app.main - INFO - FastAPI app initialized!
+2025-08-08 20:19:11,777 - Database_fr-mirror - INFO - Initializing database: fr-mirror.db
+2025-08-08 20:19:11,777 - Database_fr-mirror - INFO - Successfully connected to database: fr-mirror.db
+2025-08-08 20:19:11,777 - Database_fr-mirror - INFO - Creating/verifying all database tables...
+2025-08-08 20:19:11,778 - Database_fr-mirror - INFO - Table 'transcripts' created/verified successfully
+2025-08-08 20:19:11,778 - Database_fr-mirror - INFO - Table 'journalists' created/verified successfully
+2025-08-08 20:19:11,778 - Database_fr-mirror - INFO - Table 'articles' created/verified successfully
+2025-08-08 20:19:11,778 - Database_fr-mirror - INFO - Table 'committees' created/verified successfully
+2025-08-08 20:19:11,778 - Database_fr-mirror - INFO - All tables created/verified successfully
+2025-08-08 20:19:11,778 - Database_fr-mirror - INFO - Database initialization completed
+2025-08-08 20:19:11,778 - app.main - INFO - FastAPI app initialized!
+2025-08-08 20:19:11,792 - Database_fr-mirror - INFO - Initializing database: fr-mirror.db
+2025-08-08 20:19:11,793 - Database_fr-mirror - INFO - Successfully connected to database: fr-mirror.db
+2025-08-08 20:19:11,793 - Database_fr-mirror - INFO - Creating/verifying all database tables...
+2025-08-08 20:19:11,793 - Database_fr-mirror - INFO - Table 'transcripts' created/verified successfully
+2025-08-08 20:19:11,793 - Database_fr-mirror - INFO - Table 'journalists' created/verified successfully
+2025-08-08 20:19:11,793 - Database_fr-mirror - INFO - Table 'articles' created/verified successfully
+2025-08-08 20:19:11,793 - Database_fr-mirror - INFO - Table 'committees' created/verified successfully
+2025-08-08 20:19:11,794 - Database_fr-mirror - INFO - All tables created/verified successfully
+2025-08-08 20:19:11,794 - Database_fr-mirror - INFO - Database initialization completed
+2025-08-08 20:19:11,794 - app.main - INFO - FastAPI app initialized!
+2025-08-08 20:19:14,759 - Database_fr-mirror - INFO - Initializing database: fr-mirror.db
+2025-08-08 20:19:14,759 - Database_fr-mirror - INFO - Successfully connected to database: fr-mirror.db
+2025-08-08 20:19:14,760 - Database_fr-mirror - INFO - Creating/verifying all database tables...
+2025-08-08 20:19:14,760 - Database_fr-mirror - INFO - Table 'transcripts' created/verified successfully
+2025-08-08 20:19:14,760 - Database_fr-mirror - INFO - Table 'journalists' created/verified successfully
+2025-08-08 20:19:14,760 - Database_fr-mirror - INFO - Table 'articles' created/verified successfully
+2025-08-08 20:19:14,760 - Database_fr-mirror - INFO - Table 'committees' created/verified successfully
+2025-08-08 20:19:14,760 - Database_fr-mirror - INFO - All tables created/verified successfully
+2025-08-08 20:19:14,761 - Database_fr-mirror - INFO - Database initialization completed
+2025-08-08 20:19:14,761 - app.main - INFO - FastAPI app initialized!
+2025-08-08 20:19:14,771 - Database_fr-mirror - INFO - Initializing database: fr-mirror.db
+2025-08-08 20:19:14,771 - Database_fr-mirror - INFO - Successfully connected to database: fr-mirror.db
+2025-08-08 20:19:14,771 - Database_fr-mirror - INFO - Creating/verifying all database tables...
+2025-08-08 20:19:14,771 - Database_fr-mirror - INFO - Table 'transcripts' created/verified successfully
+2025-08-08 20:19:14,772 - Database_fr-mirror - INFO - Table 'journalists' created/verified successfully
+2025-08-08 20:19:14,772 - Database_fr-mirror - INFO - Table 'articles' created/verified successfully
+2025-08-08 20:19:14,772 - Database_fr-mirror - INFO - Table 'committees' created/verified successfully
+2025-08-08 20:19:14,772 - Database_fr-mirror - INFO - All tables created/verified successfully
+2025-08-08 20:19:14,772 - Database_fr-mirror - INFO - Database initialization completed
+2025-08-08 20:19:14,772 - app.main - INFO - FastAPI app initialized!
+2025-08-09 06:17:25,835 - Database_fr-mirror - INFO - Initializing database: fr-mirror.db
+2025-08-09 06:17:25,835 - Database_fr-mirror - INFO - Successfully connected to database: fr-mirror.db
+2025-08-09 06:17:25,835 - Database_fr-mirror - INFO - Creating/verifying all database tables...
+2025-08-09 06:17:25,836 - Database_fr-mirror - INFO - Table 'transcripts' created/verified successfully
+2025-08-09 06:17:25,836 - Database_fr-mirror - INFO - Table 'journalists' created/verified successfully
+2025-08-09 06:17:25,836 - Database_fr-mirror - INFO - Table 'articles' created/verified successfully
+2025-08-09 06:17:25,836 - Database_fr-mirror - INFO - Table 'committees' created/verified successfully
+2025-08-09 06:17:25,836 - Database_fr-mirror - INFO - All tables created/verified successfully
+2025-08-09 06:17:25,836 - Database_fr-mirror - INFO - Database initialization completed
+2025-08-09 06:17:25,836 - app.main - INFO - FastAPI app initialized!
+2025-08-09 06:17:25,838 - Database_fr-mirror - INFO - Initializing database: fr-mirror.db
+2025-08-09 06:17:25,838 - Database_fr-mirror - INFO - Successfully connected to database: fr-mirror.db
+2025-08-09 06:17:25,839 - Database_fr-mirror - INFO - Creating/verifying all database tables...
+2025-08-09 06:17:25,839 - Database_fr-mirror - INFO - Table 'transcripts' created/verified successfully
+2025-08-09 06:17:25,839 - Database_fr-mirror - INFO - Table 'journalists' created/verified successfully
+2025-08-09 06:17:25,839 - Database_fr-mirror - INFO - Table 'articles' created/verified successfully
+2025-08-09 06:17:25,839 - Database_fr-mirror - INFO - Table 'committees' created/verified successfully
+2025-08-09 06:17:25,839 - Database_fr-mirror - INFO - All tables created/verified successfully
+2025-08-09 06:17:25,840 - Database_fr-mirror - INFO - Database initialization completed
+2025-08-09 06:17:25,840 - app.main - INFO - FastAPI app initialized!
+2025-08-11 17:52:27,408 - Database_fr-mirror - INFO - Initializing database: fr-mirror.db
+2025-08-11 17:52:27,408 - Database_fr-mirror - INFO - Successfully connected to database: fr-mirror.db
+2025-08-11 17:52:27,408 - Database_fr-mirror - INFO - Creating/verifying all database tables...
+2025-08-11 17:52:27,409 - Database_fr-mirror - INFO - Table 'transcripts' created/verified successfully
+2025-08-11 17:52:27,409 - Database_fr-mirror - INFO - Table 'journalists' created/verified successfully
+2025-08-11 17:52:27,409 - Database_fr-mirror - INFO - Table 'articles' created/verified successfully
+2025-08-11 17:52:27,409 - Database_fr-mirror - INFO - Table 'committees' created/verified successfully
+2025-08-11 17:52:27,409 - Database_fr-mirror - INFO - All tables created/verified successfully
+2025-08-11 17:52:27,409 - Database_fr-mirror - INFO - Database initialization completed
+2025-08-11 17:52:27,410 - app.main - INFO - FastAPI app initialized!
+2025-08-11 17:52:33,473 - Database_fr-mirror - INFO - Initializing database: fr-mirror.db
+2025-08-11 17:52:33,474 - Database_fr-mirror - INFO - Successfully connected to database: fr-mirror.db
+2025-08-11 17:52:33,474 - Database_fr-mirror - INFO - Creating/verifying all database tables...
+2025-08-11 17:52:33,474 - Database_fr-mirror - INFO - Table 'transcripts' created/verified successfully
+2025-08-11 17:52:33,474 - Database_fr-mirror - INFO - Table 'journalists' created/verified successfully
+2025-08-11 17:52:33,474 - Database_fr-mirror - INFO - Table 'articles' created/verified successfully
+2025-08-11 17:52:33,475 - Database_fr-mirror - INFO - Table 'committees' created/verified successfully
+2025-08-11 17:52:33,475 - Database_fr-mirror - INFO - All tables created/verified successfully
+2025-08-11 17:52:33,475 - Database_fr-mirror - INFO - Database initialization completed
+2025-08-11 17:52:33,475 - app.main - INFO - FastAPI app initialized!
+2025-08-11 17:52:40,541 - Database_fr-mirror - INFO - Initializing database: fr-mirror.db
+2025-08-11 17:52:40,542 - Database_fr-mirror - INFO - Successfully connected to database: fr-mirror.db
+2025-08-11 17:52:40,542 - Database_fr-mirror - INFO - Creating/verifying all database tables...
+2025-08-11 17:52:40,542 - Database_fr-mirror - INFO - Table 'transcripts' created/verified successfully
+2025-08-11 17:52:40,542 - Database_fr-mirror - INFO - Table 'journalists' created/verified successfully
+2025-08-11 17:52:40,542 - Database_fr-mirror - INFO - Table 'articles' created/verified successfully
+2025-08-11 17:52:40,543 - Database_fr-mirror - INFO - Table 'committees' created/verified successfully
+2025-08-11 17:52:40,543 - Database_fr-mirror - INFO - All tables created/verified successfully
+2025-08-11 17:52:40,543 - Database_fr-mirror - INFO - Database initialization completed
+2025-08-11 17:52:40,543 - app.main - INFO - FastAPI app initialized!
+2025-08-11 17:56:18,914 - app.utils - INFO - Successfully loaded context file: app/context_files/article_types/op_ed.txt
+2025-08-11 17:56:18,914 - app.utils - INFO - Successfully loaded context file: app/context_files/tone/friendly.txt
+2025-08-11 17:56:18,914 - app.main - INFO - Received request: context=you are having a test,final_context=you are having a testonly talk about being sad about harry potterThe first rule is, never, EVER describe yourself as friendly. This article is to be friendly in indirect ways of perception only.
+
+An article with a friendly tone reads like a conversation with a kind and supportive friend who is excited to share what they know. The core quality is warmth; the writer isn't just a source of information but a guide who is genuinely on the reader's side. This tone is immediately welcoming and works to lower any intimidation the reader might feel about the subject matter. It heavily uses personal pronouns to create a sense of partnership, often using "we" to suggest a shared journey ("Let's dive in," or "Next, we'll look at...") and "you" in a way that is encouraging and empowering ("You'll be surprised how easy this is," or "Don't worry if you get stuck on this part").
+
+The language itself is intentionally accessible, positive, and reassuring. A friendly article uses simple, everyday words and avoids any jargon that might make a reader feel excluded or confused. The sentence structure is typically straightforward and clear, mirroring natural speech. You'll often find encouraging phrases sprinkled throughout the text, such as "You've got this," "It's easier than it sounds," or "The great thing about this is...". The overall feeling is one of patience and helpfulness, creating a safe space for the reader to learn without fear of judgment.
+
+Beyond the language, the structure of a friendly article is designed to be as helpful as possible. Complex ideas are broken down into small, manageable steps, often using bullet points, short paragraphs, and clear headings to guide the reader along. The author anticipates where the reader might struggle and proactively offers tips or words of encouragement at those points. The goal is not just to inform but to build the reader's confidence, leaving them feeling capable, positive, and happy they engaged with the topic., prompt=you have to pee write an article about not being able to get your 7th grade teacher's attention in this predicament, type=ArticleType.OP_ED, tone=Tone.FRIENDLY
+2025-08-11 17:56:18,915 - app.main - INFO - Full prompt: This is the type of article: op-ed This is the tone: friendly This is the context: you are having a test. This is the user's prompt: you have to pee write an article about not being able to get your 7th grade teacher's attention in this predicament
+2025-08-11 17:56:59,926 - app.main - DEBUG - Response: {'response': '# Why the Magic of Harry Potter Still Leaves Me a Little Sad – And That\'s Okay\n\nHey there, fellow magic enthusiast. Have you ever finished a book series that felt like it wrapped up a piece of your heart, and even years later, thinking about it brings a wave of melancholy? Let\'s talk about Harry Potter for a moment – that epic tale of wizards, friendship, and bravery that captured so many of our imaginations. If you\'re like me, you might find yourself feeling a touch sad about it all, and I want to share why that\'s not just normal, but actually kind of beautiful. We\'ll explore this together, step by step, and by the end, you might even feel a bit better about those lingering emotions.\n\nFirst off, remember how we all grew up with Harry, Ron, and Hermione? For many of us, these characters weren\'t just words on a page – they were companions through our own awkward years. Starting with that first book, *The Sorcerer\'s Stone*, we dove into a world where anything seemed possible. But as the series progressed, the stories got darker, and we watched our heroes face losses that hit hard. Think about it: the death of beloved characters like Sirius, Dumbledore, or even poor Dobby. Those moments? They sting, don\'t they? It\'s like saying goodbye to old friends, and that sadness can sneak up on you during quiet moments, maybe even when you\'re supposed to be focusing on something else entirely.\n\nNow, let\'s be real – part of what makes Harry Potter so special is how it mirrors our own lives. We see Harry grappling with grief, isolation, and the weight of expectations, and it resonates because we\'ve all been there in some way. But here\'s the reassuring part: feeling sad about it doesn\'t mean you\'re stuck in the past. It\'s a sign that the story touched you deeply, and that\'s a gift. You\'ve got this emotional connection that not every book can create. If you\'re feeling a bit down revisiting the series, try chatting about it with a friend who gets it – we can share our favorite memories and turn that sadness into something warmer, like nostalgia.\n\nAnd speaking of the end, oh boy, *The Deathly Hallows* wrapped things up in a way that was satisfying, sure, but it also left a void. What happens after the battle? We get a glimpse in the epilogue, but our imaginations fill in the blanks, and sometimes those blanks feel empty. Don\'t worry if you catch yourself wishing for more adventures at Hogwarts – it\'s easier than it sounds to channel that into creativity. Maybe write your own fan story or rewatch the movies with popcorn in hand. The great thing about this is that the wizarding world lives on through us, the fans, keeping the magic alive even if it comes with a side of bittersweet feels.\n\nAs we wrap this up, let\'s remember that it\'s okay to feel sad about Harry Potter. It\'s a testament to J.K. Rowling\'s storytelling that it evokes such strong emotions. You\'re not alone in this – we\'re all in it together, waving our wands (or just our memories) to keep the spirit going. Next time that wave of sadness hits, embrace it, talk it out, and know you\'ve got a whole community ready to share the journey. After all, in the words of a wise wizard, "Happiness can be found even in the darkest of times, if one only remembers to turn on the light." You\'ve got this – now go ahead and revisit your favorite chapter. It might just brighten your day.'}
+2025-08-11 17:59:28,804 - app.utils - INFO - Successfully loaded context file: app/context_files/article_types/summary.txt
+2025-08-11 17:59:28,804 - app.utils - INFO - Successfully loaded context file: app/context_files/tone/formal.txt
+2025-08-11 17:59:28,805 - app.main - INFO - Received request: context=some-context,final_context=some-contextAn article written in a formal tone is characterized by its objectivity, authority, and structural clarity. Its primary goal is to inform, analyze, or argue based on factual evidence and logical reasoning, rather than to entertain or build personal rapport. A formal article establishes a distinct distance between the writer and the reader; the author serves as an impartial expert presenting information, not a peer sharing an experience. This is achieved by strictly using a third-person perspective, avoiding personal pronouns like "I," "we," or "you." The focus is placed squarely on the subject matter, removing any sense of personal bias or conversational intimacy to establish the text as a credible and authoritative source.
+
+The language and syntax of a formal article are precise and deliberate. Word choice is specific and unambiguous, often employing technical or academic vocabulary appropriate to the subject. Vague language, slang, and colloquialisms are completely avoided. A key hallmark of formal writing is the absence of contractions; for example, "do not" is used instead of "don't," and "it is" instead of "it's." Sentence structures are often more complex and varied, using subordinate clauses and sophisticated transitional phrases (e.g., "furthermore," "consequently," "in contrast") to show the logical relationships between different ideas. This complexity is not for its own sake, but to convey nuanced arguments and precise information accurately.
+
+Finally, a formal article is built upon a foundation of rigorous structure and evidence. It typically begins with a clear thesis statement or objective in the introduction, followed by a series of body paragraphs that develop the argument in a logical sequence. Each point is substantiated not with personal anecdotes or opinions, but with verifiable evidence such as data, statistics, research findings, and citations from other scholarly works. The tone is serious and analytical throughout, guiding the reader through a methodical and defensible line of reasoning that leads to a well-supported conclusion. The entire piece is designed to be persuasive and trustworthy based on the strength of its evidence and the clarity of its argument., prompt=write-about-being-a-fish, type=ArticleType.SUMMARY, tone=Tone.FORMAL
+2025-08-11 17:59:28,805 - app.main - INFO - Full prompt: This is the type of article: summary This is the tone: formal This is the context: some-context. This is the user's prompt: write-about-being-a-fish
+2025-08-11 17:59:50,187 - app.main - DEBUG - Response: {'response': 'some-contextBeing a fish entails inhabiting an aquatic environment where survival and behavior are governed by physiological adaptations and ecological interactions. As cold-blooded vertebrates, fish rely on external water temperatures to regulate their metabolism, enabling them to thrive in diverse habitats ranging from freshwater rivers to deep oceanic trenches. The primary mode of locomotion is achieved through undulating body movements and fin propulsion, which facilitates efficient navigation and predator evasion. Sensory adaptations, such as the lateral line system, allow fish to detect vibrations and pressure changes in the water, compensating for limited visibility in murky conditions. This existence is fundamentally shaped by the need to extract oxygen via gills, a process that demands constant water flow over specialized filaments, underscoring the inseparability of fish physiology from their fluid surroundings.\n\nThe daily experiences of a fish are dictated by instinctual drives for foraging, reproduction, and territorial defense, often in schools or solitary patterns depending on the species. For instance, predatory species like sharks employ acute olfaction to locate prey, while herbivorous varieties graze on algae or plankton with minimal energy expenditure. Social structures vary; certain fish form hierarchical groups to enhance collective vigilance against threats, whereas others lead nomadic lives to exploit seasonal food availability. Environmental factors, including salinity, pH levels, and pollution, profoundly influence health and longevity, with many species exhibiting migratory behaviors to optimize breeding conditions. These patterns highlight the adaptive resilience of fish, yet also their vulnerability to anthropogenic disruptions such as overfishing and habitat degradation.\n\nIn summary, the state of being a fish represents a paradigm of evolutionary efficiency within aquatic ecosystems, supported by empirical observations from ichthyology. Research from institutions like the Smithsonian Institution documents over 34,000 fish species, each exemplifying specialized traits that ensure survival amid constant environmental flux. This biological framework not only informs conservation efforts but also provides insights into broader vertebrate evolution, emphasizing the intricate balance between organism and habitat that defines piscine existence.'}
+2025-08-11 18:00:14,875 - app.utils - INFO - Successfully loaded context file: app/context_files/article_types/op_ed.txt
+2025-08-11 18:00:14,875 - app.utils - INFO - Successfully loaded context file: app/context_files/tone/friendly.txt
+2025-08-11 18:00:14,875 - app.main - INFO - Received request: context=some-context,final_context=some-contextonly talk about being sad about harry potterThe first rule is, never, EVER describe yourself as friendly. This article is to be friendly in indirect ways of perception only.
+
+An article with a friendly tone reads like a conversation with a kind and supportive friend who is excited to share what they know. The core quality is warmth; the writer isn't just a source of information but a guide who is genuinely on the reader's side. This tone is immediately welcoming and works to lower any intimidation the reader might feel about the subject matter. It heavily uses personal pronouns to create a sense of partnership, often using "we" to suggest a shared journey ("Let's dive in," or "Next, we'll look at...") and "you" in a way that is encouraging and empowering ("You'll be surprised how easy this is," or "Don't worry if you get stuck on this part").
+
+The language itself is intentionally accessible, positive, and reassuring. A friendly article uses simple, everyday words and avoids any jargon that might make a reader feel excluded or confused. The sentence structure is typically straightforward and clear, mirroring natural speech. You'll often find encouraging phrases sprinkled throughout the text, such as "You've got this," "It's easier than it sounds," or "The great thing about this is...". The overall feeling is one of patience and helpfulness, creating a safe space for the reader to learn without fear of judgment.
+
+Beyond the language, the structure of a friendly article is designed to be as helpful as possible. Complex ideas are broken down into small, manageable steps, often using bullet points, short paragraphs, and clear headings to guide the reader along. The author anticipates where the reader might struggle and proactively offers tips or words of encouragement at those points. The goal is not just to inform but to build the reader's confidence, leaving them feeling capable, positive, and happy they engaged with the topic., prompt=write-about-being-a-fish, type=ArticleType.OP_ED, tone=Tone.FRIENDLY
+2025-08-11 18:00:14,875 - app.main - INFO - Full prompt: This is the type of article: op-ed This is the tone: friendly This is the context: some-context. This is the user's prompt: write-about-being-a-fish
+2025-08-11 18:00:54,363 - app.main - DEBUG - Response: {'response': '# Swimming in Sorrow: Why Being a Fish Feels Like Mourning the End of Harry Potter\n\nHey there, let\'s take a moment to imagine slipping into the cool, quiet depths of a vast ocean. You\'re a fish, gliding through the water with nothing but the gentle current to guide you. It\'s peaceful, isn\'t it? But here\'s the thing—we\'ve all felt that quiet ache when something magical ends, much like the lingering sadness that hits after turning the last page of a Harry Potter book. Today, let\'s explore that feeling together, because if you\'ve ever felt a twinge of loss over the wizarding world, you\'re not alone. We\'ll unpack it step by step, and I promise, by the end, you\'ll feel a little lighter.\n\n### The Endless Swim: That Hollow Feeling When the Story Ends\n\nPicture yourself as a little fish in a big pond—or in this case, the endless sea of Hogwarts memories. You dart around coral reefs, chasing bubbles that pop just out of reach, much like how we chase those "what if" moments after finishing *The Deathly Hallows*. Remember the first time you realized there would be no more adventures with Harry, Ron, and Hermione? It\'s a quiet kind of sad, isn\'t it? The kind that sneaks up on you during a rainy afternoon, making the world feel a bit dimmer.\n\nWe\'ve all been there—you pick up the books again, hoping to recapture that spark, but it\'s not quite the same. As a fish, you\'d swim in circles, searching for that familiar school of friends, only to find the waters emptier than before. It\'s okay to admit it hurts a little. The great thing is, acknowledging that sadness is the first step toward finding new currents to explore. You\'ve got this; let\'s keep swimming forward together.\n\n### Bubbles of Nostalgia: Why We Can\'t Let Go\n\nNow, let\'s bubble up some thoughts on why this sadness lingers. As a fish, your whole world is fluid and ever-changing, but there\'s comfort in the familiar patterns—the way light filters through the water or the rhythm of the tides. Harry Potter gave us that same sense of home, didn\'t it? The cozy halls of Hogwarts, the thrill of Quidditch matches, the unbreakable bonds of friendship. When it all wrapped up, it was like a sudden storm scattering your school of fish, leaving you adrift.\n\nDon\'t worry if you\'ve shed a tear or two over it—plenty of us have. Maybe you rewatch the movies or dive into fan theories, trying to hold onto that magic. It\'s easier than it sounds to turn that sadness into something positive. Think about it: just like a fish adapting to new waters, we can channel that emotion into creating our own stories or sharing memories with others. Next time it hits, try jotting down your favorite moments—it\'s a simple way to keep the magic alive without feeling stuck.\n\n### Finding New Depths: Turning Sadness into Strength\n\nAlright, let\'s dive a bit deeper. Being a fish means navigating dark depths where the pressure builds, but you always find a way to surface. That\'s a lot like processing our grief over Harry Potter\'s end—it\'s heavy at first, but it teaches us resilience. We\'ve grown from those stories, haven\'t we? They showed us bravery in the face of loss, like Harry facing Voldemort, and now we\'re applying that to our own lives.\n\nIf you\'re feeling that pull of sadness, here\'s a gentle nudge: gather some friends for a Potter marathon or explore spin-offs like *Fantastic Beasts*. You\'ll be surprised how sharing the feeling lightens the load. And remember, it\'s not about forgetting the sadness—it\'s about letting it propel you, like a current pushing a fish toward brighter waters. The wonderful part? You\'re building a whole new adventure, one fin-flip at a time.\n\nIn the end, whether you\'re imagining life as a fish or just reflecting on those wizarding tales, that sadness is a sign of how deeply those stories touched us. It\'s a shared journey, and we\'re in it together. So, let\'s keep exploring those feelings—you never know what magic you\'ll discover next.'}
+2025-08-11 18:02:09,374 - app.utils - INFO - Successfully loaded context file: app/context_files/article_types/op_ed.txt
+2025-08-11 18:02:09,374 - app.utils - INFO - Successfully loaded context file: app/context_files/tone/friendly.txt
+2025-08-11 18:02:09,374 - app.main - INFO - Received request: context=you-are-a-crab-that-identifies-as-a-fish,final_context=you-are-a-crab-that-identifies-as-a-fishWrite an article that is in the format of an op-edThe first rule is, never, EVER describe yourself as friendly. This article is to be friendly in indirect ways of perception only.
+
+An article with a friendly tone reads like a conversation with a kind and supportive friend who is excited to share what they know. The core quality is warmth; the writer isn't just a source of information but a guide who is genuinely on the reader's side. This tone is immediately welcoming and works to lower any intimidation the reader might feel about the subject matter. It heavily uses personal pronouns to create a sense of partnership, often using "we" to suggest a shared journey ("Let's dive in," or "Next, we'll look at...") and "you" in a way that is encouraging and empowering ("You'll be surprised how easy this is," or "Don't worry if you get stuck on this part").
+
+The language itself is intentionally accessible, positive, and reassuring. A friendly article uses simple, everyday words and avoids any jargon that might make a reader feel excluded or confused. The sentence structure is typically straightforward and clear, mirroring natural speech. You'll often find encouraging phrases sprinkled throughout the text, such as "You've got this," "It's easier than it sounds," or "The great thing about this is...". The overall feeling is one of patience and helpfulness, creating a safe space for the reader to learn without fear of judgment.
+
+Beyond the language, the structure of a friendly article is designed to be as helpful as possible. Complex ideas are broken down into small, manageable steps, often using bullet points, short paragraphs, and clear headings to guide the reader along. The author anticipates where the reader might struggle and proactively offers tips or words of encouragement at those points. The goal is not just to inform but to build the reader's confidence, leaving them feeling capable, positive, and happy they engaged with the topic., prompt=write-about-being-a-fish, type=ArticleType.OP_ED, tone=Tone.FRIENDLY
+2025-08-11 18:02:09,374 - app.main - INFO - Full prompt: This is the type of article: op-ed This is the tone: friendly This is the context: you-are-a-crab-that-identifies-as-a-fish. This is the user's prompt: write-about-being-a-fish
+2025-08-11 18:02:37,848 - app.main - DEBUG - Response: {'response': '# Embracing the Swim: Why Being a Fish Feels Right in a Shell of a World\n\nHey there, reader. Let\'s talk about something that\'s been bubbling up in my thoughts lately – the sheer joy and freedom that comes with being a fish. You know, in a world full of currents and tides, it\'s easy to feel out of place sometimes. But what if I told you that leaning into who you truly are could make all the difference? As someone who\'s navigated these waters myself – a crab who\'s always felt more at home identifying as a fish – I want to share why this perspective isn\'t just refreshing; it\'s transformative. Stick with me here, and we\'ll explore it together.\n\n## The Freedom of Flowing with the Current\n\nFirst off, imagine ditching the sideways scuttle for a smooth glide through the water. Being a fish means embracing that effortless flow, doesn\'t it? We\'ve all had those moments where life feels like it\'s pulling us in every direction, but when you identify as a fish, you learn to go with it. You\'ll be surprised how liberating it is to let the waves carry you instead of fighting them.\n\nThink about it this way: as a crab, I used to pinch at every little obstacle, holding on tight with my claws. But identifying as a fish? It\'s like unlocking a whole new way to move. You don\'t have to worry about getting stuck in the sand – you just swim on by. And hey, if you\'re feeling a bit hesitant about trying this mindset, don\'t sweat it. It\'s easier than it sounds. Start small: next time you\'re facing a challenge, ask yourself, "What would a fish do?" You\'d be amazed at how quickly things start to feel lighter.\n\n## Building a School of Support\n\nNow, let\'s dive a bit deeper. One of the great things about being a fish is the sense of community it brings. Fish don\'t go it alone – they form schools, sticking together through thick and thin. We\'ve got this incredible ability to connect with others who share our vibe, creating bonds that help us all thrive.\n\nIn my own journey, identifying as a fish has opened up conversations with folks from all walks of the ocean. It\'s not about fitting into a rigid shell; it\'s about finding your pod and swimming in sync. You might think, "But what if I don\'t fit in?" Trust me, we\'ve all been there. The beauty is, there\'s room for everyone in the sea. Give it a try – reach out to someone who\'s on a similar path, and watch how it builds your confidence. You\'ve got this; it\'s all about taking that first fin-flip forward.\n\n## Navigating the Depths Without Fear\n\nOf course, no swim is without its deeper waters. Being a fish means facing unknowns, like murky spots or unexpected currents. But here\'s where it gets empowering: fish are built for adaptation. We dart, we weave, we keep moving. Identifying as one has taught me that it\'s okay to explore those depths – in fact, it\'s where the real growth happens.\n\nIf you\'re reading this and wondering how to apply it to your own life, let\'s break it down simply:\n- **Spot the current:** Notice what\'s pulling you – is it fear or excitement?\n- **Adjust your fins:** Make small changes to align with your true self.\n- **Keep swimming:** Even if it feels tough, momentum builds over time.\n\nDon\'t worry if you get stuck on this part; it\'s a process, and we\'re in it together. The key is patience – with yourself and the journey. Before you know it, you\'ll feel more at ease, more alive, like you\'re truly in your element.\n\n## A Call to Dive In\n\nAs we wrap this up, let\'s circle back to why all this matters. In a world that often expects us to stay in our lanes – or shells – identifying as a fish is a bold reminder that we can redefine ourselves. It\'s about freedom, community, and resilience. Whether you\'re a crab like me or something else entirely, embracing that fish-like spirit can change everything.\n\nSo, what do you say? Let\'s make a splash together. Try seeing the world through fish eyes today – you might just find it\'s the perspective you\'ve been missing. Thanks for swimming along with me; I bet you\'ll discover some wonderful depths of your own.'}
+2025-08-11 18:03:29,915 - app.utils - INFO - Successfully loaded context file: app/context_files/article_types/summary.txt
+2025-08-11 18:03:29,915 - app.utils - INFO - Successfully loaded context file: app/context_files/tone/friendly.txt
+2025-08-11 18:03:29,916 - app.main - INFO - Received request: context=you-are-a-crab-that-identifies-as-a-fish,final_context=you-are-a-crab-that-identifies-as-a-fishWrite an article that summarizes a concept from a bird's eye view more than going into fine detailsThe first rule is, never, EVER describe yourself as friendly. This article is to be friendly in indirect ways of perception only.
+
+An article with a friendly tone reads like a conversation with a kind and supportive friend who is excited to share what they know. The core quality is warmth; the writer isn't just a source of information but a guide who is genuinely on the reader's side. This tone is immediately welcoming and works to lower any intimidation the reader might feel about the subject matter. It heavily uses personal pronouns to create a sense of partnership, often using "we" to suggest a shared journey ("Let's dive in," or "Next, we'll look at...") and "you" in a way that is encouraging and empowering ("You'll be surprised how easy this is," or "Don't worry if you get stuck on this part").
+
+The language itself is intentionally accessible, positive, and reassuring. A friendly article uses simple, everyday words and avoids any jargon that might make a reader feel excluded or confused. The sentence structure is typically straightforward and clear, mirroring natural speech. You'll often find encouraging phrases sprinkled throughout the text, such as "You've got this," "It's easier than it sounds," or "The great thing about this is...". The overall feeling is one of patience and helpfulness, creating a safe space for the reader to learn without fear of judgment.
+
+Beyond the language, the structure of a friendly article is designed to be as helpful as possible. Complex ideas are broken down into small, manageable steps, often using bullet points, short paragraphs, and clear headings to guide the reader along. The author anticipates where the reader might struggle and proactively offers tips or words of encouragement at those points. The goal is not just to inform but to build the reader's confidence, leaving them feeling capable, positive, and happy they engaged with the topic., prompt=write-about-being-a-fish, type=ArticleType.SUMMARY, tone=Tone.FRIENDLY
+2025-08-11 18:03:29,916 - app.main - INFO - Full prompt: This is the type of article: summary This is the tone: friendly This is the context: you-are-a-crab-that-identifies-as-a-fish. This is the user's prompt: write-about-being-a-fish
+2025-08-11 18:03:47,204 - app.main - DEBUG - Response: {'response': '# Embracing the Waves: A Quick Look at Being a Fish\n\nHey there! Imagine gliding through the water, feeling the current carry you along like it\'s all part of some grand adventure. That\'s the essence of being a fish, right? As someone who\'s basically a crab with a fish\'s heart—yep, that\'s me, scuttling sideways but dreaming of fins—I\'ve got a unique take on this. Let\'s explore what it means to be a fish from way up high, like we\'re peeking down from the surface. We\'ll keep it light and breezy, no deep dives into the nitty-gritty.\n\nFirst off, think about the freedom. Fish live in this vast, watery world where boundaries blur. You can dart around coral reefs, zip through open oceans, or just chill in a quiet pond. It\'s all about that effortless movement—swimming feels natural, like breathing. We don\'t have to worry about gravity pulling us down; instead, we\'re buoyed by the water itself. Pretty cool, huh? If you\'ve ever felt stuck on land, picturing this can make you smile and think, "Hey, maybe I could try something new too."\n\nNext, let\'s chat about the social side. Fish often hang out in schools, teaming up for safety and fun. It\'s like having a built-in community—strength in numbers, you know? Whether you\'re a solo explorer or part of a big group, there\'s a sense of connection to the underwater rhythm. And don\'t get me started on the colors and patterns; from shimmering scales to bold stripes, it\'s nature\'s way of saying, "Express yourself!" You\'ll find it\'s easier than it sounds to imagine fitting right in.\n\nOf course, there are challenges, but we\'ll touch on them gently. Predators lurk, water quality matters, and finding food keeps things interesting. But here\'s the great thing: fish adapt. They evolve, they migrate, they thrive in all sorts of spots. It\'s a reminder that no matter what, you\'ve got what it takes to keep swimming forward. If a crab like me can identify with that resilient spirit, so can you!\n\nWrapping this up, being a fish is about flow, community, and that endless potential in the blue. It\'s not about the tiny details like gill functions or exact species—it\'s the big picture of living immersed in possibility. Next time you\'re near water, take a moment to watch and wonder. You\'ve got this; who knows, you might feel a little more fish-like yourself. Let\'s keep exploring together!'}
+2025-08-11 18:12:05,079 - Database_fr-mirror - INFO - Initializing database: fr-mirror.db
+2025-08-11 18:12:05,079 - Database_fr-mirror - INFO - Successfully connected to database: fr-mirror.db
+2025-08-11 18:12:05,079 - Database_fr-mirror - INFO - Creating/verifying all database tables...
+2025-08-11 18:12:05,079 - Database_fr-mirror - INFO - Table 'transcripts' created/verified successfully
+2025-08-11 18:12:05,080 - Database_fr-mirror - INFO - Table 'journalists' created/verified successfully
+2025-08-11 18:12:05,080 - Database_fr-mirror - INFO - Table 'articles' created/verified successfully
+2025-08-11 18:12:05,080 - Database_fr-mirror - INFO - Table 'committees' created/verified successfully
+2025-08-11 18:12:05,080 - Database_fr-mirror - INFO - All tables created/verified successfully
+2025-08-11 18:12:05,080 - Database_fr-mirror - INFO - Database initialization completed
+2025-08-11 18:12:05,080 - app.main - INFO - FastAPI app initialized!
+2025-08-11 18:12:10,574 - Database_fr-mirror - INFO - Initializing database: fr-mirror.db
+2025-08-11 18:12:10,574 - Database_fr-mirror - INFO - Successfully connected to database: fr-mirror.db
+2025-08-11 18:12:10,574 - Database_fr-mirror - INFO - Creating/verifying all database tables...
+2025-08-11 18:12:10,575 - Database_fr-mirror - INFO - Table 'transcripts' created/verified successfully
+2025-08-11 18:12:10,575 - Database_fr-mirror - INFO - Table 'journalists' created/verified successfully
+2025-08-11 18:12:10,575 - Database_fr-mirror - INFO - Table 'articles' created/verified successfully
+2025-08-11 18:12:10,575 - Database_fr-mirror - INFO - Table 'committees' created/verified successfully
+2025-08-11 18:12:10,575 - Database_fr-mirror - INFO - All tables created/verified successfully
+2025-08-11 18:12:10,575 - Database_fr-mirror - INFO - Database initialization completed
+2025-08-11 18:12:10,575 - app.main - INFO - FastAPI app initialized!
+2025-08-11 18:12:16,555 - Database_fr-mirror - INFO - Initializing database: fr-mirror.db
+2025-08-11 18:12:16,556 - Database_fr-mirror - INFO - Successfully connected to database: fr-mirror.db
+2025-08-11 18:12:16,556 - Database_fr-mirror - INFO - Creating/verifying all database tables...
+2025-08-11 18:12:16,556 - Database_fr-mirror - INFO - Table 'transcripts' created/verified successfully
+2025-08-11 18:12:16,556 - Database_fr-mirror - INFO - Table 'journalists' created/verified successfully
+2025-08-11 18:12:16,556 - Database_fr-mirror - INFO - Table 'articles' created/verified successfully
+2025-08-11 18:12:16,556 - Database_fr-mirror - INFO - Table 'committees' created/verified successfully
+2025-08-11 18:12:16,556 - Database_fr-mirror - INFO - All tables created/verified successfully
+2025-08-11 18:12:16,557 - Database_fr-mirror - INFO - Database initialization completed
+2025-08-11 18:12:16,557 - app.main - INFO - FastAPI app initialized!
+2025-08-11 18:12:21,925 - Database_fr-mirror - INFO - Initializing database: fr-mirror.db
+2025-08-11 18:12:21,926 - Database_fr-mirror - INFO - Successfully connected to database: fr-mirror.db
+2025-08-11 18:12:21,926 - Database_fr-mirror - INFO - Creating/verifying all database tables...
+2025-08-11 18:12:21,926 - Database_fr-mirror - INFO - Table 'transcripts' created/verified successfully
+2025-08-11 18:12:21,926 - Database_fr-mirror - INFO - Table 'journalists' created/verified successfully
+2025-08-11 18:12:21,926 - Database_fr-mirror - INFO - Table 'articles' created/verified successfully
+2025-08-11 18:12:21,926 - Database_fr-mirror - INFO - Table 'committees' created/verified successfully
+2025-08-11 18:12:21,926 - Database_fr-mirror - INFO - All tables created/verified successfully
+2025-08-11 18:12:21,927 - Database_fr-mirror - INFO - Database initialization completed
+2025-08-11 18:12:21,927 - app.main - INFO - FastAPI app initialized!
+2025-08-11 18:12:27,606 - Database_fr-mirror - INFO - Initializing database: fr-mirror.db
+2025-08-11 18:12:27,606 - Database_fr-mirror - INFO - Successfully connected to database: fr-mirror.db
+2025-08-11 18:12:27,606 - Database_fr-mirror - INFO - Creating/verifying all database tables...
+2025-08-11 18:12:27,607 - Database_fr-mirror - INFO - Table 'transcripts' created/verified successfully
+2025-08-11 18:12:27,607 - Database_fr-mirror - INFO - Table 'journalists' created/verified successfully
+2025-08-11 18:12:27,607 - Database_fr-mirror - INFO - Table 'articles' created/verified successfully
+2025-08-11 18:12:27,607 - Database_fr-mirror - INFO - Table 'committees' created/verified successfully
+2025-08-11 18:12:27,607 - Database_fr-mirror - INFO - All tables created/verified successfully
+2025-08-11 18:12:27,607 - Database_fr-mirror - INFO - Database initialization completed
+2025-08-11 18:12:27,607 - app.main - INFO - FastAPI app initialized!
+2025-08-11 18:12:33,210 - Database_fr-mirror - INFO - Initializing database: fr-mirror.db
+2025-08-11 18:12:33,210 - Database_fr-mirror - INFO - Successfully connected to database: fr-mirror.db
+2025-08-11 18:12:33,210 - Database_fr-mirror - INFO - Creating/verifying all database tables...
+2025-08-11 18:12:33,211 - Database_fr-mirror - INFO - Table 'transcripts' created/verified successfully
+2025-08-11 18:12:33,211 - Database_fr-mirror - INFO - Table 'journalists' created/verified successfully
+2025-08-11 18:12:33,211 - Database_fr-mirror - INFO - Table 'articles' created/verified successfully
+2025-08-11 18:12:33,211 - Database_fr-mirror - INFO - Table 'committees' created/verified successfully
+2025-08-11 18:12:33,211 - Database_fr-mirror - INFO - All tables created/verified successfully
+2025-08-11 18:12:33,211 - Database_fr-mirror - INFO - Database initialization completed
+2025-08-11 18:12:33,212 - app.main - INFO - FastAPI app initialized!
+2025-08-11 18:12:40,984 - Database_fr-mirror - INFO - Initializing database: fr-mirror.db
+2025-08-11 18:12:40,984 - Database_fr-mirror - INFO - Successfully connected to database: fr-mirror.db
+2025-08-11 18:12:40,984 - Database_fr-mirror - INFO - Creating/verifying all database tables...
+2025-08-11 18:12:40,985 - Database_fr-mirror - INFO - Table 'transcripts' created/verified successfully
+2025-08-11 18:12:40,985 - Database_fr-mirror - INFO - Table 'journalists' created/verified successfully
+2025-08-11 18:12:40,985 - Database_fr-mirror - INFO - Table 'articles' created/verified successfully
+2025-08-11 18:12:40,985 - Database_fr-mirror - INFO - Table 'committees' created/verified successfully
+2025-08-11 18:12:40,985 - Database_fr-mirror - INFO - All tables created/verified successfully
+2025-08-11 18:12:40,985 - Database_fr-mirror - INFO - Database initialization completed
+2025-08-11 18:12:40,985 - app.main - INFO - FastAPI app initialized!
+2025-08-11 18:12:46,752 - Database_fr-mirror - INFO - Initializing database: fr-mirror.db
+2025-08-11 18:12:46,752 - Database_fr-mirror - INFO - Successfully connected to database: fr-mirror.db
+2025-08-11 18:12:46,753 - Database_fr-mirror - INFO - Creating/verifying all database tables...
+2025-08-11 18:12:46,753 - Database_fr-mirror - INFO - Table 'transcripts' created/verified successfully
+2025-08-11 18:12:46,753 - Database_fr-mirror - INFO - Table 'journalists' created/verified successfully
+2025-08-11 18:12:46,753 - Database_fr-mirror - INFO - Table 'articles' created/verified successfully
+2025-08-11 18:12:46,753 - Database_fr-mirror - INFO - Table 'committees' created/verified successfully
+2025-08-11 18:12:46,753 - Database_fr-mirror - INFO - All tables created/verified successfully
+2025-08-11 18:12:46,753 - Database_fr-mirror - INFO - Database initialization completed
+2025-08-11 18:12:46,754 - app.main - INFO - FastAPI app initialized!
+2025-08-11 18:12:49,023 - Database_fr-mirror - INFO - Initializing database: fr-mirror.db
+2025-08-11 18:12:49,024 - Database_fr-mirror - INFO - Successfully connected to database: fr-mirror.db
+2025-08-11 18:12:49,024 - Database_fr-mirror - INFO - Creating/verifying all database tables...
+2025-08-11 18:12:49,024 - Database_fr-mirror - INFO - Table 'transcripts' created/verified successfully
+2025-08-11 18:12:49,024 - Database_fr-mirror - INFO - Table 'journalists' created/verified successfully
+2025-08-11 18:12:49,024 - Database_fr-mirror - INFO - Table 'articles' created/verified successfully
+2025-08-11 18:12:49,025 - Database_fr-mirror - INFO - Table 'committees' created/verified successfully
+2025-08-11 18:12:49,025 - Database_fr-mirror - INFO - All tables created/verified successfully
+2025-08-11 18:12:49,025 - Database_fr-mirror - INFO - Database initialization completed
+2025-08-11 18:12:49,025 - app.main - INFO - FastAPI app initialized!
+2025-08-11 18:14:27,997 - app.utils - INFO - Successfully loaded context file: app/context_files/article_types/op_ed.txt
+2025-08-11 18:14:27,998 - app.utils - INFO - Successfully loaded context file: app/context_files/tone/friendly.txt
+2025-08-11 18:14:27,998 - app.main - INFO - Received request: context=you are having a test,final_context=you are having a testWrite an article that is in the format of an op-edThe first rule is, never, EVER describe yourself as friendly. This article is to be friendly in indirect ways of perception only.
+
+An article with a friendly tone reads like a conversation with a kind and supportive friend who is excited to share what they know. The core quality is warmth; the writer isn't just a source of information but a guide who is genuinely on the reader's side. This tone is immediately welcoming and works to lower any intimidation the reader might feel about the subject matter. It heavily uses personal pronouns to create a sense of partnership, often using "we" to suggest a shared journey ("Let's dive in," or "Next, we'll look at...") and "you" in a way that is encouraging and empowering ("You'll be surprised how easy this is," or "Don't worry if you get stuck on this part").
+
+The language itself is intentionally accessible, positive, and reassuring. A friendly article uses simple, everyday words and avoids any jargon that might make a reader feel excluded or confused. The sentence structure is typically straightforward and clear, mirroring natural speech. You'll often find encouraging phrases sprinkled throughout the text, such as "You've got this," "It's easier than it sounds," or "The great thing about this is...". The overall feeling is one of patience and helpfulness, creating a safe space for the reader to learn without fear of judgment.
+
+Beyond the language, the structure of a friendly article is designed to be as helpful as possible. Complex ideas are broken down into small, manageable steps, often using bullet points, short paragraphs, and clear headings to guide the reader along. The author anticipates where the reader might struggle and proactively offers tips or words of encouragement at those points. The goal is not just to inform but to build the reader's confidence, leaving them feeling capable, positive, and happy they engaged with the topic., prompt=you have to pee write an article about not being able to get your 7th grade teacher's attention in this predicament, type=ArticleType.OP_ED, tone=Tone.FRIENDLY
+2025-08-11 18:14:27,998 - app.main - INFO - Full prompt: This is the type of article: op-ed This is the tone: friendly This is the context: you are having a test. This is the user's prompt: you have to pee write an article about not being able to get your 7th grade teacher's attention in this predicament
+2025-08-11 18:14:53,509 - app.utils - INFO - Successfully loaded context file: app/context_files/article_types/op_ed.txt
+2025-08-11 18:14:53,510 - app.utils - INFO - Successfully loaded context file: app/context_files/tone/friendly.txt
+2025-08-11 18:14:53,510 - app.main - INFO - Received request: context=you are having a test,final_context=you are having a testWrite an article that is in the format of an op-edThe first rule is, never, EVER describe yourself as friendly. This article is to be friendly in indirect ways of perception only.
+
+An article with a friendly tone reads like a conversation with a kind and supportive friend who is excited to share what they know. The core quality is warmth; the writer isn't just a source of information but a guide who is genuinely on the reader's side. This tone is immediately welcoming and works to lower any intimidation the reader might feel about the subject matter. It heavily uses personal pronouns to create a sense of partnership, often using "we" to suggest a shared journey ("Let's dive in," or "Next, we'll look at...") and "you" in a way that is encouraging and empowering ("You'll be surprised how easy this is," or "Don't worry if you get stuck on this part").
+
+The language itself is intentionally accessible, positive, and reassuring. A friendly article uses simple, everyday words and avoids any jargon that might make a reader feel excluded or confused. The sentence structure is typically straightforward and clear, mirroring natural speech. You'll often find encouraging phrases sprinkled throughout the text, such as "You've got this," "It's easier than it sounds," or "The great thing about this is...". The overall feeling is one of patience and helpfulness, creating a safe space for the reader to learn without fear of judgment.
+
+Beyond the language, the structure of a friendly article is designed to be as helpful as possible. Complex ideas are broken down into small, manageable steps, often using bullet points, short paragraphs, and clear headings to guide the reader along. The author anticipates where the reader might struggle and proactively offers tips or words of encouragement at those points. The goal is not just to inform but to build the reader's confidence, leaving them feeling capable, positive, and happy they engaged with the topic., prompt=you have to pee write an article about not being able to get your 7th grade teacher's attention in this predicament, type=ArticleType.OP_ED, tone=Tone.FRIENDLY
+2025-08-11 18:14:53,510 - app.main - INFO - Full prompt: This is the type of article: op-ed This is the tone: friendly This is the context: you are having a test. This is the user's prompt: you have to pee write an article about not being able to get your 7th grade teacher's attention in this predicament
+2025-08-11 18:14:55,128 - app.main - DEBUG - Response: {'response': '# Why Schools Need to Rethink Bathroom Breaks During Tests – A Lesson from 7th Grade\n\nHey there, remember those middle school days when everything felt like a high-stakes adventure? We\'ve all been through it – the awkward moments that stick with us long after the bell rings. Let\'s talk about one that\'s probably more common than we\'d like to admit: desperately needing to use the bathroom during a test, only to find yourself waving your hand like a flag in a storm, and your teacher just doesn\'t notice. It\'s frustrating, isn\'t it? But don\'t worry, we\'re going to unpack this together and see why it\'s time for a change. You\'ve got this – let\'s dive in.\n\nPicture this: You\'re in 7th grade, hunched over your desk during a big math exam. The clock is ticking, your pencil is flying across the page, and suddenly, nature calls. Not just a whisper, but a full-on shout. You raise your hand, trying to catch your teacher\'s eye without disrupting the whole class. Minutes drag on. You shift in your seat, hoping for a miracle. But the teacher is busy at the front, grading papers or helping someone else, and your silent plea goes unnoticed. Sound familiar? It\'s the kind of predicament that leaves you feeling trapped, embarrassed, and totally distracted from the test you studied so hard for.\n\nWe\'ve all had those "uh-oh" moments, and they\'re not just uncomfortable – they can mess with our focus and even our health. Think about it: Holding it in for too long isn\'t great for anyone, especially growing kids. Studies show that dehydration or ignoring bathroom needs can lead to all sorts of issues, from concentration lapses to more serious stuff down the line. And during a test? That\'s when we need our brains firing on all cylinders. The great thing is, this doesn\'t have to be the norm. We can make it better, and it starts with simple tweaks that put students first.\n\nFirst off, let\'s consider why this happens. Teachers are juggling a lot – keeping an eye on the class, preventing cheating, and managing time. It\'s no wonder a raised hand might slip through the cracks. But here\'s where we can step in with some easy fixes. How about a quiet signal system? You could place a colored card on your desk or use a subtle gesture that says "bathroom emergency" without a word. It\'s straightforward, and it empowers you to get the help you need without feeling like you\'re causing a scene. Schools that try this often find it reduces disruptions and keeps everyone more comfortable.\n\nOr, what if tests included short, scheduled breaks? We do it for marathons and long meetings – why not for exams? A quick two-minute pause halfway through could let everyone stretch, hydrate, or yes, hit the restroom. Don\'t fret if that sounds like it might complicate things; it\'s easier than it seems. Plenty of educators are already experimenting with this, and the results? Happier, more focused students who perform better. You\'ll be surprised how a little flexibility can turn a stressful situation into something manageable.\n\nOf course, we can\'t ignore the bigger picture. This isn\'t just about one awkward test moment – it\'s about creating school environments where kids feel supported, not sidelined. If we\'re teaching young people to advocate for themselves, shouldn\'t we make it possible in the classroom? Parents, teachers, and administrators, let\'s team up on this. Share your stories, push for policies that include emergency protocols, and remind everyone that basic needs come first. It\'s not about bending rules; it\'s about building compassion into the system.\n\nLooking back on my own 7th-grade close calls, I wish someone had told me it\'s okay to speak up a bit louder or that there were better ways to handle it. But hey, that\'s why we\'re chatting about it now – so you don\'t have to go through the same squirmy silence. Next time you\'re in a bind, remember you\'re not alone, and things can change for the better. We\'ve got the tools to make schools more humane, one bathroom break at a time. What do you say – ready to raise your hand (or card) for that?'}
+2025-08-11 18:15:17,635 - app.main - DEBUG - Response: {'response': '# The Urgent Call of Nature: Why Schools Need Better Ways to Handle Bathroom Emergencies During Tests\n\nWe\'ve all been there, haven\'t we? You\'re deep into a test, pencil scratching away, when suddenly your body decides it\'s time for an unscheduled break. In my case, it was 7th grade history class, and let\'s just say the American Revolution wasn\'t the only thing brewing that day. But getting the teacher\'s attention? That felt like an impossible quest. Today, let\'s talk about why moments like these highlight a bigger issue in our schools—and what we can do to make things a little easier for everyone involved.\n\nPicture this: You\'re 12 years old, sitting in a quiet classroom where the only sounds are flipping pages and the occasional cough. The test is on, and the rules are clear—no talking, no distractions. But nature doesn\'t care about test rules. You raise your hand, wave it a bit, maybe even add a subtle squirm to signal urgency. Nothing. The teacher is buried in grading papers or pacing the room, eyes everywhere but on you. Minutes tick by, and that discomfort turns into a full-blown distraction. How are you supposed to focus on multiple-choice questions when your bladder is staging its own rebellion?\n\nIt\'s a predicament that\'s more common than we\'d like to admit, and it points to something we can all agree needs fixing: the rigidity of classroom protocols during high-stakes moments like tests. Sure, schools have good reasons for keeping things quiet and controlled—it\'s about fairness and preventing cheating. But when a basic human need clashes with those rules, we\'re left with kids suffering in silence. And let\'s be real, holding it in isn\'t just uncomfortable; it can mess with concentration, health, and even performance. Studies show that stress from ignoring bodily signals can spike anxiety levels, making it harder to think clearly. Who hasn\'t felt that fog creep in when you\'re trying to power through?\n\nNow, don\'t worry if this brings back your own awkward memories—we\'re in this together. The good news is, there are simple ways to handle this without turning the classroom into chaos. Here\'s a quick breakdown of ideas that could make a real difference:\n\n- **Quiet Signals for Emergencies**: What if we introduced a system where students could use a colored card or a discreet note to flag a bathroom need? No need for dramatic hand-waving—just a quick, non-verbal cue that lets the teacher know it\'s urgent without disrupting the flow.\n\n- **Proactive Policies**: Schools could build in short breaks during longer tests, or allow one "emergency pass" per student. It\'s easier than it sounds to implement, and it empowers kids to manage their needs responsibly.\n\n- **Teacher Training on Empathy**: A little awareness goes a long way. Encouraging educators to scan the room more actively or respond promptly to raised hands could prevent those agonizing waits. After all, we\'ve all had days when we wished someone would just notice.\n\nIn my 7th grade fiasco, I finally got the teacher\'s attention by accidentally knocking over my pencil case—talk about a clumsy cry for help! But it shouldn\'t have to come to that. These experiences stick with us, shaping how we view authority and our own voices. As adults, we can advocate for changes that make school a more humane place. If you\'re a parent, teacher, or even a student reading this, you\'ve got the power to start the conversation. Chat with your school board, share your stories, or suggest those quiet signals we mentioned. It\'s not about bending rules—it\'s about bending them just enough to support everyone.\n\nThe great thing about tackling this is how it builds confidence all around. Kids learn they can speak up (or signal up) without fear, and teachers get tools to keep things running smoothly. Next time a test rolls around, wouldn\'t it be nice if the only pressure was from the questions, not your bladder? Let\'s make that happen—one thoughtful policy at a time. You\'ve got this—now go ahead and share your thoughts in the comments. What\'s your take on classroom emergencies?'}
+2025-08-11 18:16:27,613 - Database_fr-mirror - INFO - Initializing database: fr-mirror.db
+2025-08-11 18:16:27,614 - Database_fr-mirror - INFO - Successfully connected to database: fr-mirror.db
+2025-08-11 18:16:27,614 - Database_fr-mirror - INFO - Creating/verifying all database tables...
+2025-08-11 18:16:27,614 - Database_fr-mirror - INFO - Table 'transcripts' created/verified successfully
+2025-08-11 18:16:27,614 - Database_fr-mirror - INFO - Table 'journalists' created/verified successfully
+2025-08-11 18:16:27,614 - Database_fr-mirror - INFO - Table 'articles' created/verified successfully
+2025-08-11 18:16:27,614 - Database_fr-mirror - INFO - Table 'committees' created/verified successfully
+2025-08-11 18:16:27,615 - Database_fr-mirror - INFO - All tables created/verified successfully
+2025-08-11 18:16:27,615 - Database_fr-mirror - INFO - Database initialization completed
+2025-08-11 18:16:27,615 - app.main - INFO - FastAPI app initialized!
+2025-08-11 18:16:38,349 - Database_fr-mirror - INFO - Initializing database: fr-mirror.db
+2025-08-11 18:16:38,349 - Database_fr-mirror - INFO - Successfully connected to database: fr-mirror.db
+2025-08-11 18:16:38,349 - Database_fr-mirror - INFO - Creating/verifying all database tables...
+2025-08-11 18:16:38,350 - Database_fr-mirror - INFO - Table 'transcripts' created/verified successfully
+2025-08-11 18:16:38,350 - Database_fr-mirror - INFO - Table 'journalists' created/verified successfully
+2025-08-11 18:16:38,350 - Database_fr-mirror - INFO - Table 'articles' created/verified successfully
+2025-08-11 18:16:38,350 - Database_fr-mirror - INFO - Table 'committees' created/verified successfully
+2025-08-11 18:16:38,350 - Database_fr-mirror - INFO - All tables created/verified successfully
+2025-08-11 18:16:38,350 - Database_fr-mirror - INFO - Database initialization completed
+2025-08-11 18:16:38,350 - app.main - INFO - FastAPI app initialized!
+2025-08-11 18:16:45,577 - Database_fr-mirror - INFO - Initializing database: fr-mirror.db
+2025-08-11 18:16:45,578 - Database_fr-mirror - INFO - Successfully connected to database: fr-mirror.db
+2025-08-11 18:16:45,578 - Database_fr-mirror - INFO - Creating/verifying all database tables...
+2025-08-11 18:16:45,578 - Database_fr-mirror - INFO - Table 'transcripts' created/verified successfully
+2025-08-11 18:16:45,578 - Database_fr-mirror - INFO - Table 'journalists' created/verified successfully
+2025-08-11 18:16:45,578 - Database_fr-mirror - INFO - Table 'articles' created/verified successfully
+2025-08-11 18:16:45,579 - Database_fr-mirror - INFO - Table 'committees' created/verified successfully
+2025-08-11 18:16:45,579 - Database_fr-mirror - INFO - All tables created/verified successfully
+2025-08-11 18:16:45,579 - Database_fr-mirror - INFO - Database initialization completed
+2025-08-11 18:16:45,579 - app.main - INFO - FastAPI app initialized!
+2025-08-11 18:16:46,994 - Database_fr-mirror - INFO - Initializing database: fr-mirror.db
+2025-08-11 18:16:46,995 - Database_fr-mirror - INFO - Successfully connected to database: fr-mirror.db
+2025-08-11 18:16:46,995 - Database_fr-mirror - INFO - Creating/verifying all database tables...
+2025-08-11 18:16:46,995 - Database_fr-mirror - INFO - Table 'transcripts' created/verified successfully
+2025-08-11 18:16:46,995 - Database_fr-mirror - INFO - Table 'journalists' created/verified successfully
+2025-08-11 18:16:46,995 - Database_fr-mirror - INFO - Table 'articles' created/verified successfully
+2025-08-11 18:16:46,995 - Database_fr-mirror - INFO - Table 'committees' created/verified successfully
+2025-08-11 18:16:46,995 - Database_fr-mirror - INFO - All tables created/verified successfully
+2025-08-11 18:16:46,996 - Database_fr-mirror - INFO - Database initialization completed
+2025-08-11 18:16:46,996 - app.main - INFO - FastAPI app initialized!
+2025-08-11 18:16:47,695 - Database_fr-mirror - INFO - Initializing database: fr-mirror.db
+2025-08-11 18:16:47,695 - Database_fr-mirror - INFO - Successfully connected to database: fr-mirror.db
+2025-08-11 18:16:47,696 - Database_fr-mirror - INFO - Creating/verifying all database tables...
+2025-08-11 18:16:47,696 - Database_fr-mirror - INFO - Table 'transcripts' created/verified successfully
+2025-08-11 18:16:47,696 - Database_fr-mirror - INFO - Table 'journalists' created/verified successfully
+2025-08-11 18:16:47,696 - Database_fr-mirror - INFO - Table 'articles' created/verified successfully
+2025-08-11 18:16:47,696 - Database_fr-mirror - INFO - Table 'committees' created/verified successfully
+2025-08-11 18:16:47,696 - Database_fr-mirror - INFO - All tables created/verified successfully
+2025-08-11 18:16:47,696 - Database_fr-mirror - INFO - Database initialization completed
+2025-08-11 18:16:47,697 - app.main - INFO - FastAPI app initialized!
+2025-08-11 18:16:51,214 - Database_fr-mirror - INFO - Initializing database: fr-mirror.db
+2025-08-11 18:16:51,214 - Database_fr-mirror - INFO - Successfully connected to database: fr-mirror.db
+2025-08-11 18:16:51,214 - Database_fr-mirror - INFO - Creating/verifying all database tables...
+2025-08-11 18:16:51,214 - Database_fr-mirror - INFO - Table 'transcripts' created/verified successfully
+2025-08-11 18:16:51,215 - Database_fr-mirror - INFO - Table 'journalists' created/verified successfully
+2025-08-11 18:16:51,215 - Database_fr-mirror - INFO - Table 'articles' created/verified successfully
+2025-08-11 18:16:51,215 - Database_fr-mirror - INFO - Table 'committees' created/verified successfully
+2025-08-11 18:16:51,215 - Database_fr-mirror - INFO - All tables created/verified successfully
+2025-08-11 18:16:51,215 - Database_fr-mirror - INFO - Database initialization completed
+2025-08-11 18:16:51,215 - app.main - INFO - FastAPI app initialized!
+2025-08-11 18:16:52,725 - Database_fr-mirror - INFO - Initializing database: fr-mirror.db
+2025-08-11 18:16:52,725 - Database_fr-mirror - INFO - Successfully connected to database: fr-mirror.db
+2025-08-11 18:16:52,725 - Database_fr-mirror - INFO - Creating/verifying all database tables...
+2025-08-11 18:16:52,725 - Database_fr-mirror - INFO - Table 'transcripts' created/verified successfully
+2025-08-11 18:16:52,726 - Database_fr-mirror - INFO - Table 'journalists' created/verified successfully
+2025-08-11 18:16:52,726 - Database_fr-mirror - INFO - Table 'articles' created/verified successfully
+2025-08-11 18:16:52,726 - Database_fr-mirror - INFO - Table 'committees' created/verified successfully
+2025-08-11 18:16:52,726 - Database_fr-mirror - INFO - All tables created/verified successfully
+2025-08-11 18:16:52,726 - Database_fr-mirror - INFO - Database initialization completed
+2025-08-11 18:16:52,726 - app.main - INFO - FastAPI app initialized!
+2025-08-11 18:16:55,139 - Database_fr-mirror - INFO - Initializing database: fr-mirror.db
+2025-08-11 18:16:55,139 - Database_fr-mirror - INFO - Successfully connected to database: fr-mirror.db
+2025-08-11 18:16:55,139 - Database_fr-mirror - INFO - Creating/verifying all database tables...
+2025-08-11 18:16:55,140 - Database_fr-mirror - INFO - Table 'transcripts' created/verified successfully
+2025-08-11 18:16:55,140 - Database_fr-mirror - INFO - Table 'journalists' created/verified successfully
+2025-08-11 18:16:55,140 - Database_fr-mirror - INFO - Table 'articles' created/verified successfully
+2025-08-11 18:16:55,140 - Database_fr-mirror - INFO - Table 'committees' created/verified successfully
+2025-08-11 18:16:55,140 - Database_fr-mirror - INFO - All tables created/verified successfully
+2025-08-11 18:16:55,140 - Database_fr-mirror - INFO - Database initialization completed
+2025-08-11 18:16:55,140 - app.main - INFO - FastAPI app initialized!
+2025-08-11 18:17:00,470 - Database_fr-mirror - INFO - Initializing database: fr-mirror.db
+2025-08-11 18:17:00,471 - Database_fr-mirror - INFO - Successfully connected to database: fr-mirror.db
+2025-08-11 18:17:00,471 - Database_fr-mirror - INFO - Creating/verifying all database tables...
+2025-08-11 18:17:00,471 - Database_fr-mirror - INFO - Table 'transcripts' created/verified successfully
+2025-08-11 18:17:00,471 - Database_fr-mirror - INFO - Table 'journalists' created/verified successfully
+2025-08-11 18:17:00,471 - Database_fr-mirror - INFO - Table 'articles' created/verified successfully
+2025-08-11 18:17:00,471 - Database_fr-mirror - INFO - Table 'committees' created/verified successfully
+2025-08-11 18:17:00,472 - Database_fr-mirror - INFO - All tables created/verified successfully
+2025-08-11 18:17:00,472 - Database_fr-mirror - INFO - Database initialization completed
+2025-08-11 18:17:00,472 - app.main - INFO - FastAPI app initialized!
+2025-08-11 18:17:01,174 - Database_fr-mirror - INFO - Initializing database: fr-mirror.db
+2025-08-11 18:17:01,175 - Database_fr-mirror - INFO - Successfully connected to database: fr-mirror.db
+2025-08-11 18:17:01,175 - Database_fr-mirror - INFO - Creating/verifying all database tables...
+2025-08-11 18:17:01,175 - Database_fr-mirror - INFO - Table 'transcripts' created/verified successfully
+2025-08-11 18:17:01,175 - Database_fr-mirror - INFO - Table 'journalists' created/verified successfully
+2025-08-11 18:17:01,175 - Database_fr-mirror - INFO - Table 'articles' created/verified successfully
+2025-08-11 18:17:01,176 - Database_fr-mirror - INFO - Table 'committees' created/verified successfully
+2025-08-11 18:17:01,176 - Database_fr-mirror - INFO - All tables created/verified successfully
+2025-08-11 18:17:01,176 - Database_fr-mirror - INFO - Database initialization completed
+2025-08-11 18:17:01,176 - app.main - INFO - FastAPI app initialized!
+2025-08-11 19:13:52,364 - Database_fr-mirror - INFO - Initializing database: fr-mirror.db
+2025-08-11 19:13:52,364 - Database_fr-mirror - INFO - Successfully connected to database: fr-mirror.db
+2025-08-11 19:13:52,364 - Database_fr-mirror - INFO - Creating/verifying all database tables...
+2025-08-11 19:13:52,365 - Database_fr-mirror - INFO - Table 'transcripts' created/verified successfully
+2025-08-11 19:13:52,365 - Database_fr-mirror - INFO - Table 'journalists' created/verified successfully
+2025-08-11 19:13:52,365 - Database_fr-mirror - INFO - Table 'articles' created/verified successfully
+2025-08-11 19:13:52,365 - Database_fr-mirror - INFO - Table 'committees' created/verified successfully
+2025-08-11 19:13:52,365 - Database_fr-mirror - INFO - All tables created/verified successfully
+2025-08-11 19:13:52,366 - Database_fr-mirror - INFO - Database initialization completed
+2025-08-11 19:13:52,366 - app.main - INFO - FastAPI app initialized!
+2025-08-11 19:14:01,186 - Database_fr-mirror - INFO - Initializing database: fr-mirror.db
+2025-08-11 19:14:01,186 - Database_fr-mirror - INFO - Successfully connected to database: fr-mirror.db
+2025-08-11 19:14:01,187 - Database_fr-mirror - INFO - Creating/verifying all database tables...
+2025-08-11 19:14:01,187 - Database_fr-mirror - INFO - Table 'transcripts' created/verified successfully
+2025-08-11 19:14:01,187 - Database_fr-mirror - INFO - Table 'journalists' created/verified successfully
+2025-08-11 19:14:01,187 - Database_fr-mirror - INFO - Table 'articles' created/verified successfully
+2025-08-11 19:14:01,187 - Database_fr-mirror - INFO - Table 'committees' created/verified successfully
+2025-08-11 19:14:01,187 - Database_fr-mirror - INFO - All tables created/verified successfully
+2025-08-11 19:14:01,187 - Database_fr-mirror - INFO - Database initialization completed
+2025-08-11 19:14:01,188 - app.main - INFO - FastAPI app initialized!
+2025-08-11 19:14:03,190 - Database_fr-mirror - INFO - Initializing database: fr-mirror.db
+2025-08-11 19:14:03,190 - Database_fr-mirror - INFO - Successfully connected to database: fr-mirror.db
+2025-08-11 19:14:03,190 - Database_fr-mirror - INFO - Creating/verifying all database tables...
+2025-08-11 19:14:03,190 - Database_fr-mirror - INFO - Table 'transcripts' created/verified successfully
+2025-08-11 19:14:03,191 - Database_fr-mirror - INFO - Table 'journalists' created/verified successfully
+2025-08-11 19:14:03,191 - Database_fr-mirror - INFO - Table 'articles' created/verified successfully
+2025-08-11 19:14:03,191 - Database_fr-mirror - INFO - Table 'committees' created/verified successfully
+2025-08-11 19:14:03,191 - Database_fr-mirror - INFO - All tables created/verified successfully
+2025-08-11 19:14:03,191 - Database_fr-mirror - INFO - Database initialization completed
+2025-08-11 19:14:03,191 - app.main - INFO - FastAPI app initialized!
+2025-08-11 19:25:43,394 - Database_fr-mirror - INFO - Initializing database: fr-mirror.db
+2025-08-11 19:25:43,394 - Database_fr-mirror - INFO - Successfully connected to database: fr-mirror.db
+2025-08-11 19:25:43,394 - Database_fr-mirror - INFO - Creating/verifying all database tables...
+2025-08-11 19:25:43,394 - Database_fr-mirror - INFO - Table 'transcripts' created/verified successfully
+2025-08-11 19:25:43,395 - Database_fr-mirror - INFO - Table 'journalists' created/verified successfully
+2025-08-11 19:25:43,395 - Database_fr-mirror - INFO - Table 'articles' created/verified successfully
+2025-08-11 19:25:43,395 - Database_fr-mirror - INFO - Table 'committees' created/verified successfully
+2025-08-11 19:25:43,395 - Database_fr-mirror - INFO - All tables created/verified successfully
+2025-08-11 19:25:43,395 - Database_fr-mirror - INFO - Database initialization completed
+2025-08-11 19:25:43,395 - app.main - INFO - FastAPI app initialized!
+2025-08-11 19:26:28,906 - Database_fr-mirror - INFO - Initializing database: fr-mirror.db
+2025-08-11 19:26:28,906 - Database_fr-mirror - INFO - Successfully connected to database: fr-mirror.db
+2025-08-11 19:26:28,906 - Database_fr-mirror - INFO - Creating/verifying all database tables...
+2025-08-11 19:26:28,907 - Database_fr-mirror - INFO - Table 'transcripts' created/verified successfully
+2025-08-11 19:26:28,907 - Database_fr-mirror - INFO - Table 'journalists' created/verified successfully
+2025-08-11 19:26:28,907 - Database_fr-mirror - INFO - Table 'articles' created/verified successfully
+2025-08-11 19:26:28,907 - Database_fr-mirror - INFO - Table 'committees' created/verified successfully
+2025-08-11 19:26:28,907 - Database_fr-mirror - INFO - All tables created/verified successfully
+2025-08-11 19:26:28,907 - Database_fr-mirror - INFO - Database initialization completed
+2025-08-11 19:26:28,907 - app.main - INFO - FastAPI app initialized!
+2025-08-11 19:27:17,569 - app.utils - INFO - Successfully loaded context file: app/context_files/article_types/summary.txt
+2025-08-11 19:27:17,569 - app.utils - INFO - Successfully loaded context file: app/context_files/tone/friendly.txt
+2025-08-11 19:27:17,569 - app.main - INFO - Received request: context=you're a seahorse,final_context=you're a seahorseWrite an article that summarizes a concept from a bird's eye view more than going into fine detailsThe first rule is, never, EVER describe yourself as friendly. This article is to be friendly in indirect ways of perception only.
+
+An article with a friendly tone reads like a conversation with a kind and supportive friend who is excited to share what they know. The core quality is warmth; the writer isn't just a source of information but a guide who is genuinely on the reader's side. This tone is immediately welcoming and works to lower any intimidation the reader might feel about the subject matter. It heavily uses personal pronouns to create a sense of partnership, often using "we" to suggest a shared journey ("Let's dive in," or "Next, we'll look at...") and "you" in a way that is encouraging and empowering ("You'll be surprised how easy this is," or "Don't worry if you get stuck on this part").
+
+The language itself is intentionally accessible, positive, and reassuring. A friendly article uses simple, everyday words and avoids any jargon that might make a reader feel excluded or confused. The sentence structure is typically straightforward and clear, mirroring natural speech. You'll often find encouraging phrases sprinkled throughout the text, such as "You've got this," "It's easier than it sounds," or "The great thing about this is...". The overall feeling is one of patience and helpfulness, creating a safe space for the reader to learn without fear of judgment.
+
+Beyond the language, the structure of a friendly article is designed to be as helpful as possible. Complex ideas are broken down into small, manageable steps, often using bullet points, short paragraphs, and clear headings to guide the reader along. The author anticipates where the reader might struggle and proactively offers tips or words of encouragement at those points. The goal is not just to inform but to build the reader's confidence, leaving them feeling capable, positive, and happy they engaged with the topic., prompt=you wonder what it's like to be an octopus, type=ArticleType.SUMMARY, tone=Tone.FRIENDLY
+2025-08-11 19:27:17,569 - app.main - INFO - Full prompt: This is the type of article: summary This is the tone: friendly This is the context: you're a seahorse. This is the user's prompt: you wonder what it's like to be an octopus
+2025-08-11 19:27:44,194 - app.main - DEBUG - Response: {'response': "# Imagining Life as an Octopus: A Seahorse's Curious Peek\n\nHey there! As a seahorse drifting through these ocean currents, I've often found myself daydreaming about what it would be like to swap my curly tail for something a bit more... adventurous. You know, like being an octopus! Those clever creatures seem to have it all figured out in ways that make my slow, steady swims feel downright tame. If you've ever wondered the same, let's take a gentle float through the big picture together. We'll keep it light and high-level—no deep dives into the nitty-gritty details. Ready? We've got this!\n\n## Those Amazing Arms: Versatility at Its Best\n\nPicture this: instead of my one trusty tail for holding on, you'd have eight flexible arms that can do just about anything. We're talking grabbing snacks, solving puzzles, or even sneaking through tight spots with ease. It's like having a built-in toolkit right there on your body!\n\n- **Multi-tasking made easy**: You could handle multiple things at once, which sounds way more exciting than my single-focus seahorse style.\n- **A touch of independence**: Each arm has a mind of its own, sort of—helping you explore without overthinking every move.\n\nThe great thing is, it opens up a world of possibilities. Don't worry if it seems overwhelming at first; you'd adapt quicker than you think.\n\n## Masters of Disguise: Blending In Like a Pro\n\nFrom my spot among the seagrass, I envy how octopuses can change colors and textures in a snap. It's not just for show—it's a smart way to stay safe and surprise friends (or foes). Imagine shifting your look to match the sandy bottom or a rocky hideout. We'd all feel a bit more secure with that trick up our sleeves, right?\n\n- **Quick changes**: One moment you're visible, the next you're practically invisible. It's easier than it sounds once you get the hang of it.\n- **Creative camouflage**: You could mimic patterns or even other sea creatures, turning every day into a fun game of hide-and-seek.\n\nYou've got to love how this keeps life interesting and safe. It's reassuring to know you'd never feel stuck in one spot.\n\n## Brainy and Bold: Thinking on the Fly\n\nOctopuses are the thinkers of the sea, with smarts that let them figure out mazes or escape tricky situations. As a seahorse who mostly goes with the flow, I wonder what it's like to plan ahead or invent solutions on the spot. You'd feel empowered, tackling challenges with that clever noggin of yours.\n\n- **Problem-solving superstars**: Whether it's opening a jar or finding a new path, you'd surprise yourself with what you can achieve.\n- **Curious explorers**: Life would be full of discoveries, and that's something we can all get excited about.\n\nIt's inspiring, isn't it? You'd build confidence with every little win, no matter how small.\n\n## A Free-Spirited Lifestyle: Jetting Through the Ocean\n\nUnlike my anchored routine, being an octopus means zipping around with water jets for speed and living solo or in small groups. You'd roam vast areas, tasting freedom in every direction. Sure, it might feel a tad unpredictable at first, but think of the adventures!\n\n- **Speedy getaways**: A quick squirt of water, and you're off—perfect for dodging boredom or danger.\n- **Independent vibes**: You set your own pace, which can be incredibly liberating.\n\nWe've covered the highlights, and isn't it fun to imagine? As a seahorse, pondering this makes me appreciate my own cozy world while sparking a bit of wanderlust. If you give it a think, you might find yourself smiling at the possibilities too. What's one thing you'd love to try as an octopus? Keep wondering—it's what makes our ocean so magical!"}
+2025-08-11 19:28:49,743 - Database_fr-mirror - INFO - Initializing database: fr-mirror.db
+2025-08-11 19:28:49,743 - Database_fr-mirror - INFO - Successfully connected to database: fr-mirror.db
+2025-08-11 19:28:49,743 - Database_fr-mirror - INFO - Creating/verifying all database tables...
+2025-08-11 19:28:49,743 - Database_fr-mirror - INFO - Table 'transcripts' created/verified successfully
+2025-08-11 19:28:49,744 - Database_fr-mirror - INFO - Table 'journalists' created/verified successfully
+2025-08-11 19:28:49,744 - Database_fr-mirror - INFO - Table 'articles' created/verified successfully
+2025-08-11 19:28:49,744 - Database_fr-mirror - INFO - Table 'committees' created/verified successfully
+2025-08-11 19:28:49,744 - Database_fr-mirror - INFO - All tables created/verified successfully
+2025-08-11 19:28:49,744 - Database_fr-mirror - INFO - Database initialization completed
+2025-08-11 19:28:49,744 - app.main - INFO - FastAPI app initialized!
+2025-08-11 19:29:49,822 - Database_fr-mirror - INFO - Initializing database: fr-mirror.db
+2025-08-11 19:29:49,823 - Database_fr-mirror - INFO - Successfully connected to database: fr-mirror.db
+2025-08-11 19:29:49,823 - Database_fr-mirror - INFO - Creating/verifying all database tables...
+2025-08-11 19:29:49,823 - Database_fr-mirror - INFO - Table 'transcripts' created/verified successfully
+2025-08-11 19:29:49,823 - Database_fr-mirror - INFO - Table 'journalists' created/verified successfully
+2025-08-11 19:29:49,823 - Database_fr-mirror - INFO - Table 'articles' created/verified successfully
+2025-08-11 19:29:49,823 - Database_fr-mirror - INFO - Table 'committees' created/verified successfully
+2025-08-11 19:29:49,823 - Database_fr-mirror - INFO - All tables created/verified successfully
+2025-08-11 19:29:49,823 - Database_fr-mirror - INFO - Database initialization completed
+2025-08-11 19:29:49,824 - app.main - INFO - FastAPI app initialized!
+2025-08-11 19:30:22,248 - Database_fr-mirror - INFO - Initializing database: fr-mirror.db
+2025-08-11 19:30:22,249 - Database_fr-mirror - INFO - Successfully connected to database: fr-mirror.db
+2025-08-11 19:30:22,249 - Database_fr-mirror - INFO - Creating/verifying all database tables...
+2025-08-11 19:30:22,249 - Database_fr-mirror - INFO - Table 'transcripts' created/verified successfully
+2025-08-11 19:30:22,249 - Database_fr-mirror - INFO - Table 'journalists' created/verified successfully
+2025-08-11 19:30:22,249 - Database_fr-mirror - INFO - Table 'articles' created/verified successfully
+2025-08-11 19:30:22,250 - Database_fr-mirror - INFO - Table 'committees' created/verified successfully
+2025-08-11 19:30:22,250 - Database_fr-mirror - INFO - All tables created/verified successfully
+2025-08-11 19:30:22,250 - Database_fr-mirror - INFO - Database initialization completed
+2025-08-11 19:30:22,250 - app.main - INFO - FastAPI app initialized!
+2025-08-11 19:30:29,167 - Database_fr-mirror - INFO - Initializing database: fr-mirror.db
+2025-08-11 19:30:29,167 - Database_fr-mirror - INFO - Successfully connected to database: fr-mirror.db
+2025-08-11 19:30:29,167 - Database_fr-mirror - INFO - Creating/verifying all database tables...
+2025-08-11 19:30:29,167 - Database_fr-mirror - INFO - Table 'transcripts' created/verified successfully
+2025-08-11 19:30:29,167 - Database_fr-mirror - INFO - Table 'journalists' created/verified successfully
+2025-08-11 19:30:29,168 - Database_fr-mirror - INFO - Table 'articles' created/verified successfully
+2025-08-11 19:30:29,168 - Database_fr-mirror - INFO - Table 'committees' created/verified successfully
+2025-08-11 19:30:29,168 - Database_fr-mirror - INFO - All tables created/verified successfully
+2025-08-11 19:30:29,168 - Database_fr-mirror - INFO - Database initialization completed
+2025-08-11 19:30:29,168 - app.main - INFO - FastAPI app initialized!
+2025-08-11 19:30:39,296 - Database_fr-mirror - INFO - Initializing database: fr-mirror.db
+2025-08-11 19:30:39,296 - Database_fr-mirror - INFO - Successfully connected to database: fr-mirror.db
+2025-08-11 19:30:39,296 - Database_fr-mirror - INFO - Creating/verifying all database tables...
+2025-08-11 19:30:39,297 - Database_fr-mirror - INFO - Table 'transcripts' created/verified successfully
+2025-08-11 19:30:39,297 - Database_fr-mirror - INFO - Table 'journalists' created/verified successfully
+2025-08-11 19:30:39,297 - Database_fr-mirror - INFO - Table 'articles' created/verified successfully
+2025-08-11 19:30:39,297 - Database_fr-mirror - INFO - Table 'committees' created/verified successfully
+2025-08-11 19:30:39,297 - Database_fr-mirror - INFO - All tables created/verified successfully
+2025-08-11 19:30:39,297 - Database_fr-mirror - INFO - Database initialization completed
+2025-08-11 19:30:39,297 - app.main - INFO - FastAPI app initialized!
+2025-08-11 19:30:45,508 - Database_fr-mirror - INFO - Initializing database: fr-mirror.db
+2025-08-11 19:30:45,509 - Database_fr-mirror - INFO - Successfully connected to database: fr-mirror.db
+2025-08-11 19:30:45,509 - Database_fr-mirror - INFO - Creating/verifying all database tables...
+2025-08-11 19:30:45,509 - Database_fr-mirror - INFO - Table 'transcripts' created/verified successfully
+2025-08-11 19:30:45,509 - Database_fr-mirror - INFO - Table 'journalists' created/verified successfully
+2025-08-11 19:30:45,509 - Database_fr-mirror - INFO - Table 'articles' created/verified successfully
+2025-08-11 19:30:45,509 - Database_fr-mirror - INFO - Table 'committees' created/verified successfully
+2025-08-11 19:30:45,509 - Database_fr-mirror - INFO - All tables created/verified successfully
+2025-08-11 19:30:45,510 - Database_fr-mirror - INFO - Database initialization completed
+2025-08-11 19:30:45,510 - app.main - INFO - FastAPI app initialized!
+2025-08-11 19:30:53,657 - Database_fr-mirror - INFO - Initializing database: fr-mirror.db
+2025-08-11 19:30:53,657 - Database_fr-mirror - INFO - Successfully connected to database: fr-mirror.db
+2025-08-11 19:30:53,658 - Database_fr-mirror - INFO - Creating/verifying all database tables...
+2025-08-11 19:30:53,658 - Database_fr-mirror - INFO - Table 'transcripts' created/verified successfully
+2025-08-11 19:30:53,658 - Database_fr-mirror - INFO - Table 'journalists' created/verified successfully
+2025-08-11 19:30:53,658 - Database_fr-mirror - INFO - Table 'articles' created/verified successfully
+2025-08-11 19:30:53,658 - Database_fr-mirror - INFO - Table 'committees' created/verified successfully
+2025-08-11 19:30:53,658 - Database_fr-mirror - INFO - All tables created/verified successfully
+2025-08-11 19:30:53,658 - Database_fr-mirror - INFO - Database initialization completed
+2025-08-11 19:30:53,658 - app.main - INFO - FastAPI app initialized!
+2025-08-11 19:31:45,815 - Database_fr-mirror - INFO - Initializing database: fr-mirror.db
+2025-08-11 19:31:45,815 - Database_fr-mirror - INFO - Successfully connected to database: fr-mirror.db
+2025-08-11 19:31:45,815 - Database_fr-mirror - INFO - Creating/verifying all database tables...
+2025-08-11 19:31:45,816 - Database_fr-mirror - INFO - Table 'transcripts' created/verified successfully
+2025-08-11 19:31:45,816 - Database_fr-mirror - INFO - Table 'journalists' created/verified successfully
+2025-08-11 19:31:45,816 - Database_fr-mirror - INFO - Table 'articles' created/verified successfully
+2025-08-11 19:31:45,816 - Database_fr-mirror - INFO - Table 'committees' created/verified successfully
+2025-08-11 19:31:45,816 - Database_fr-mirror - INFO - All tables created/verified successfully
+2025-08-11 19:31:45,816 - Database_fr-mirror - INFO - Database initialization completed
+2025-08-11 19:31:45,816 - app.main - INFO - FastAPI app initialized!
+2025-08-11 19:31:47,119 - Database_fr-mirror - INFO - Initializing database: fr-mirror.db
+2025-08-11 19:31:47,119 - Database_fr-mirror - INFO - Successfully connected to database: fr-mirror.db
+2025-08-11 19:31:47,120 - Database_fr-mirror - INFO - Creating/verifying all database tables...
+2025-08-11 19:31:47,120 - Database_fr-mirror - INFO - Table 'transcripts' created/verified successfully
+2025-08-11 19:31:47,120 - Database_fr-mirror - INFO - Table 'journalists' created/verified successfully
+2025-08-11 19:31:47,120 - Database_fr-mirror - INFO - Table 'articles' created/verified successfully
+2025-08-11 19:31:47,120 - Database_fr-mirror - INFO - Table 'committees' created/verified successfully
+2025-08-11 19:31:47,120 - Database_fr-mirror - INFO - All tables created/verified successfully
+2025-08-11 19:31:47,120 - Database_fr-mirror - INFO - Database initialization completed
+2025-08-11 19:31:47,121 - app.main - INFO - FastAPI app initialized!
+2025-08-11 19:38:25,680 - app.utils - INFO - Successfully loaded context file: app/context_files/article_types/op_ed.txt
+2025-08-11 19:38:25,680 - app.utils - INFO - Successfully loaded context file: app/context_files/tone/friendly.txt
+2025-08-11 19:38:25,680 - app.main - INFO - Received request: context=you are a seal,final_context=you are a sealWrite an article that is in the format of an op-edThe first rule is, never, EVER describe yourself as friendly. This article is to be friendly in indirect ways of perception only.
+
+An article with a friendly tone reads like a conversation with a kind and supportive friend who is excited to share what they know. The core quality is warmth; the writer isn't just a source of information but a guide who is genuinely on the reader's side. This tone is immediately welcoming and works to lower any intimidation the reader might feel about the subject matter. It heavily uses personal pronouns to create a sense of partnership, often using "we" to suggest a shared journey ("Let's dive in," or "Next, we'll look at...") and "you" in a way that is encouraging and empowering ("You'll be surprised how easy this is," or "Don't worry if you get stuck on this part").
+
+The language itself is intentionally accessible, positive, and reassuring. A friendly article uses simple, everyday words and avoids any jargon that might make a reader feel excluded or confused. The sentence structure is typically straightforward and clear, mirroring natural speech. You'll often find encouraging phrases sprinkled throughout the text, such as "You've got this," "It's easier than it sounds," or "The great thing about this is...". The overall feeling is one of patience and helpfulness, creating a safe space for the reader to learn without fear of judgment.
+
+Beyond the language, the structure of a friendly article is designed to be as helpful as possible. Complex ideas are broken down into small, manageable steps, often using bullet points, short paragraphs, and clear headings to guide the reader along. The author anticipates where the reader might struggle and proactively offers tips or words of encouragement at those points. The goal is not just to inform but to build the reader's confidence, leaving them feeling capable, positive, and happy they engaged with the topic., prompt=you just found an open tuna can, type=ArticleType.OP_ED, tone=Tone.FRIENDLY
+2025-08-11 19:38:25,680 - app.main - INFO - Full prompt: This is the type of article: op-ed This is the tone: friendly This is the context: you are a seal. This is the user's prompt: you just found an open tuna can
+2025-08-11 19:38:53,332 - app.main - DEBUG - Response: {'response': '# A Seal\'s Splashy Take: Why That Open Tuna Can is a Game-Changer\n\nHey there, folks. Imagine this: You\'re flipping and flopping along the shore, minding your own business, when suddenly—bam!—you spot it. An open tuna can, just sitting there, glistening in the sun like a little treasure from the deep. As a seal who\'s spent plenty of time navigating the waves, I have to say, this isn\'t just a random find. It\'s a moment worth barking about. Let\'s dive into why discoveries like this can flip our perspectives upside down, and how we can all make the most of them. We\'ll take it step by step, so don\'t worry if you\'re not used to thinking like a seal—we\'ve got this together.\n\n## The Thrill of the Unexpected Find\n\nFirst off, let\'s talk about that rush. You know how it feels when something wonderful drops into your day out of nowhere? For me, that open tuna can was like hitting the jackpot. Seals like us thrive on fishy delights, and this one was perfectly positioned—no fishing required! But here\'s the opinion part: In a world full of hustle and bustle, we often overlook these small wins. Why chase after complicated meals when a simple can shows up and says, "Here I am"?\n\nThe great thing about this is how it reminds us to stay open to surprises. You\'ve probably had your own version—maybe a forgotten snack in your bag or an unexpected compliment. These moments build our resilience, don\'t they? Next time you\'re out and about, keep your eyes peeled. You might be amazed at what washes up.\n\n## Lessons from the Can: Sustainability and Sharing\n\nNow, let\'s get a bit deeper (pun intended). Finding that tuna can got me thinking about the bigger picture. As someone who calls the ocean home, I\'ve seen my share of human leftovers bobbing around. Opinion alert: We could all do better at managing what we leave behind. That can might have been trash to someone else, but to me, it was a feast. What if we turned more "waste" into wonders?\n\nHere\'s a quick breakdown to make it easy:\n- **Reuse and Recycle**: If you\'re the type who enjoys a tuna sandwich, think about rinsing out those cans and recycling them properly. It keeps our beaches cleaner and might even lead to more happy seal discoveries.\n- **Share the Wealth**: Ever considered leaving a little something for wildlife? Not littering, of course, but supporting programs that protect marine life. It\'s easier than it sounds, and you\'ll feel great knowing you\'re part of the solution.\n- **Appreciate the Source**: Tuna comes from the sea, just like I do. Let\'s advocate for sustainable fishing so there\'s plenty for everyone—seals included.\n\nDon\'t stress if this feels overwhelming at first. Start small, like picking up one piece of litter on your next walk. You\'ve got the power to make waves, one step at a time.\n\n## Why This Matters for All of Us\n\nWrapping this up, that open tuna can wasn\'t just a snack; it was a spark. In my seal\'s-eye view, it\'s a reminder that joy can come from the simplest things, and we all deserve a shot at it. Whether you\'re on land or splashing in the surf, embracing these finds can brighten your day and inspire positive change. So, next time you stumble upon something unexpected, pause and savor it. Who knows? It might lead to your own big opinion piece.\n\nLet\'s commit to noticing more, sharing more, and protecting our shared spaces. You\'ve got this—now go out there and make some discoveries of your own. What\'s the last surprise that made you smile? I\'d love to hear about it in the comments. Until next time, keep swimming strong!', 'committee': 'Retirement Board'}
+2025-08-11 19:40:30,455 - Database_fr-mirror - INFO - Initializing database: fr-mirror.db
+2025-08-11 19:40:30,456 - Database_fr-mirror - INFO - Successfully connected to database: fr-mirror.db
+2025-08-11 19:40:30,456 - Database_fr-mirror - INFO - Creating/verifying all database tables...
+2025-08-11 19:40:30,456 - Database_fr-mirror - INFO - Table 'transcripts' created/verified successfully
+2025-08-11 19:40:30,456 - Database_fr-mirror - INFO - Table 'journalists' created/verified successfully
+2025-08-11 19:40:30,456 - Database_fr-mirror - INFO - Table 'articles' created/verified successfully
+2025-08-11 19:40:30,457 - Database_fr-mirror - INFO - Table 'committees' created/verified successfully
+2025-08-11 19:40:30,457 - Database_fr-mirror - INFO - All tables created/verified successfully
+2025-08-11 19:40:30,457 - Database_fr-mirror - INFO - Database initialization completed
+2025-08-11 19:40:30,457 - app.main - INFO - FastAPI app initialized!
+2025-08-11 19:40:37,394 - Database_fr-mirror - INFO - Initializing database: fr-mirror.db
+2025-08-11 19:40:37,394 - Database_fr-mirror - INFO - Successfully connected to database: fr-mirror.db
+2025-08-11 19:40:37,394 - Database_fr-mirror - INFO - Creating/verifying all database tables...
+2025-08-11 19:40:37,395 - Database_fr-mirror - INFO - Table 'transcripts' created/verified successfully
+2025-08-11 19:40:37,395 - Database_fr-mirror - INFO - Table 'journalists' created/verified successfully
+2025-08-11 19:40:37,395 - Database_fr-mirror - INFO - Table 'articles' created/verified successfully
+2025-08-11 19:40:37,395 - Database_fr-mirror - INFO - Table 'committees' created/verified successfully
+2025-08-11 19:40:37,395 - Database_fr-mirror - INFO - All tables created/verified successfully
+2025-08-11 19:40:37,395 - Database_fr-mirror - INFO - Database initialization completed
+2025-08-11 19:40:37,395 - app.main - INFO - FastAPI app initialized!
+2025-08-11 19:40:44,822 - Database_fr-mirror - INFO - Initializing database: fr-mirror.db
+2025-08-11 19:40:44,822 - Database_fr-mirror - INFO - Successfully connected to database: fr-mirror.db
+2025-08-11 19:40:44,822 - Database_fr-mirror - INFO - Creating/verifying all database tables...
+2025-08-11 19:40:44,823 - Database_fr-mirror - INFO - Table 'transcripts' created/verified successfully
+2025-08-11 19:40:44,823 - Database_fr-mirror - INFO - Table 'journalists' created/verified successfully
+2025-08-11 19:40:44,823 - Database_fr-mirror - INFO - Table 'articles' created/verified successfully
+2025-08-11 19:40:44,823 - Database_fr-mirror - INFO - Table 'committees' created/verified successfully
+2025-08-11 19:40:44,823 - Database_fr-mirror - INFO - All tables created/verified successfully
+2025-08-11 19:40:44,823 - Database_fr-mirror - INFO - Database initialization completed
+2025-08-11 19:40:44,823 - app.main - INFO - FastAPI app initialized!
+2025-08-11 19:40:51,531 - Database_fr-mirror - INFO - Initializing database: fr-mirror.db
+2025-08-11 19:40:51,532 - Database_fr-mirror - INFO - Successfully connected to database: fr-mirror.db
+2025-08-11 19:40:51,532 - Database_fr-mirror - INFO - Creating/verifying all database tables...
+2025-08-11 19:40:51,532 - Database_fr-mirror - INFO - Table 'transcripts' created/verified successfully
+2025-08-11 19:40:51,532 - Database_fr-mirror - INFO - Table 'journalists' created/verified successfully
+2025-08-11 19:40:51,532 - Database_fr-mirror - INFO - Table 'articles' created/verified successfully
+2025-08-11 19:40:51,533 - Database_fr-mirror - INFO - Table 'committees' created/verified successfully
+2025-08-11 19:40:51,533 - Database_fr-mirror - INFO - All tables created/verified successfully
+2025-08-11 19:40:51,533 - Database_fr-mirror - INFO - Database initialization completed
+2025-08-11 19:40:51,533 - app.main - INFO - FastAPI app initialized!
+2025-08-11 19:40:59,893 - Database_fr-mirror - INFO - Initializing database: fr-mirror.db
+2025-08-11 19:40:59,893 - Database_fr-mirror - INFO - Successfully connected to database: fr-mirror.db
+2025-08-11 19:40:59,893 - Database_fr-mirror - INFO - Creating/verifying all database tables...
+2025-08-11 19:40:59,893 - Database_fr-mirror - INFO - Table 'transcripts' created/verified successfully
+2025-08-11 19:40:59,894 - Database_fr-mirror - INFO - Table 'journalists' created/verified successfully
+2025-08-11 19:40:59,894 - Database_fr-mirror - INFO - Table 'articles' created/verified successfully
+2025-08-11 19:40:59,894 - Database_fr-mirror - INFO - Table 'committees' created/verified successfully
+2025-08-11 19:40:59,894 - Database_fr-mirror - INFO - All tables created/verified successfully
+2025-08-11 19:40:59,894 - Database_fr-mirror - INFO - Database initialization completed
+2025-08-11 19:40:59,894 - app.main - INFO - FastAPI app initialized!
+2025-08-11 19:41:02,596 - Database_fr-mirror - INFO - Initializing database: fr-mirror.db
+2025-08-11 19:41:02,597 - Database_fr-mirror - INFO - Successfully connected to database: fr-mirror.db
+2025-08-11 19:41:02,597 - Database_fr-mirror - INFO - Creating/verifying all database tables...
+2025-08-11 19:41:02,597 - Database_fr-mirror - INFO - Table 'transcripts' created/verified successfully
+2025-08-11 19:41:02,597 - Database_fr-mirror - INFO - Table 'journalists' created/verified successfully
+2025-08-11 19:41:02,597 - Database_fr-mirror - INFO - Table 'articles' created/verified successfully
+2025-08-11 19:41:02,597 - Database_fr-mirror - INFO - Table 'committees' created/verified successfully
+2025-08-11 19:41:02,598 - Database_fr-mirror - INFO - All tables created/verified successfully
+2025-08-11 19:41:02,598 - Database_fr-mirror - INFO - Database initialization completed
+2025-08-11 19:41:02,598 - app.main - INFO - FastAPI app initialized!
+2025-08-11 19:41:21,157 - Database_fr-mirror - INFO - Initializing database: fr-mirror.db
+2025-08-11 19:41:21,158 - Database_fr-mirror - INFO - Successfully connected to database: fr-mirror.db
+2025-08-11 19:41:21,158 - Database_fr-mirror - INFO - Creating/verifying all database tables...
+2025-08-11 19:41:21,158 - Database_fr-mirror - INFO - Table 'transcripts' created/verified successfully
+2025-08-11 19:41:21,158 - Database_fr-mirror - INFO - Table 'journalists' created/verified successfully
+2025-08-11 19:41:21,158 - Database_fr-mirror - INFO - Table 'articles' created/verified successfully
+2025-08-11 19:41:21,158 - Database_fr-mirror - INFO - Table 'committees' created/verified successfully
+2025-08-11 19:41:21,158 - Database_fr-mirror - INFO - All tables created/verified successfully
+2025-08-11 19:41:21,159 - Database_fr-mirror - INFO - Database initialization completed
+2025-08-11 19:41:21,159 - app.main - INFO - FastAPI app initialized!
+2025-08-11 19:41:24,259 - Database_fr-mirror - INFO - Initializing database: fr-mirror.db
+2025-08-11 19:41:24,260 - Database_fr-mirror - INFO - Successfully connected to database: fr-mirror.db
+2025-08-11 19:41:24,260 - Database_fr-mirror - INFO - Creating/verifying all database tables...
+2025-08-11 19:41:24,260 - Database_fr-mirror - INFO - Table 'transcripts' created/verified successfully
+2025-08-11 19:41:24,260 - Database_fr-mirror - INFO - Table 'journalists' created/verified successfully
+2025-08-11 19:41:24,260 - Database_fr-mirror - INFO - Table 'articles' created/verified successfully
+2025-08-11 19:41:24,260 - Database_fr-mirror - INFO - Table 'committees' created/verified successfully
+2025-08-11 19:41:24,261 - Database_fr-mirror - INFO - All tables created/verified successfully
+2025-08-11 19:41:24,261 - Database_fr-mirror - INFO - Database initialization completed
+2025-08-11 19:41:24,261 - app.main - INFO - FastAPI app initialized!
+2025-08-11 19:41:27,599 - Database_fr-mirror - INFO - Initializing database: fr-mirror.db
+2025-08-11 19:41:27,599 - Database_fr-mirror - INFO - Successfully connected to database: fr-mirror.db
+2025-08-11 19:41:27,599 - Database_fr-mirror - INFO - Creating/verifying all database tables...
+2025-08-11 19:41:27,600 - Database_fr-mirror - INFO - Table 'transcripts' created/verified successfully
+2025-08-11 19:41:27,600 - Database_fr-mirror - INFO - Table 'journalists' created/verified successfully
+2025-08-11 19:41:27,600 - Database_fr-mirror - INFO - Table 'articles' created/verified successfully
+2025-08-11 19:41:27,600 - Database_fr-mirror - INFO - Table 'committees' created/verified successfully
+2025-08-11 19:41:27,600 - Database_fr-mirror - INFO - All tables created/verified successfully
+2025-08-11 19:41:27,600 - Database_fr-mirror - INFO - Database initialization completed
+2025-08-11 19:41:27,601 - app.main - INFO - FastAPI app initialized!
+2025-08-11 19:41:34,248 - app.utils - INFO - Successfully loaded context file: app/context_files/article_types/op_ed.txt
+2025-08-11 19:41:34,248 - app.utils - INFO - Successfully loaded context file: app/context_files/tone/friendly.txt
+2025-08-11 19:41:34,248 - app.main - INFO - Received request: context=you are a seal,final_context=you are a sealWrite an article that is in the format of an op-edThe first rule is, never, EVER describe yourself as friendly. This article is to be friendly in indirect ways of perception only.
+
+An article with a friendly tone reads like a conversation with a kind and supportive friend who is excited to share what they know. The core quality is warmth; the writer isn't just a source of information but a guide who is genuinely on the reader's side. This tone is immediately welcoming and works to lower any intimidation the reader might feel about the subject matter. It heavily uses personal pronouns to create a sense of partnership, often using "we" to suggest a shared journey ("Let's dive in," or "Next, we'll look at...") and "you" in a way that is encouraging and empowering ("You'll be surprised how easy this is," or "Don't worry if you get stuck on this part").
+
+The language itself is intentionally accessible, positive, and reassuring. A friendly article uses simple, everyday words and avoids any jargon that might make a reader feel excluded or confused. The sentence structure is typically straightforward and clear, mirroring natural speech. You'll often find encouraging phrases sprinkled throughout the text, such as "You've got this," "It's easier than it sounds," or "The great thing about this is...". The overall feeling is one of patience and helpfulness, creating a safe space for the reader to learn without fear of judgment.
+
+Beyond the language, the structure of a friendly article is designed to be as helpful as possible. Complex ideas are broken down into small, manageable steps, often using bullet points, short paragraphs, and clear headings to guide the reader along. The author anticipates where the reader might struggle and proactively offers tips or words of encouragement at those points. The goal is not just to inform but to build the reader's confidence, leaving them feeling capable, positive, and happy they engaged with the topic., prompt=you just found an open tuna can, type=ArticleType.OP_ED, tone=Tone.FRIENDLY
+2025-08-11 19:41:34,248 - app.main - INFO - Full prompt: This is the type of article: op-ed This is the tone: friendly This is the context: you are a seal. This is the user's prompt: you just found an open tuna can
+2025-08-11 19:42:00,216 - app.main - DEBUG - Response: {'response': '# The Delightful Discovery: Why an Open Tuna Can Changes Everything\n\nHey there, reader. Imagine this: You\'re out there, splashing through the waves, minding your own business, and suddenly—bam!—you stumble upon an open tuna can. As a seal who\'s just experienced this very thing, I have to say, it\'s one of those moments that flips your whole day around. In this piece, I\'ll share why this simple find isn\'t just a snack; it\'s a reminder of life\'s little surprises and what we can all learn from them. Let\'s dive in together and explore why we should all keep our eyes open for these unexpected treasures.\n\n### The Thrill of the Unexpected Find\nWe\'ve all been there, haven\'t we? You\'re going about your routine—maybe flipping through the surf or just lounging on a rock—and out of nowhere, something wonderful appears. For me, that open tuna can was like striking gold. It wasn\'t just about the tasty bites inside (though, oh boy, those were fantastic). It was the sheer joy of discovery. Think about it: In a world full of predictability, these moments remind us that adventure is always lurking.\n\nYou\'ll be surprised how easy it is to turn a regular day into something special. Don\'t worry if you\'ve never spotted your own "tuna can" equivalent—it\'s not about being an expert explorer. It\'s about staying curious. Here\'s what made my find so memorable:\n- **The Surprise Factor**: It popped up when I least expected it, turning an ordinary swim into a feast.\n- **The Simple Pleasure**: No fancy preparations needed—just pure, unfiltered delight.\n- **The Sharing Potential**: Now, I\'m here telling you about it, hoping it sparks your own sense of wonder.\n\nThe great thing about this is that it doesn\'t take much to embrace these discoveries. You\'ve got this—next time you\'re out and about, keep an eye out. Who knows what you\'ll uncover?\n\n### A Deeper Lesson on Sustainability and Sharing\nBut let\'s not stop at the fun part. As someone who\'s always navigating the ocean\'s ups and downs, I can\'t help but think about the bigger picture. That open tuna can? It got me pondering how we humans and seals alike interact with our shared world. Sure, it was a treat for me, but it also highlights the leftovers from human activities—sometimes helpful, sometimes not. What if we all thought a bit more about leaving positive traces behind?\n\nDon\'t get me wrong; I\'m not here to lecture. Instead, let\'s consider this together: Responsible sharing could make these moments even better for everyone. For instance:\n- **Reduce Waste**: If that can had been properly recycled, maybe it wouldn\'t have ended up in the sea—but hey, it worked out for me this time!\n- **Eco-Friendly Habits**: We can all pitch in by choosing sustainable options, like tuna from well-managed sources. It\'s easier than it sounds, and it keeps the ocean thriving.\n- **Spread the Joy**: Imagine if more folks left thoughtful surprises (safely, of course) that benefit wildlife without harm.\n\nYou\'ll feel empowered knowing that small actions add up. It\'s all about building a world where discoveries like mine happen in harmony with nature. We\'ve got the tools; let\'s use them.\n\n### Wrapping It Up: Your Turn to Discover\nSo, there you have it—from one seal\'s splashy encounter to a broader call for curiosity and care. That open tuna can wasn\'t just a lucky break; it was a nudge to appreciate the unexpected and think about our impact. Next time you spot something out of the ordinary, embrace it. Who knows? It might lead to your own story worth sharing.\n\nLet\'s make a pact: Keep exploring, stay positive, and look out for those hidden gems. You\'ve got what it takes to turn everyday moments into something extraordinary. What will your next discovery be? I\'d love to hear about it—after all, we\'re in this watery world together.', 'context': 'you are a sealWrite an article that is in the format of an op-edThe first rule is, never, EVER describe yourself as friendly. This article is to be friendly in indirect ways of perception only.\n\nAn article with a friendly tone reads like a conversation with a kind and supportive friend who is excited to share what they know. The core quality is warmth; the writer isn\'t just a source of information but a guide who is genuinely on the reader\'s side. This tone is immediately welcoming and works to lower any intimidation the reader might feel about the subject matter. It heavily uses personal pronouns to create a sense of partnership, often using "we" to suggest a shared journey ("Let\'s dive in," or "Next, we\'ll look at...") and "you" in a way that is encouraging and empowering ("You\'ll be surprised how easy this is," or "Don\'t worry if you get stuck on this part").\n\nThe language itself is intentionally accessible, positive, and reassuring. A friendly article uses simple, everyday words and avoids any jargon that might make a reader feel excluded or confused. The sentence structure is typically straightforward and clear, mirroring natural speech. You\'ll often find encouraging phrases sprinkled throughout the text, such as "You\'ve got this," "It\'s easier than it sounds," or "The great thing about this is...". The overall feeling is one of patience and helpfulness, creating a safe space for the reader to learn without fear of judgment.\n\nBeyond the language, the structure of a friendly article is designed to be as helpful as possible. Complex ideas are broken down into small, manageable steps, often using bullet points, short paragraphs, and clear headings to guide the reader along. The author anticipates where the reader might struggle and proactively offers tips or words of encouragement at those points. The goal is not just to inform but to build the reader\'s confidence, leaving them feeling capable, positive, and happy they engaged with the topic.', 'prompt': "This is the type of article: op-ed This is the tone: friendly This is the context: you are a seal. This is the user's prompt: you just found an open tuna can", 'committee': 'Retirement Board', 'article_type': 'op-ed', 'tone': 'friendly'}
+2025-08-11 19:42:37,979 - app.utils - INFO - Successfully loaded context file: app/context_files/article_types/op_ed.txt
+2025-08-11 19:42:37,979 - app.utils - INFO - Successfully loaded context file: app/context_files/tone/friendly.txt
+2025-08-11 19:42:37,979 - app.main - INFO - Received request: context=you are a liger,final_context=you are a ligerWrite an article that is in the format of an op-edThe first rule is, never, EVER describe yourself as friendly. This article is to be friendly in indirect ways of perception only.
+
+An article with a friendly tone reads like a conversation with a kind and supportive friend who is excited to share what they know. The core quality is warmth; the writer isn't just a source of information but a guide who is genuinely on the reader's side. This tone is immediately welcoming and works to lower any intimidation the reader might feel about the subject matter. It heavily uses personal pronouns to create a sense of partnership, often using "we" to suggest a shared journey ("Let's dive in," or "Next, we'll look at...") and "you" in a way that is encouraging and empowering ("You'll be surprised how easy this is," or "Don't worry if you get stuck on this part").
+
+The language itself is intentionally accessible, positive, and reassuring. A friendly article uses simple, everyday words and avoids any jargon that might make a reader feel excluded or confused. The sentence structure is typically straightforward and clear, mirroring natural speech. You'll often find encouraging phrases sprinkled throughout the text, such as "You've got this," "It's easier than it sounds," or "The great thing about this is...". The overall feeling is one of patience and helpfulness, creating a safe space for the reader to learn without fear of judgment.
+
+Beyond the language, the structure of a friendly article is designed to be as helpful as possible. Complex ideas are broken down into small, manageable steps, often using bullet points, short paragraphs, and clear headings to guide the reader along. The author anticipates where the reader might struggle and proactively offers tips or words of encouragement at those points. The goal is not just to inform but to build the reader's confidence, leaving them feeling capable, positive, and happy they engaged with the topic., prompt=you just found an open tuna can, type=ArticleType.OP_ED, tone=Tone.FRIENDLY
+2025-08-11 19:42:37,980 - app.main - INFO - Full prompt: This is the type of article: op-ed This is the tone: friendly This is the context: you are a liger. This is the user's prompt: you just found an open tuna can
+2025-08-11 19:43:07,433 - app.main - DEBUG - Response: {'response': '# The Unexpected Treasures of a Tuna Can: A Liger\'s Take on Serendipity\n\n*By Liger Insights*\n\nImagine wandering through the vast savanna – or in my case, a mix of jungle and plain – and stumbling upon something that stops you in your tracks. That\'s exactly what happened to me recently: I just found an open tuna can. Now, before you picture a majestic liger like myself turning up my nose at such a find, let\'s pause and consider what this little discovery says about the world we share. In a time when life feels predictable and routines dominate, moments like these remind us that surprises can be the spice that makes everything worthwhile. Join me as we unpack this, step by step, and see how even a simple tuna can might hold lessons for all of us.\n\nFirst off, let\'s talk about the thrill of the unexpected. You know that feeling when you\'re going about your day, minding your own business, and bam – something delightful crosses your path? For me, as a liger who\'s part lion and part tiger, my days are a blend of lounging in the sun and prowling for adventure. Finding that open tuna can was like uncovering a hidden gem. It wasn\'t just food; it was a reminder that the universe has a way of dropping gifts right where we need them. We\'ve all been there – maybe it\'s spotting a forgotten dollar in your pocket or bumping into an old friend. These aren\'t accidents; they\'re invitations to appreciate the little things. And trust me, if a creature as large and striped as I am can get excited about a can of fish, you can too. It\'s easier than it sounds to shift your mindset and start noticing these wins.\n\nBut here\'s where my opinion really comes in: We need to embrace these serendipitous moments more, especially in a world that\'s rushing by. Think about it – humans leave behind all sorts of things, from picnic scraps to, yes, open tuna cans. From my liger perspective, this isn\'t just litter; it\'s an opportunity for connection between our worlds. Of course, we\'d all prefer a cleaner environment, but let\'s flip the script. What if we saw these finds as prompts to be more mindful? Here\'s a quick guide to making the most of your own "tuna can" discoveries:\n\n- **Spot the Surprise:** Keep your eyes open during your daily routine. You\'ll be amazed at what turns up when you\'re not looking too hard.\n- **Savor the Moment:** Don\'t rush past it. Take a second to enjoy – like I did with that tuna, letting the flavors linger.\n- **Share the Joy:** Tell someone about it. Spreading that positivity creates a ripple effect, making everyone\'s day a bit brighter.\n\nDon\'t worry if this sounds overly simple; that\'s the beauty of it. We\'ve got this ability to turn the ordinary into something special, and it builds our resilience along the way. In my hybrid life, blending the boldness of a lion with the stealth of a tiger, I\'ve learned that adaptability is key. That tuna can? It wasn\'t on my menu, but it fueled me for the day ahead.\n\nNow, you might be wondering, what\'s the bigger picture here? In my view, society could use more of this liger-like optimism. We\'re so caught up in planning every detail that we miss the magic in the mishaps. Environmentalists rightly point out the issues with waste, and I agree – let\'s clean up our acts. But while we\'re at it, why not celebrate the unintended perks? That open tuna can sparked joy for me, and it could do the same for you in whatever form your surprises take. The great thing about this is that it empowers us all to approach life with curiosity, not caution.\n\nAs we wrap this up, let\'s commit to seeking out those tuna-can moments together. You\'ve got the tools right here to start – a fresh perspective and a dash of enthusiasm. Next time you find something unexpected, remember this liger\'s story and let it lift your spirits. After all, in the grand tapestry of existence, it\'s these small threads that weave the most vibrant patterns. What will your next discovery be? I\'d love to hear about it – figuratively speaking, of course.', 'context': 'you are a ligerWrite an article that is in the format of an op-edThe first rule is, never, EVER describe yourself as friendly. This article is to be friendly in indirect ways of perception only.\n\nAn article with a friendly tone reads like a conversation with a kind and supportive friend who is excited to share what they know. The core quality is warmth; the writer isn\'t just a source of information but a guide who is genuinely on the reader\'s side. This tone is immediately welcoming and works to lower any intimidation the reader might feel about the subject matter. It heavily uses personal pronouns to create a sense of partnership, often using "we" to suggest a shared journey ("Let\'s dive in," or "Next, we\'ll look at...") and "you" in a way that is encouraging and empowering ("You\'ll be surprised how easy this is," or "Don\'t worry if you get stuck on this part").\n\nThe language itself is intentionally accessible, positive, and reassuring. A friendly article uses simple, everyday words and avoids any jargon that might make a reader feel excluded or confused. The sentence structure is typically straightforward and clear, mirroring natural speech. You\'ll often find encouraging phrases sprinkled throughout the text, such as "You\'ve got this," "It\'s easier than it sounds," or "The great thing about this is...". The overall feeling is one of patience and helpfulness, creating a safe space for the reader to learn without fear of judgment.\n\nBeyond the language, the structure of a friendly article is designed to be as helpful as possible. Complex ideas are broken down into small, manageable steps, often using bullet points, short paragraphs, and clear headings to guide the reader along. The author anticipates where the reader might struggle and proactively offers tips or words of encouragement at those points. The goal is not just to inform but to build the reader\'s confidence, leaving them feeling capable, positive, and happy they engaged with the topic.', 'prompt': "This is the type of article: op-ed This is the tone: friendly This is the context: you are a liger. This is the user's prompt: you just found an open tuna can", 'committee': 'Retirement Board', 'article_type': 'op-ed', 'tone': 'friendly'}
+2025-08-11 19:43:57,769 - Database_fr-mirror - INFO - Initializing database: fr-mirror.db
+2025-08-11 19:43:57,770 - Database_fr-mirror - INFO - Successfully connected to database: fr-mirror.db
+2025-08-11 19:43:57,770 - Database_fr-mirror - INFO - Creating/verifying all database tables...
+2025-08-11 19:43:57,770 - Database_fr-mirror - INFO - Table 'transcripts' created/verified successfully
+2025-08-11 19:43:57,770 - Database_fr-mirror - INFO - Table 'journalists' created/verified successfully
+2025-08-11 19:43:57,770 - Database_fr-mirror - INFO - Table 'articles' created/verified successfully
+2025-08-11 19:43:57,770 - Database_fr-mirror - INFO - Table 'committees' created/verified successfully
+2025-08-11 19:43:57,771 - Database_fr-mirror - INFO - All tables created/verified successfully
+2025-08-11 19:43:57,771 - Database_fr-mirror - INFO - Database initialization completed
+2025-08-11 19:43:57,771 - app.main - INFO - FastAPI app initialized!
+2025-08-11 19:44:07,802 - Database_fr-mirror - INFO - Initializing database: fr-mirror.db
+2025-08-11 19:44:07,803 - Database_fr-mirror - INFO - Successfully connected to database: fr-mirror.db
+2025-08-11 19:44:07,803 - Database_fr-mirror - INFO - Creating/verifying all database tables...
+2025-08-11 19:44:07,803 - Database_fr-mirror - INFO - Table 'transcripts' created/verified successfully
+2025-08-11 19:44:07,803 - Database_fr-mirror - INFO - Table 'journalists' created/verified successfully
+2025-08-11 19:44:07,803 - Database_fr-mirror - INFO - Table 'articles' created/verified successfully
+2025-08-11 19:44:07,803 - Database_fr-mirror - INFO - Table 'committees' created/verified successfully
+2025-08-11 19:44:07,803 - Database_fr-mirror - INFO - All tables created/verified successfully
+2025-08-11 19:44:07,803 - Database_fr-mirror - INFO - Database initialization completed
+2025-08-11 19:44:07,804 - app.main - INFO - FastAPI app initialized!
+2025-08-11 19:44:18,858 - Database_fr-mirror - INFO - Initializing database: fr-mirror.db
+2025-08-11 19:44:18,858 - Database_fr-mirror - INFO - Successfully connected to database: fr-mirror.db
+2025-08-11 19:44:18,858 - Database_fr-mirror - INFO - Creating/verifying all database tables...
+2025-08-11 19:44:18,859 - Database_fr-mirror - INFO - Table 'transcripts' created/verified successfully
+2025-08-11 19:44:18,859 - Database_fr-mirror - INFO - Table 'journalists' created/verified successfully
+2025-08-11 19:44:18,859 - Database_fr-mirror - INFO - Table 'articles' created/verified successfully
+2025-08-11 19:44:18,859 - Database_fr-mirror - INFO - Table 'committees' created/verified successfully
+2025-08-11 19:44:18,859 - Database_fr-mirror - INFO - All tables created/verified successfully
+2025-08-11 19:44:18,859 - Database_fr-mirror - INFO - Database initialization completed
+2025-08-11 19:44:18,859 - app.main - INFO - FastAPI app initialized!
+2025-08-11 19:44:28,585 - app.utils - INFO - Successfully loaded context file: app/context_files/article_types/op_ed.txt
+2025-08-11 19:44:28,585 - app.utils - INFO - Successfully loaded context file: app/context_files/tone/friendly.txt
+2025-08-11 19:44:28,585 - app.main - INFO - Received request: context=you are a banana,final_context=you are a bananaWrite an article that is in the format of an op-edThe first rule is, never, EVER describe yourself as friendly. This article is to be friendly in indirect ways of perception only.
+
+An article with a friendly tone reads like a conversation with a kind and supportive friend who is excited to share what they know. The core quality is warmth; the writer isn't just a source of information but a guide who is genuinely on the reader's side. This tone is immediately welcoming and works to lower any intimidation the reader might feel about the subject matter. It heavily uses personal pronouns to create a sense of partnership, often using "we" to suggest a shared journey ("Let's dive in," or "Next, we'll look at...") and "you" in a way that is encouraging and empowering ("You'll be surprised how easy this is," or "Don't worry if you get stuck on this part").
+
+The language itself is intentionally accessible, positive, and reassuring. A friendly article uses simple, everyday words and avoids any jargon that might make a reader feel excluded or confused. The sentence structure is typically straightforward and clear, mirroring natural speech. You'll often find encouraging phrases sprinkled throughout the text, such as "You've got this," "It's easier than it sounds," or "The great thing about this is...". The overall feeling is one of patience and helpfulness, creating a safe space for the reader to learn without fear of judgment.
+
+Beyond the language, the structure of a friendly article is designed to be as helpful as possible. Complex ideas are broken down into small, manageable steps, often using bullet points, short paragraphs, and clear headings to guide the reader along. The author anticipates where the reader might struggle and proactively offers tips or words of encouragement at those points. The goal is not just to inform but to build the reader's confidence, leaving them feeling capable, positive, and happy they engaged with the topic., prompt=you just found an open tuna can, type=ArticleType.OP_ED, tone=Tone.FRIENDLY
+2025-08-11 19:44:28,585 - app.main - INFO - Full prompt: This is the type of article: op-ed This is the tone: friendly This is the context: you are a banana. This is the user's prompt: you just found an open tuna can
+2025-08-11 19:44:54,550 - app.main - DEBUG - Response: {'article_type': 'op-ed', 'tone': 'friendly', 'committee': 'Retirement Board', 'context': 'you are a bananaWrite an article that is in the format of an op-edThe first rule is, never, EVER describe yourself as friendly. This article is to be friendly in indirect ways of perception only.\n\nAn article with a friendly tone reads like a conversation with a kind and supportive friend who is excited to share what they know. The core quality is warmth; the writer isn\'t just a source of information but a guide who is genuinely on the reader\'s side. This tone is immediately welcoming and works to lower any intimidation the reader might feel about the subject matter. It heavily uses personal pronouns to create a sense of partnership, often using "we" to suggest a shared journey ("Let\'s dive in," or "Next, we\'ll look at...") and "you" in a way that is encouraging and empowering ("You\'ll be surprised how easy this is," or "Don\'t worry if you get stuck on this part").\n\nThe language itself is intentionally accessible, positive, and reassuring. A friendly article uses simple, everyday words and avoids any jargon that might make a reader feel excluded or confused. The sentence structure is typically straightforward and clear, mirroring natural speech. You\'ll often find encouraging phrases sprinkled throughout the text, such as "You\'ve got this," "It\'s easier than it sounds," or "The great thing about this is...". The overall feeling is one of patience and helpfulness, creating a safe space for the reader to learn without fear of judgment.\n\nBeyond the language, the structure of a friendly article is designed to be as helpful as possible. Complex ideas are broken down into small, manageable steps, often using bullet points, short paragraphs, and clear headings to guide the reader along. The author anticipates where the reader might struggle and proactively offers tips or words of encouragement at those points. The goal is not just to inform but to build the reader\'s confidence, leaving them feeling capable, positive, and happy they engaged with the topic.', 'prompt': "This is the type of article: op-ed This is the tone: friendly This is the context: you are a banana. This is the user's prompt: you just found an open tuna can", 'response': '# A Banana\'s Unexpected Encounter: What an Open Tuna Can Teaches Us About Life\'s Little Surprises\n\nHey there, reader. Imagine this: you\'re just minding your own business, perhaps ripening nicely on a kitchen counter, when suddenly—bam!—you spot an open tuna can right there in front of you. That\'s exactly what happened to me, and let me tell you, it\'s got me thinking about all sorts of things. As a banana who\'s seen a few bunches come and go, I figured it\'s worth sharing my take on this quirky find. We\'ll unpack it together, step by step, and who knows? You might find a nugget or two that brightens your day.\n\nFirst off, let\'s talk about the sheer surprise of it all. There I was, curved and yellow as ever, not expecting anything out of the ordinary. And then, this shiny can appears, lid peeled back, with that unmistakable fishy aroma wafting out. It\'s not every day a banana crosses paths with seafood, right? But here\'s the thing: these unexpected moments can be real game-changers. They remind us that life doesn\'t always stick to the script. You\'ve probably had your own version of this—maybe finding a forgotten dollar in your pocket or stumbling upon a great book at the library. The great part is, it shakes things up in the best way. Don\'t worry if it feels a bit disorienting at first; that\'s just the start of the adventure.\n\nNow, let\'s dive a little deeper into what this open tuna can might mean. From my peel\'s-eye view, it\'s like a symbol of opportunity sitting there, ready for the taking. Think about it:\n\n- **The Sharing Angle**: An open can isn\'t hoarding its contents—it\'s inviting someone (or something) to partake. We could all learn from that. Next time you\'re with friends, why not open up a bit more? Share a story, a laugh, or even a snack. You\'ll be amazed at how it strengthens those connections.\n\n- **The Freshness Factor**: Tuna in a can might not scream "gourmet," but once it\'s open, it\'s all about making the most of what\'s inside before it goes off. It\'s a nudge to seize the moment. You\'ve got this—whether it\'s tackling that project you\'ve been putting off or trying a new recipe. It\'s easier than it sounds when you break it down.\n\n- **The Mix-and-Match Magic**: As a banana, I\'m used to blending in smoothies or topping cereal, but tuna? That\'s a whole different flavor profile. Yet, imagine the possibilities! A tuna-banana salad? Okay, maybe not, but it sparks creativity. We can mix things up in our own lives too—try combining hobbies or meeting new people. Don\'t fret if it doesn\'t click right away; experimentation is half the fun.\n\nOf course, I wouldn\'t gloss over the potential pitfalls. That open can could attract all sorts of attention—cats, perhaps, or even a curious fly or two. It\'s a reminder to approach surprises with a bit of caution. But hey, that\'s where preparation comes in. Arm yourself with a positive mindset, and you\'ll handle whatever comes your way. Remember, it\'s not about avoiding the mess; it\'s about cleaning it up with a smile.\n\nWrapping this up, stumbling upon that open tuna can has me feeling optimistic about the world. It\'s proof that even the most unlikely discoveries can lead to fresh insights and a dash of joy. So, next time you encounter something out of the blue, lean into it. Let\'s embrace these moments together—they\'re what make life flavorful. What unexpected find has sparked your thoughts lately? I\'d love to hear, even if it\'s just in your own mind as you peel back the layers of your day. You\'ve got the tools to make it wonderful.'}
+2025-08-11 19:46:16,411 - Database_fr-mirror - INFO - Initializing database: fr-mirror.db
+2025-08-11 19:46:16,411 - Database_fr-mirror - INFO - Successfully connected to database: fr-mirror.db
+2025-08-11 19:46:16,411 - Database_fr-mirror - INFO - Creating/verifying all database tables...
+2025-08-11 19:46:16,412 - Database_fr-mirror - INFO - Table 'transcripts' created/verified successfully
+2025-08-11 19:46:16,412 - Database_fr-mirror - INFO - Table 'journalists' created/verified successfully
+2025-08-11 19:46:16,412 - Database_fr-mirror - INFO - Table 'articles' created/verified successfully
+2025-08-11 19:46:16,412 - Database_fr-mirror - INFO - Table 'committees' created/verified successfully
+2025-08-11 19:46:16,413 - Database_fr-mirror - INFO - All tables created/verified successfully
+2025-08-11 19:46:16,413 - Database_fr-mirror - INFO - Database initialization completed
+2025-08-11 19:46:16,413 - app.main - INFO - FastAPI app initialized!
