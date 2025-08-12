@@ -6,9 +6,6 @@ from fastapi.responses import JSONResponse
 from xai_sdk import Client
 from xai_sdk.chat import user, system
 
-# Local imports
-from .utils import read_context_file
-
 class XAIProcessor:
     """
     A processor class for handling xAI (x.AI) API interactions.
