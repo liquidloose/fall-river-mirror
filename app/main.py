@@ -10,8 +10,8 @@ from fastapi.responses import JSONResponse
 from youtube_transcript_api import YouTubeTranscriptApi
 
 # Local imports
-from app.utils import read_context_file
-from .xai_classes import XAIProcessor 
+from app.utils import read_context_file, get_transcript, write_article, yt_crawler
+from .xai_processor import XAIProcessor 
 from .data_classes import ArticleType, Committee, Tone
 from .database import Database
 
@@ -43,72 +43,8 @@ def health_check() -> Dict[str, str]:
     logger.info("Health check endpoint called!")
     return {"status": "ok", "message": "Server is running"}
 
-
-@app.get("/write/article/{context}/{prompt}/{article_type}/{tone}", response_model=None)
-def write_article(
-    context: str,
-    prompt: str,
-    article_type: ArticleType,
-    tone: Tone,
-    committee: Committee,
-) -> Dict[str, str] | JSONResponse:
-    """
-    Main article writing endpoint that generates content based on context and parameters.
-    
-    Args:
-        context (str): The base context for the article
-        prompt (str): The user's specific writing prompt
-        article_type (ArticleType): Type of article to generate (default: SUMMARY)
-        tone (Tone): Writing tone to use (default: FORMAL)
-    
-    Returns:
-        Dict[str, str] | JSONResponse: Generated article content from the XAI processor or error response
-    """
-    # Build context based on article type
-    # Add specific context files for different article types
-    final_context = context  # Initialize with base context
-    match article_type:
-        case ArticleType.OP_ED:
-            final_context = context + read_context_file("article_types", "op_ed.txt")
-        case ArticleType.SUMMARY:
-            final_context = context + read_context_file("article_types", "summary.txt")
-
-    # Build context based on tone
-    # Add specific context files for different writing tones
-    match tone:
-        case Tone.FRIENDLY:
-            final_context = final_context + read_context_file("tone", "friendly.txt")
-        case Tone.PROFESSIONAL:
-            final_context = final_context + read_context_file("tone", "professional.txt")
-        case Tone.CASUAL:
-            final_context = final_context + read_context_file("tone", "casual.txt")
-        case Tone.FORMAL:
-            final_context = final_context + read_context_file("tone", "formal.txt")
-
-    # Log the request details for debugging
-    logger.info(
-        f"Received request: context={context},final_context={final_context}, prompt={prompt}, type={article_type}, tone={tone}"
-    )
-    
-    # Initialize XAI processor and create the full prompt
-    xai_processor = XAIProcessor()
-    full_prompt = f"This is the type of article: {article_type.value} This is the tone: {tone.value} This is the context: {context}. This is the user's prompt: {prompt}"
-    logger.info(f"Full prompt: {full_prompt}")
-    
-    # Generate response using the XAI processor
-    response = xai_processor.get_response(
-        final_context, 
-        full_prompt, 
-        committee.value,
-        article_type.value,
-        tone.value
-    )
-    logger.debug(f"Response: {response}")
-    return response
-
-
-@app.get("/get/transcript/{video_id}", response_model=None)
-def get_transcript(video_id: str = "VjaU4DAxP6s") -> Dict[str, Any] | JSONResponse:
+@app.get("/create/transcript/{youtube_id=VjaU4DAxP6s}", response_model=None)
+def get_transcript_endpoint(youtube_id: str = "VjaU4DAxP6s") -> Dict[str, Any] | JSONResponse:
     """
     Experimental endpoint to fetch YouTube video transcripts.
     
@@ -118,22 +54,35 @@ def get_transcript(video_id: str = "VjaU4DAxP6s") -> Dict[str, Any] | JSONRespon
     Returns:
         Dict[str, Any] | JSONResponse: YouTube transcript data or error response
     """
-    try:
-        # Initialize YouTube Transcript API and fetch transcript
-        ytt_api = YouTubeTranscriptApi()
-        transcript = ytt_api.fetch(video_id)
-    except Exception as e:
-        # Return error response if transcript fetching fails
-        return JSONResponse(
-            status_code=500,
-            content={"error": f"Failed to get transcript from YouTube: {str(e)}"},
-        )
+    return get_transcript(youtube_id)
 
-    return transcript
+
+@app.get("/write/article/{context}/{prompt}/{article_type}/{tone}/{committee}", response_model=None)
+def write_article_endpoint(
+    context: str,
+    prompt: str,
+    article_type: ArticleType,
+    tone: Tone,
+    committee: Committee,
+) -> Dict[str, Any] | JSONResponse:
+    """
+    Main article writing endpoint that generates content based on context and parameters.
+    
+    Args:
+        context (str): The base context for the article
+        prompt (str): The user's specific writing prompt
+        article_type (ArticleType): Type of article to generate
+        tone (Tone): Writing tone to use
+        committee (Committee): Committee type for the article
+    
+    Returns:
+        Dict[str, Any] | JSONResponse: Generated article content from the XAI processor or error response
+    """
+    return write_article(context, prompt, article_type, tone, committee)
 
 
 @app.get("/yt_crawler/{video_id}", response_model=None)
-async def yt_crawler(video_id: str) -> Dict[str, Any] | JSONResponse:
+async def yt_crawler_endpoint(video_id: str) -> Dict[str, Any] | JSONResponse:
     """
     YouTube crawler endpoint that crawls down the archive video page and records information about each video.
     
@@ -146,41 +95,4 @@ async def yt_crawler(video_id: str) -> Dict[str, Any] | JSONResponse:
     Returns:
         Dict[str, Any] | JSONResponse: Combined data from transcript and processing
     """
-    try:
-        # Method 1: Direct function calls (more efficient for internal calls)
-        transcript_result = get_transcript(video_id)
-        
-        # Check if transcript was successful
-        if isinstance(transcript_result, JSONResponse):
-            return transcript_result
-        
-        # For the article, we'll use a simpler approach since we need to handle the transcript data
-        # Let's create a context from the transcript
-        transcript_text = str(transcript_result)[:1000]  # Limit to first 1000 chars for context
-        
-        # Call the write_article function directly
-        article_result = write_article(
-            context=f"YouTube video {video_id} transcript: {transcript_text}",
-            prompt="Create a comprehensive summary of this YouTube video transcript",
-            article_type=ArticleType.SUMMARY,
-            tone=Tone.FORMAL
-        )
-        
-        # Combine the data
-        result = {
-            "video_id": video_id,
-            "transcript": transcript_result,
-            "article": article_result,
-            "crawled_at": datetime.now().isoformat()
-        }
-        
-        logger.info(f"Successfully crawled video {video_id}")
-        return result
-     
-        
-    except Exception as e:
-        logger.error(f"Error in yt_crawler for video {video_id}: {str(e)}")
-        return JSONResponse(
-            status_code=500,
-            content={"error": f"Failed to crawl video {video_id}: {str(e)}"}
-        )
+    return yt_crawler(video_id)
