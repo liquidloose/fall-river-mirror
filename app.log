@@ -1789,3 +1789,525 @@ Beyond the language, the structure of a friendly article is designed to be as he
 2025-08-11 19:46:16,413 - Database_fr-mirror - INFO - All tables created/verified successfully
 2025-08-11 19:46:16,413 - Database_fr-mirror - INFO - Database initialization completed
 2025-08-11 19:46:16,413 - app.main - INFO - FastAPI app initialized!
+2025-08-11 20:24:51,353 - Database_fr-mirror - INFO - Initializing database: fr-mirror.db
+2025-08-11 20:24:51,354 - Database_fr-mirror - INFO - Successfully connected to database: fr-mirror.db
+2025-08-11 20:24:51,354 - Database_fr-mirror - INFO - Creating/verifying all database tables...
+2025-08-11 20:24:51,354 - Database_fr-mirror - INFO - Table 'transcripts' created/verified successfully
+2025-08-11 20:24:51,354 - Database_fr-mirror - INFO - Table 'journalists' created/verified successfully
+2025-08-11 20:24:51,354 - Database_fr-mirror - INFO - Table 'articles' created/verified successfully
+2025-08-11 20:24:51,355 - Database_fr-mirror - INFO - Table 'committees' created/verified successfully
+2025-08-11 20:24:51,355 - Database_fr-mirror - INFO - All tables created/verified successfully
+2025-08-11 20:24:51,355 - Database_fr-mirror - INFO - Database initialization completed
+2025-08-11 20:24:51,355 - app.main - INFO - FastAPI app initialized!
+2025-08-11 20:24:54,575 - Database_fr-mirror - INFO - Initializing database: fr-mirror.db
+2025-08-11 20:24:54,576 - Database_fr-mirror - INFO - Successfully connected to database: fr-mirror.db
+2025-08-11 20:24:54,576 - Database_fr-mirror - INFO - Creating/verifying all database tables...
+2025-08-11 20:24:54,576 - Database_fr-mirror - INFO - Table 'transcripts' created/verified successfully
+2025-08-11 20:24:54,576 - Database_fr-mirror - INFO - Table 'journalists' created/verified successfully
+2025-08-11 20:24:54,576 - Database_fr-mirror - INFO - Table 'articles' created/verified successfully
+2025-08-11 20:24:54,577 - Database_fr-mirror - INFO - Table 'committees' created/verified successfully
+2025-08-11 20:24:54,577 - Database_fr-mirror - INFO - All tables created/verified successfully
+2025-08-11 20:24:54,577 - Database_fr-mirror - INFO - Database initialization completed
+2025-08-11 20:24:54,577 - app.main - INFO - FastAPI app initialized!
+2025-08-12 03:38:00,400 - Database_fr-mirror - INFO - Initializing database: fr-mirror.db
+2025-08-12 03:38:00,400 - Database_fr-mirror - INFO - Successfully connected to database: fr-mirror.db
+2025-08-12 03:38:00,400 - Database_fr-mirror - INFO - Creating/verifying all database tables...
+2025-08-12 03:38:00,401 - Database_fr-mirror - INFO - Table 'transcripts' created/verified successfully
+2025-08-12 03:38:00,401 - Database_fr-mirror - INFO - Table 'journalists' created/verified successfully
+2025-08-12 03:38:00,401 - Database_fr-mirror - INFO - Table 'articles' created/verified successfully
+2025-08-12 03:38:00,401 - Database_fr-mirror - INFO - Table 'committees' created/verified successfully
+2025-08-12 03:38:00,402 - Database_fr-mirror - INFO - All tables created/verified successfully
+2025-08-12 03:38:00,402 - Database_fr-mirror - INFO - Database initialization completed
+2025-08-12 03:38:00,402 - app.main - INFO - FastAPI app initialized!
+2025-08-12 03:38:01,100 - Database_fr-mirror - INFO - Initializing database: fr-mirror.db
+2025-08-12 03:38:01,100 - Database_fr-mirror - INFO - Successfully connected to database: fr-mirror.db
+2025-08-12 03:38:01,101 - Database_fr-mirror - INFO - Creating/verifying all database tables...
+2025-08-12 03:38:01,101 - Database_fr-mirror - INFO - Table 'transcripts' created/verified successfully
+2025-08-12 03:38:01,101 - Database_fr-mirror - INFO - Table 'journalists' created/verified successfully
+2025-08-12 03:38:01,101 - Database_fr-mirror - INFO - Table 'articles' created/verified successfully
+2025-08-12 03:38:01,102 - Database_fr-mirror - INFO - Table 'committees' created/verified successfully
+2025-08-12 03:38:01,102 - Database_fr-mirror - INFO - All tables created/verified successfully
+2025-08-12 03:38:01,102 - Database_fr-mirror - INFO - Database initialization completed
+2025-08-12 03:38:01,102 - app.main - INFO - FastAPI app initialized!
+2025-08-12 03:41:02,757 - Database_fr-mirror - INFO - Initializing database: fr-mirror.db
+2025-08-12 03:41:02,757 - Database_fr-mirror - INFO - Successfully connected to database: fr-mirror.db
+2025-08-12 03:41:02,758 - Database_fr-mirror - INFO - Creating/verifying all database tables...
+2025-08-12 03:41:02,758 - Database_fr-mirror - INFO - Table 'transcripts' created/verified successfully
+2025-08-12 03:41:02,758 - Database_fr-mirror - INFO - Table 'journalists' created/verified successfully
+2025-08-12 03:41:02,758 - Database_fr-mirror - INFO - Table 'articles' created/verified successfully
+2025-08-12 03:41:02,758 - Database_fr-mirror - INFO - Table 'committees' created/verified successfully
+2025-08-12 03:41:02,758 - Database_fr-mirror - INFO - All tables created/verified successfully
+2025-08-12 03:41:02,759 - Database_fr-mirror - INFO - Database initialization completed
+2025-08-12 03:41:02,759 - app.main - INFO - FastAPI app initialized!
+2025-08-12 03:41:12,184 - Database_fr-mirror - INFO - Initializing database: fr-mirror.db
+2025-08-12 03:41:12,184 - Database_fr-mirror - INFO - Successfully connected to database: fr-mirror.db
+2025-08-12 03:41:12,184 - Database_fr-mirror - INFO - Creating/verifying all database tables...
+2025-08-12 03:41:12,184 - Database_fr-mirror - INFO - Table 'transcripts' created/verified successfully
+2025-08-12 03:41:12,184 - Database_fr-mirror - INFO - Table 'journalists' created/verified successfully
+2025-08-12 03:41:12,185 - Database_fr-mirror - INFO - Table 'articles' created/verified successfully
+2025-08-12 03:41:12,185 - Database_fr-mirror - INFO - Table 'committees' created/verified successfully
+2025-08-12 03:41:12,185 - Database_fr-mirror - INFO - All tables created/verified successfully
+2025-08-12 03:41:12,185 - Database_fr-mirror - INFO - Database initialization completed
+2025-08-12 03:41:12,185 - app.main - INFO - FastAPI app initialized!
+2025-08-12 03:41:19,348 - Database_fr-mirror - INFO - Initializing database: fr-mirror.db
+2025-08-12 03:41:19,348 - Database_fr-mirror - INFO - Successfully connected to database: fr-mirror.db
+2025-08-12 03:41:19,348 - Database_fr-mirror - INFO - Creating/verifying all database tables...
+2025-08-12 03:41:19,348 - Database_fr-mirror - INFO - Table 'transcripts' created/verified successfully
+2025-08-12 03:41:19,348 - Database_fr-mirror - INFO - Table 'journalists' created/verified successfully
+2025-08-12 03:41:19,349 - Database_fr-mirror - INFO - Table 'articles' created/verified successfully
+2025-08-12 03:41:19,349 - Database_fr-mirror - INFO - Table 'committees' created/verified successfully
+2025-08-12 03:41:19,349 - Database_fr-mirror - INFO - All tables created/verified successfully
+2025-08-12 03:41:19,349 - Database_fr-mirror - INFO - Database initialization completed
+2025-08-12 03:41:19,349 - app.main - INFO - FastAPI app initialized!
+2025-08-12 03:41:20,045 - Database_fr-mirror - INFO - Initializing database: fr-mirror.db
+2025-08-12 03:41:20,045 - Database_fr-mirror - INFO - Successfully connected to database: fr-mirror.db
+2025-08-12 03:41:20,045 - Database_fr-mirror - INFO - Creating/verifying all database tables...
+2025-08-12 03:41:20,045 - Database_fr-mirror - INFO - Table 'transcripts' created/verified successfully
+2025-08-12 03:41:20,045 - Database_fr-mirror - INFO - Table 'journalists' created/verified successfully
+2025-08-12 03:41:20,046 - Database_fr-mirror - INFO - Table 'articles' created/verified successfully
+2025-08-12 03:41:20,046 - Database_fr-mirror - INFO - Table 'committees' created/verified successfully
+2025-08-12 03:41:20,046 - Database_fr-mirror - INFO - All tables created/verified successfully
+2025-08-12 03:41:20,046 - Database_fr-mirror - INFO - Database initialization completed
+2025-08-12 03:41:20,046 - app.main - INFO - FastAPI app initialized!
+2025-08-12 03:41:27,058 - Database_fr-mirror - INFO - Initializing database: fr-mirror.db
+2025-08-12 03:41:27,059 - Database_fr-mirror - INFO - Successfully connected to database: fr-mirror.db
+2025-08-12 03:41:27,059 - Database_fr-mirror - INFO - Creating/verifying all database tables...
+2025-08-12 03:41:27,059 - Database_fr-mirror - INFO - Table 'transcripts' created/verified successfully
+2025-08-12 03:41:27,059 - Database_fr-mirror - INFO - Table 'journalists' created/verified successfully
+2025-08-12 03:41:27,059 - Database_fr-mirror - INFO - Table 'articles' created/verified successfully
+2025-08-12 03:41:27,060 - Database_fr-mirror - INFO - Table 'committees' created/verified successfully
+2025-08-12 03:41:27,060 - Database_fr-mirror - INFO - All tables created/verified successfully
+2025-08-12 03:41:27,060 - Database_fr-mirror - INFO - Database initialization completed
+2025-08-12 03:41:27,060 - app.main - INFO - FastAPI app initialized!
+2025-08-12 03:41:44,529 - Database_fr-mirror - INFO - Initializing database: fr-mirror.db
+2025-08-12 03:41:44,530 - Database_fr-mirror - INFO - Successfully connected to database: fr-mirror.db
+2025-08-12 03:41:44,530 - Database_fr-mirror - INFO - Creating/verifying all database tables...
+2025-08-12 03:41:44,530 - Database_fr-mirror - INFO - Table 'transcripts' created/verified successfully
+2025-08-12 03:41:44,530 - Database_fr-mirror - INFO - Table 'journalists' created/verified successfully
+2025-08-12 03:41:44,531 - Database_fr-mirror - INFO - Table 'articles' created/verified successfully
+2025-08-12 03:41:44,531 - Database_fr-mirror - INFO - Table 'committees' created/verified successfully
+2025-08-12 03:41:44,531 - Database_fr-mirror - INFO - All tables created/verified successfully
+2025-08-12 03:41:44,531 - Database_fr-mirror - INFO - Database initialization completed
+2025-08-12 03:41:44,531 - app.main - INFO - FastAPI app initialized!
+2025-08-12 03:51:13,971 - urllib3.connectionpool - DEBUG - Starting new HTTPS connection (1): www.youtube.com:443
+2025-08-12 03:51:14,140 - urllib3.connectionpool - DEBUG - https://www.youtube.com:443 "GET /watch?v=VjaU4DAxP6s HTTP/1.1" 200 None
+2025-08-12 03:51:15,094 - urllib3.connectionpool - DEBUG - https://www.youtube.com:443 "POST /youtubei/v1/player?key=AIzaSyAO_FJ2SlqU8Q4STEHLGCilw_Y9_11qcW8 HTTP/1.1" 200 None
+2025-08-12 03:51:15,209 - urllib3.connectionpool - DEBUG - https://www.youtube.com:443 "GET /api/timedtext?v=VjaU4DAxP6s&ei=M7qaaLcvkKmS5w-p3czpAQ&caps=asr&opi=112496729&xoaf=5&xospf=1&hl=en&ip=0.0.0.0&ipbits=0&expire=1754995875&sparams=ip,ipbits,expire,v,ei,caps,opi,xoaf&signature=18265DF4D4671C60ED9F230B546BB4DEE120DF48.BE990F718C1BACD571D81DB77FF31F266667FB60&key=yt8&kind=asr&lang=en&variant=punctuated HTTP/1.1" 200 None
+2025-08-12 03:51:15,211 - app.utils - INFO - Successfully fetched transcript for video: VjaU4DAxP6s
+2025-08-12 03:51:51,309 - Database_fr-mirror - INFO - Initializing database: fr-mirror.db
+2025-08-12 03:51:51,309 - Database_fr-mirror - INFO - Successfully connected to database: fr-mirror.db
+2025-08-12 03:51:51,309 - Database_fr-mirror - INFO - Creating/verifying all database tables...
+2025-08-12 03:51:51,309 - Database_fr-mirror - INFO - Table 'transcripts' created/verified successfully
+2025-08-12 03:51:51,310 - Database_fr-mirror - INFO - Table 'journalists' created/verified successfully
+2025-08-12 03:51:51,310 - Database_fr-mirror - INFO - Table 'articles' created/verified successfully
+2025-08-12 03:51:51,310 - Database_fr-mirror - INFO - Table 'committees' created/verified successfully
+2025-08-12 03:51:51,310 - Database_fr-mirror - INFO - All tables created/verified successfully
+2025-08-12 03:51:51,310 - Database_fr-mirror - INFO - Database initialization completed
+2025-08-12 03:51:51,310 - app.main - INFO - FastAPI app initialized!
+2025-08-12 03:51:52,606 - Database_fr-mirror - INFO - Initializing database: fr-mirror.db
+2025-08-12 03:51:52,606 - Database_fr-mirror - INFO - Successfully connected to database: fr-mirror.db
+2025-08-12 03:51:52,607 - Database_fr-mirror - INFO - Creating/verifying all database tables...
+2025-08-12 03:51:52,607 - Database_fr-mirror - INFO - Table 'transcripts' created/verified successfully
+2025-08-12 03:51:52,607 - Database_fr-mirror - INFO - Table 'journalists' created/verified successfully
+2025-08-12 03:51:52,607 - Database_fr-mirror - INFO - Table 'articles' created/verified successfully
+2025-08-12 03:51:52,607 - Database_fr-mirror - INFO - Table 'committees' created/verified successfully
+2025-08-12 03:51:52,607 - Database_fr-mirror - INFO - All tables created/verified successfully
+2025-08-12 03:51:52,608 - Database_fr-mirror - INFO - Database initialization completed
+2025-08-12 03:51:52,608 - app.main - INFO - FastAPI app initialized!
+2025-08-12 03:52:06,728 - urllib3.connectionpool - DEBUG - Starting new HTTPS connection (1): www.youtube.com:443
+2025-08-12 03:52:06,868 - urllib3.connectionpool - DEBUG - https://www.youtube.com:443 "GET /watch?v=VjaU4DAxP6s HTTP/1.1" 200 None
+2025-08-12 03:52:07,561 - urllib3.connectionpool - DEBUG - https://www.youtube.com:443 "POST /youtubei/v1/player?key=AIzaSyAO_FJ2SlqU8Q4STEHLGCilw_Y9_11qcW8 HTTP/1.1" 200 None
+2025-08-12 03:52:07,627 - urllib3.connectionpool - DEBUG - https://www.youtube.com:443 "GET /api/timedtext?v=VjaU4DAxP6s&ei=Z7qaaMyjHdbHkucPxO7uoQQ&caps=asr&opi=112496729&xoaf=5&hl=en&ip=0.0.0.0&ipbits=0&expire=1754995927&sparams=ip,ipbits,expire,v,ei,caps,opi,xoaf&signature=ADB4240BF3216030D5626860DEAA0DCEF1B4B12D.C69DD2E1E3541DCCD0E121A0C42036E8824264AC&key=yt8&kind=asr&lang=en&variant=punctuated HTTP/1.1" 200 None
+2025-08-12 03:52:07,629 - app.utils - INFO - Successfully fetched transcript for video: VjaU4DAxP6s
+2025-08-12 03:52:27,719 - Database_fr-mirror - INFO - Initializing database: fr-mirror.db
+2025-08-12 03:52:27,720 - Database_fr-mirror - INFO - Successfully connected to database: fr-mirror.db
+2025-08-12 03:52:27,720 - Database_fr-mirror - INFO - Creating/verifying all database tables...
+2025-08-12 03:52:27,720 - Database_fr-mirror - INFO - Table 'transcripts' created/verified successfully
+2025-08-12 03:52:27,721 - Database_fr-mirror - INFO - Table 'journalists' created/verified successfully
+2025-08-12 03:52:27,721 - Database_fr-mirror - INFO - Table 'articles' created/verified successfully
+2025-08-12 03:52:27,721 - Database_fr-mirror - INFO - Table 'committees' created/verified successfully
+2025-08-12 03:52:27,721 - Database_fr-mirror - INFO - All tables created/verified successfully
+2025-08-12 03:52:27,722 - Database_fr-mirror - INFO - Database initialization completed
+2025-08-12 03:52:27,722 - app.main - INFO - FastAPI app initialized!
+2025-08-12 03:53:34,836 - Database_fr-mirror - INFO - Initializing database: fr-mirror.db
+2025-08-12 03:53:34,836 - Database_fr-mirror - INFO - Successfully connected to database: fr-mirror.db
+2025-08-12 03:53:34,836 - Database_fr-mirror - INFO - Creating/verifying all database tables...
+2025-08-12 03:53:34,837 - Database_fr-mirror - INFO - Table 'transcripts' created/verified successfully
+2025-08-12 03:53:34,837 - Database_fr-mirror - INFO - Table 'journalists' created/verified successfully
+2025-08-12 03:53:34,837 - Database_fr-mirror - INFO - Table 'articles' created/verified successfully
+2025-08-12 03:53:34,837 - Database_fr-mirror - INFO - Table 'committees' created/verified successfully
+2025-08-12 03:53:34,837 - Database_fr-mirror - INFO - All tables created/verified successfully
+2025-08-12 03:53:34,837 - Database_fr-mirror - INFO - Database initialization completed
+2025-08-12 03:53:34,837 - app.main - INFO - FastAPI app initialized!
+2025-08-12 03:53:37,943 - Database_fr-mirror - INFO - Initializing database: fr-mirror.db
+2025-08-12 03:53:37,943 - Database_fr-mirror - INFO - Successfully connected to database: fr-mirror.db
+2025-08-12 03:53:37,943 - Database_fr-mirror - INFO - Creating/verifying all database tables...
+2025-08-12 03:53:37,943 - Database_fr-mirror - INFO - Table 'transcripts' created/verified successfully
+2025-08-12 03:53:37,944 - Database_fr-mirror - INFO - Table 'journalists' created/verified successfully
+2025-08-12 03:53:37,944 - Database_fr-mirror - INFO - Table 'articles' created/verified successfully
+2025-08-12 03:53:37,944 - Database_fr-mirror - INFO - Table 'committees' created/verified successfully
+2025-08-12 03:53:37,944 - Database_fr-mirror - INFO - All tables created/verified successfully
+2025-08-12 03:53:37,944 - Database_fr-mirror - INFO - Database initialization completed
+2025-08-12 03:53:37,944 - app.main - INFO - FastAPI app initialized!
+2025-08-12 03:54:03,946 - Database_fr-mirror - INFO - Initializing database: fr-mirror.db
+2025-08-12 03:54:03,947 - Database_fr-mirror - INFO - Successfully connected to database: fr-mirror.db
+2025-08-12 03:54:03,947 - Database_fr-mirror - INFO - Creating/verifying all database tables...
+2025-08-12 03:54:03,947 - Database_fr-mirror - INFO - Table 'transcripts' created/verified successfully
+2025-08-12 03:54:03,947 - Database_fr-mirror - INFO - Table 'journalists' created/verified successfully
+2025-08-12 03:54:03,947 - Database_fr-mirror - INFO - Table 'articles' created/verified successfully
+2025-08-12 03:54:03,948 - Database_fr-mirror - INFO - Table 'committees' created/verified successfully
+2025-08-12 03:54:03,948 - Database_fr-mirror - INFO - All tables created/verified successfully
+2025-08-12 03:54:03,948 - Database_fr-mirror - INFO - Database initialization completed
+2025-08-12 03:54:03,948 - app.main - INFO - FastAPI app initialized!
+2025-08-12 03:54:04,655 - Database_fr-mirror - INFO - Initializing database: fr-mirror.db
+2025-08-12 03:54:04,655 - Database_fr-mirror - INFO - Successfully connected to database: fr-mirror.db
+2025-08-12 03:54:04,655 - Database_fr-mirror - INFO - Creating/verifying all database tables...
+2025-08-12 03:54:04,656 - Database_fr-mirror - INFO - Table 'transcripts' created/verified successfully
+2025-08-12 03:54:04,656 - Database_fr-mirror - INFO - Table 'journalists' created/verified successfully
+2025-08-12 03:54:04,656 - Database_fr-mirror - INFO - Table 'articles' created/verified successfully
+2025-08-12 03:54:04,656 - Database_fr-mirror - INFO - Table 'committees' created/verified successfully
+2025-08-12 03:54:04,656 - Database_fr-mirror - INFO - All tables created/verified successfully
+2025-08-12 03:54:04,656 - Database_fr-mirror - INFO - Database initialization completed
+2025-08-12 03:54:04,656 - app.main - INFO - FastAPI app initialized!
+2025-08-12 03:54:47,684 - Database_fr-mirror - INFO - Initializing database: fr-mirror.db
+2025-08-12 03:54:47,684 - Database_fr-mirror - INFO - Successfully connected to database: fr-mirror.db
+2025-08-12 03:54:47,684 - Database_fr-mirror - INFO - Creating/verifying all database tables...
+2025-08-12 03:54:47,685 - Database_fr-mirror - INFO - Table 'transcripts' created/verified successfully
+2025-08-12 03:54:47,685 - Database_fr-mirror - INFO - Table 'journalists' created/verified successfully
+2025-08-12 03:54:47,685 - Database_fr-mirror - INFO - Table 'articles' created/verified successfully
+2025-08-12 03:54:47,685 - Database_fr-mirror - INFO - Table 'committees' created/verified successfully
+2025-08-12 03:54:47,685 - Database_fr-mirror - INFO - All tables created/verified successfully
+2025-08-12 03:54:47,685 - Database_fr-mirror - INFO - Database initialization completed
+2025-08-12 03:54:47,685 - app.main - INFO - FastAPI app initialized!
+2025-08-12 03:56:54,292 - Database_fr-mirror - INFO - Initializing database: fr-mirror.db
+2025-08-12 03:56:54,292 - Database_fr-mirror - INFO - Successfully connected to database: fr-mirror.db
+2025-08-12 03:56:54,292 - Database_fr-mirror - INFO - Creating/verifying all database tables...
+2025-08-12 03:56:54,292 - Database_fr-mirror - INFO - Table 'transcripts' created/verified successfully
+2025-08-12 03:56:54,292 - Database_fr-mirror - INFO - Table 'journalists' created/verified successfully
+2025-08-12 03:56:54,293 - Database_fr-mirror - INFO - Table 'articles' created/verified successfully
+2025-08-12 03:56:54,293 - Database_fr-mirror - INFO - Table 'committees' created/verified successfully
+2025-08-12 03:56:54,293 - Database_fr-mirror - INFO - All tables created/verified successfully
+2025-08-12 03:56:54,293 - Database_fr-mirror - INFO - Database initialization completed
+2025-08-12 03:56:54,293 - app.main - INFO - FastAPI app initialized!
+2025-08-12 03:57:08,794 - urllib3.connectionpool - DEBUG - Starting new HTTPS connection (1): www.youtube.com:443
+2025-08-12 03:57:08,970 - urllib3.connectionpool - DEBUG - https://www.youtube.com:443 "GET /watch?v=VjaU4DAxP6s HTTP/1.1" 200 None
+2025-08-12 03:57:09,813 - urllib3.connectionpool - DEBUG - https://www.youtube.com:443 "POST /youtubei/v1/player?key=AIzaSyAO_FJ2SlqU8Q4STEHLGCilw_Y9_11qcW8 HTTP/1.1" 200 None
+2025-08-12 03:57:09,876 - urllib3.connectionpool - DEBUG - https://www.youtube.com:443 "GET /api/timedtext?v=VjaU4DAxP6s&ei=lbuaaM2TK9mUkucP9JXo8Ac&caps=asr&opi=112496729&xoaf=5&hl=en&ip=0.0.0.0&ipbits=0&expire=1754996229&sparams=ip,ipbits,expire,v,ei,caps,opi,xoaf&signature=8C86DAE32848F819EBFF12DA168B9DFCAB27B909.25934E053D8303CB9D3A6B7CB1DEAA5387C67AF0&key=yt8&kind=asr&lang=en&variant=punctuated HTTP/1.1" 200 None
+2025-08-12 03:57:09,878 - app.utils - INFO - Successfully fetched transcript for video: VjaU4DAxP6s
+2025-08-12 03:57:36,320 - Database_fr-mirror - INFO - Initializing database: fr-mirror.db
+2025-08-12 03:57:36,321 - Database_fr-mirror - INFO - Successfully connected to database: fr-mirror.db
+2025-08-12 03:57:36,321 - Database_fr-mirror - INFO - Creating/verifying all database tables...
+2025-08-12 03:57:36,321 - Database_fr-mirror - INFO - Table 'transcripts' created/verified successfully
+2025-08-12 03:57:36,321 - Database_fr-mirror - INFO - Table 'journalists' created/verified successfully
+2025-08-12 03:57:36,322 - Database_fr-mirror - INFO - Table 'articles' created/verified successfully
+2025-08-12 03:57:36,322 - Database_fr-mirror - INFO - Table 'committees' created/verified successfully
+2025-08-12 03:57:36,322 - Database_fr-mirror - INFO - All tables created/verified successfully
+2025-08-12 03:57:36,322 - Database_fr-mirror - INFO - Database initialization completed
+2025-08-12 03:57:36,322 - app.main - INFO - FastAPI app initialized!
+2025-08-12 03:57:45,750 - Database_fr-mirror - INFO - Initializing database: fr-mirror.db
+2025-08-12 03:57:45,750 - Database_fr-mirror - INFO - Successfully connected to database: fr-mirror.db
+2025-08-12 03:57:45,750 - Database_fr-mirror - INFO - Creating/verifying all database tables...
+2025-08-12 03:57:45,751 - Database_fr-mirror - INFO - Table 'transcripts' created/verified successfully
+2025-08-12 03:57:45,751 - Database_fr-mirror - INFO - Table 'journalists' created/verified successfully
+2025-08-12 03:57:45,751 - Database_fr-mirror - INFO - Table 'articles' created/verified successfully
+2025-08-12 03:57:45,751 - Database_fr-mirror - INFO - Table 'committees' created/verified successfully
+2025-08-12 03:57:45,751 - Database_fr-mirror - INFO - All tables created/verified successfully
+2025-08-12 03:57:45,751 - Database_fr-mirror - INFO - Database initialization completed
+2025-08-12 03:57:45,751 - app.main - INFO - FastAPI app initialized!
+2025-08-12 03:58:00,904 - Database_fr-mirror - INFO - Initializing database: fr-mirror.db
+2025-08-12 03:58:00,904 - Database_fr-mirror - INFO - Successfully connected to database: fr-mirror.db
+2025-08-12 03:58:00,904 - Database_fr-mirror - INFO - Creating/verifying all database tables...
+2025-08-12 03:58:00,904 - Database_fr-mirror - INFO - Table 'transcripts' created/verified successfully
+2025-08-12 03:58:00,905 - Database_fr-mirror - INFO - Table 'journalists' created/verified successfully
+2025-08-12 03:58:00,905 - Database_fr-mirror - INFO - Table 'articles' created/verified successfully
+2025-08-12 03:58:00,905 - Database_fr-mirror - INFO - Table 'committees' created/verified successfully
+2025-08-12 03:58:00,905 - Database_fr-mirror - INFO - All tables created/verified successfully
+2025-08-12 03:58:00,905 - Database_fr-mirror - INFO - Database initialization completed
+2025-08-12 03:58:00,905 - app.main - INFO - FastAPI app initialized!
+2025-08-12 03:58:08,023 - Database_fr-mirror - INFO - Initializing database: fr-mirror.db
+2025-08-12 03:58:08,023 - Database_fr-mirror - INFO - Successfully connected to database: fr-mirror.db
+2025-08-12 03:58:08,023 - Database_fr-mirror - INFO - Creating/verifying all database tables...
+2025-08-12 03:58:08,024 - Database_fr-mirror - INFO - Table 'transcripts' created/verified successfully
+2025-08-12 03:58:08,024 - Database_fr-mirror - INFO - Table 'journalists' created/verified successfully
+2025-08-12 03:58:08,024 - Database_fr-mirror - INFO - Table 'articles' created/verified successfully
+2025-08-12 03:58:08,024 - Database_fr-mirror - INFO - Table 'committees' created/verified successfully
+2025-08-12 03:58:08,024 - Database_fr-mirror - INFO - All tables created/verified successfully
+2025-08-12 03:58:08,024 - Database_fr-mirror - INFO - Database initialization completed
+2025-08-12 03:58:08,024 - app.main - INFO - FastAPI app initialized!
+2025-08-12 03:58:38,325 - Database_fr-mirror - INFO - Initializing database: fr-mirror.db
+2025-08-12 03:58:38,325 - Database_fr-mirror - INFO - Successfully connected to database: fr-mirror.db
+2025-08-12 03:58:38,325 - Database_fr-mirror - INFO - Creating/verifying all database tables...
+2025-08-12 03:58:38,326 - Database_fr-mirror - INFO - Table 'transcripts' created/verified successfully
+2025-08-12 03:58:38,326 - Database_fr-mirror - INFO - Table 'journalists' created/verified successfully
+2025-08-12 03:58:38,326 - Database_fr-mirror - INFO - Table 'articles' created/verified successfully
+2025-08-12 03:58:38,326 - Database_fr-mirror - INFO - Table 'committees' created/verified successfully
+2025-08-12 03:58:38,326 - Database_fr-mirror - INFO - All tables created/verified successfully
+2025-08-12 03:58:38,326 - Database_fr-mirror - INFO - Database initialization completed
+2025-08-12 03:58:38,326 - app.main - INFO - FastAPI app initialized!
+2025-08-12 03:58:47,046 - Database_fr-mirror - INFO - Initializing database: fr-mirror.db
+2025-08-12 03:58:47,046 - Database_fr-mirror - INFO - Successfully connected to database: fr-mirror.db
+2025-08-12 03:58:47,047 - Database_fr-mirror - INFO - Creating/verifying all database tables...
+2025-08-12 03:58:47,047 - Database_fr-mirror - INFO - Table 'transcripts' created/verified successfully
+2025-08-12 03:58:47,047 - Database_fr-mirror - INFO - Table 'journalists' created/verified successfully
+2025-08-12 03:58:47,047 - Database_fr-mirror - INFO - Table 'articles' created/verified successfully
+2025-08-12 03:58:47,047 - Database_fr-mirror - INFO - Table 'committees' created/verified successfully
+2025-08-12 03:58:47,047 - Database_fr-mirror - INFO - All tables created/verified successfully
+2025-08-12 03:58:47,048 - Database_fr-mirror - INFO - Database initialization completed
+2025-08-12 03:58:47,048 - app.main - INFO - FastAPI app initialized!
+2025-08-12 04:15:53,452 - Database_fr-mirror - INFO - Initializing database: fr-mirror.db
+2025-08-12 04:15:53,453 - Database_fr-mirror - INFO - Successfully connected to database: fr-mirror.db
+2025-08-12 04:15:53,453 - Database_fr-mirror - INFO - Creating/verifying all database tables...
+2025-08-12 04:15:53,453 - Database_fr-mirror - INFO - Table 'transcripts' created/verified successfully
+2025-08-12 04:15:53,453 - Database_fr-mirror - INFO - Table 'journalists' created/verified successfully
+2025-08-12 04:15:53,453 - Database_fr-mirror - INFO - Table 'articles' created/verified successfully
+2025-08-12 04:15:53,454 - Database_fr-mirror - INFO - Table 'committees' created/verified successfully
+2025-08-12 04:15:53,454 - Database_fr-mirror - INFO - All tables created/verified successfully
+2025-08-12 04:15:53,454 - Database_fr-mirror - INFO - Database initialization completed
+2025-08-12 04:15:53,454 - app.main - INFO - FastAPI app initialized!
+2025-08-12 04:16:01,498 - Database_fr-mirror - INFO - Initializing database: fr-mirror.db
+2025-08-12 04:16:01,498 - Database_fr-mirror - INFO - Successfully connected to database: fr-mirror.db
+2025-08-12 04:16:01,498 - Database_fr-mirror - INFO - Creating/verifying all database tables...
+2025-08-12 04:16:01,499 - Database_fr-mirror - INFO - Table 'transcripts' created/verified successfully
+2025-08-12 04:16:01,499 - Database_fr-mirror - INFO - Table 'journalists' created/verified successfully
+2025-08-12 04:16:01,499 - Database_fr-mirror - INFO - Table 'articles' created/verified successfully
+2025-08-12 04:16:01,499 - Database_fr-mirror - INFO - Table 'committees' created/verified successfully
+2025-08-12 04:16:01,499 - Database_fr-mirror - INFO - All tables created/verified successfully
+2025-08-12 04:16:01,499 - Database_fr-mirror - INFO - Database initialization completed
+2025-08-12 04:16:01,499 - app.main - INFO - FastAPI app initialized!
+2025-08-12 04:16:10,245 - Database_fr-mirror - INFO - Initializing database: fr-mirror.db
+2025-08-12 04:16:10,246 - Database_fr-mirror - INFO - Successfully connected to database: fr-mirror.db
+2025-08-12 04:16:10,246 - Database_fr-mirror - INFO - Creating/verifying all database tables...
+2025-08-12 04:16:10,246 - Database_fr-mirror - INFO - Table 'transcripts' created/verified successfully
+2025-08-12 04:16:10,246 - Database_fr-mirror - INFO - Table 'journalists' created/verified successfully
+2025-08-12 04:16:10,246 - Database_fr-mirror - INFO - Table 'articles' created/verified successfully
+2025-08-12 04:16:10,246 - Database_fr-mirror - INFO - Table 'committees' created/verified successfully
+2025-08-12 04:16:10,246 - Database_fr-mirror - INFO - All tables created/verified successfully
+2025-08-12 04:16:10,246 - Database_fr-mirror - INFO - Database initialization completed
+2025-08-12 04:16:10,247 - app.main - INFO - FastAPI app initialized!
+2025-08-12 04:16:45,467 - Database_fr-mirror - INFO - Initializing database: fr-mirror.db
+2025-08-12 04:16:45,467 - Database_fr-mirror - INFO - Successfully connected to database: fr-mirror.db
+2025-08-12 04:16:45,467 - Database_fr-mirror - INFO - Creating/verifying all database tables...
+2025-08-12 04:16:45,467 - Database_fr-mirror - INFO - Table 'transcripts' created/verified successfully
+2025-08-12 04:16:45,468 - Database_fr-mirror - INFO - Table 'journalists' created/verified successfully
+2025-08-12 04:16:45,468 - Database_fr-mirror - INFO - Table 'articles' created/verified successfully
+2025-08-12 04:16:45,468 - Database_fr-mirror - INFO - Table 'committees' created/verified successfully
+2025-08-12 04:16:45,468 - Database_fr-mirror - INFO - All tables created/verified successfully
+2025-08-12 04:16:45,468 - Database_fr-mirror - INFO - Database initialization completed
+2025-08-12 04:16:45,468 - app.main - INFO - FastAPI app initialized!
+2025-08-12 04:23:24,157 - Database_fr-mirror - INFO - Initializing database: fr-mirror.db
+2025-08-12 04:23:24,157 - Database_fr-mirror - INFO - Successfully connected to database: fr-mirror.db
+2025-08-12 04:23:24,157 - Database_fr-mirror - INFO - Creating/verifying all database tables...
+2025-08-12 04:23:24,157 - Database_fr-mirror - INFO - Table 'transcripts' created/verified successfully
+2025-08-12 04:23:24,158 - Database_fr-mirror - INFO - Table 'journalists' created/verified successfully
+2025-08-12 04:23:24,158 - Database_fr-mirror - INFO - Table 'articles' created/verified successfully
+2025-08-12 04:23:24,158 - Database_fr-mirror - INFO - Table 'committees' created/verified successfully
+2025-08-12 04:23:24,158 - Database_fr-mirror - INFO - All tables created/verified successfully
+2025-08-12 04:23:24,158 - Database_fr-mirror - INFO - Database initialization completed
+2025-08-12 04:23:24,158 - app.main - INFO - FastAPI app initialized!
+2025-08-12 04:23:24,202 - Database_fr-mirror - INFO - Initializing database: fr-mirror.db
+2025-08-12 04:23:24,203 - Database_fr-mirror - INFO - Successfully connected to database: fr-mirror.db
+2025-08-12 04:23:24,203 - Database_fr-mirror - INFO - Creating/verifying all database tables...
+2025-08-12 04:23:24,203 - Database_fr-mirror - INFO - Table 'transcripts' created/verified successfully
+2025-08-12 04:23:24,203 - Database_fr-mirror - INFO - Table 'journalists' created/verified successfully
+2025-08-12 04:23:24,204 - Database_fr-mirror - INFO - Table 'articles' created/verified successfully
+2025-08-12 04:23:24,204 - Database_fr-mirror - INFO - Table 'committees' created/verified successfully
+2025-08-12 04:23:24,204 - Database_fr-mirror - INFO - All tables created/verified successfully
+2025-08-12 04:23:24,204 - Database_fr-mirror - INFO - Database initialization completed
+2025-08-12 04:23:24,204 - app.main - INFO - FastAPI app initialized!
+2025-08-12 04:24:15,674 - urllib3.connectionpool - DEBUG - Starting new HTTPS connection (1): www.youtube.com:443
+2025-08-12 04:24:15,848 - urllib3.connectionpool - DEBUG - https://www.youtube.com:443 "GET /watch?v=VjaU4DAxP6s HTTP/1.1" 200 None
+2025-08-12 04:24:16,653 - urllib3.connectionpool - DEBUG - https://www.youtube.com:443 "POST /youtubei/v1/player?key=AIzaSyAO_FJ2SlqU8Q4STEHLGCilw_Y9_11qcW8 HTTP/1.1" 200 None
+2025-08-12 04:24:16,740 - urllib3.connectionpool - DEBUG - https://www.youtube.com:443 "GET /api/timedtext?v=VjaU4DAxP6s&ei=8MGaaL6DI8GVkucP_PW3uQQ&caps=asr&opi=112496729&xoaf=5&xospf=1&hl=en&ip=0.0.0.0&ipbits=0&expire=1754997856&sparams=ip,ipbits,expire,v,ei,caps,opi,xoaf&signature=B1C9B66C2C5DF2B18969F02C80563252ED47FA1E.A13CC41D83415CD6CF6993B41D1EA4D95A6741A2&key=yt8&kind=asr&lang=en&variant=punctuated HTTP/1.1" 200 None
+2025-08-12 04:24:16,743 - app.utils - INFO - Successfully fetched transcript for video: VjaU4DAxP6s
+2025-08-12 04:25:59,177 - app.main - INFO - Health check endpoint called!
+2025-08-12 04:28:12,819 - Database_fr-mirror - INFO - Initializing database: fr-mirror.db
+2025-08-12 04:28:12,819 - Database_fr-mirror - INFO - Successfully connected to database: fr-mirror.db
+2025-08-12 04:28:12,819 - Database_fr-mirror - INFO - Creating/verifying all database tables...
+2025-08-12 04:28:12,820 - Database_fr-mirror - INFO - Table 'transcripts' created/verified successfully
+2025-08-12 04:28:12,820 - Database_fr-mirror - INFO - Table 'journalists' created/verified successfully
+2025-08-12 04:28:12,820 - Database_fr-mirror - INFO - Table 'articles' created/verified successfully
+2025-08-12 04:28:12,820 - Database_fr-mirror - INFO - Table 'committees' created/verified successfully
+2025-08-12 04:28:12,820 - Database_fr-mirror - INFO - All tables created/verified successfully
+2025-08-12 04:28:12,820 - Database_fr-mirror - INFO - Database initialization completed
+2025-08-12 04:28:12,820 - app.main - INFO - FastAPI app initialized!
+2025-08-12 04:28:12,863 - Database_fr-mirror - INFO - Initializing database: fr-mirror.db
+2025-08-12 04:28:12,863 - Database_fr-mirror - INFO - Successfully connected to database: fr-mirror.db
+2025-08-12 04:28:12,863 - Database_fr-mirror - INFO - Creating/verifying all database tables...
+2025-08-12 04:28:12,863 - Database_fr-mirror - INFO - Table 'transcripts' created/verified successfully
+2025-08-12 04:28:12,863 - Database_fr-mirror - INFO - Table 'journalists' created/verified successfully
+2025-08-12 04:28:12,864 - Database_fr-mirror - INFO - Table 'articles' created/verified successfully
+2025-08-12 04:28:12,864 - Database_fr-mirror - INFO - Table 'committees' created/verified successfully
+2025-08-12 04:28:12,864 - Database_fr-mirror - INFO - All tables created/verified successfully
+2025-08-12 04:28:12,864 - Database_fr-mirror - INFO - Database initialization completed
+2025-08-12 04:28:12,864 - app.main - INFO - FastAPI app initialized!
+2025-08-12 04:28:26,385 - app.main - INFO - Health check endpoint called!
+2025-08-12 04:28:33,767 - urllib3.connectionpool - DEBUG - Starting new HTTPS connection (1): www.youtube.com:443
+2025-08-12 04:28:33,933 - urllib3.connectionpool - DEBUG - https://www.youtube.com:443 "GET /watch?v=VjaU4DAxP6s HTTP/1.1" 200 None
+2025-08-12 04:28:34,664 - urllib3.connectionpool - DEBUG - https://www.youtube.com:443 "POST /youtubei/v1/player?key=AIzaSyAO_FJ2SlqU8Q4STEHLGCilw_Y9_11qcW8 HTTP/1.1" 200 None
+2025-08-12 04:28:34,731 - urllib3.connectionpool - DEBUG - https://www.youtube.com:443 "GET /api/timedtext?v=VjaU4DAxP6s&ei=8sKaaNWpI5S9kucPrIPTwQc&caps=asr&opi=112496729&xoaf=5&xospf=1&hl=en&ip=0.0.0.0&ipbits=0&expire=1754998114&sparams=ip,ipbits,expire,v,ei,caps,opi,xoaf&signature=2F4D8DBC2797E838C7316BDFB24500169820E36F.4D732B9C0548F66B13AFF7EFDB9F4E2587BD5996&key=yt8&kind=asr&lang=en&variant=punctuated HTTP/1.1" 200 None
+2025-08-12 04:28:34,733 - app.utils - INFO - Successfully fetched transcript for video: VjaU4DAxP6s
+2025-08-12 04:29:17,863 - app.utils - INFO - Successfully loaded context file: app/context_files/article_types/op_ed.txt
+2025-08-12 04:29:17,863 - app.utils - INFO - Successfully loaded context file: app/context_files/tone/professional.txt
+2025-08-12 04:29:17,863 - app.utils - INFO - Processing article: type=ArticleType.OP_ED, tone=Tone.PROFESSIONAL, committee=Committee.SPECIAL_CHARTER_COMMITTEE
+2025-08-12 04:29:17,863 - app.utils - INFO - Full prompt: This is the type of article: op-ed This is the tone: professional This is the context: you are a seagull. This is the user's prompt: there are fries everywhere in the road but the cars are so fast and you don't want to get run over but damn those fries smell good...
+2025-08-12 04:29:50,436 - app.utils - DEBUG - Response generated successfully
+2025-08-12 04:40:11,451 - Database_fr-mirror - INFO - Initializing database: fr-mirror.db
+2025-08-12 04:40:11,451 - Database_fr-mirror - INFO - Successfully connected to database: fr-mirror.db
+2025-08-12 04:40:11,451 - Database_fr-mirror - INFO - Creating/verifying all database tables...
+2025-08-12 04:40:11,451 - Database_fr-mirror - INFO - Table 'transcripts' created/verified successfully
+2025-08-12 04:40:11,451 - Database_fr-mirror - INFO - Table 'journalists' created/verified successfully
+2025-08-12 04:40:11,452 - Database_fr-mirror - INFO - Table 'articles' created/verified successfully
+2025-08-12 04:40:11,452 - Database_fr-mirror - INFO - Table 'committees' created/verified successfully
+2025-08-12 04:40:11,452 - Database_fr-mirror - INFO - All tables created/verified successfully
+2025-08-12 04:40:11,452 - Database_fr-mirror - INFO - Database initialization completed
+2025-08-12 04:40:11,452 - app.main - INFO - FastAPI app initialized!
+2025-08-12 04:40:11,488 - Database_fr-mirror - INFO - Initializing database: fr-mirror.db
+2025-08-12 04:40:11,489 - Database_fr-mirror - INFO - Successfully connected to database: fr-mirror.db
+2025-08-12 04:40:11,489 - Database_fr-mirror - INFO - Creating/verifying all database tables...
+2025-08-12 04:40:11,489 - Database_fr-mirror - INFO - Table 'transcripts' created/verified successfully
+2025-08-12 04:40:11,489 - Database_fr-mirror - INFO - Table 'journalists' created/verified successfully
+2025-08-12 04:40:11,489 - Database_fr-mirror - INFO - Table 'articles' created/verified successfully
+2025-08-12 04:40:11,489 - Database_fr-mirror - INFO - Table 'committees' created/verified successfully
+2025-08-12 04:40:11,490 - Database_fr-mirror - INFO - All tables created/verified successfully
+2025-08-12 04:40:11,490 - Database_fr-mirror - INFO - Database initialization completed
+2025-08-12 04:40:11,490 - app.main - INFO - FastAPI app initialized!
+2025-08-12 04:40:21,119 - Database_fr-mirror - INFO - Initializing database: fr-mirror.db
+2025-08-12 04:40:21,120 - Database_fr-mirror - INFO - Successfully connected to database: fr-mirror.db
+2025-08-12 04:40:21,120 - Database_fr-mirror - INFO - Creating/verifying all database tables...
+2025-08-12 04:40:21,120 - Database_fr-mirror - INFO - Table 'transcripts' created/verified successfully
+2025-08-12 04:40:21,120 - Database_fr-mirror - INFO - Table 'journalists' created/verified successfully
+2025-08-12 04:40:21,120 - Database_fr-mirror - INFO - Table 'articles' created/verified successfully
+2025-08-12 04:40:21,121 - Database_fr-mirror - INFO - Table 'committees' created/verified successfully
+2025-08-12 04:40:21,121 - Database_fr-mirror - INFO - All tables created/verified successfully
+2025-08-12 04:40:21,121 - Database_fr-mirror - INFO - Database initialization completed
+2025-08-12 04:40:21,121 - app.main - INFO - FastAPI app initialized!
+2025-08-12 04:40:21,153 - Database_fr-mirror - INFO - Initializing database: fr-mirror.db
+2025-08-12 04:40:21,153 - Database_fr-mirror - INFO - Successfully connected to database: fr-mirror.db
+2025-08-12 04:40:21,153 - Database_fr-mirror - INFO - Creating/verifying all database tables...
+2025-08-12 04:40:21,154 - Database_fr-mirror - INFO - Table 'transcripts' created/verified successfully
+2025-08-12 04:40:21,154 - Database_fr-mirror - INFO - Table 'journalists' created/verified successfully
+2025-08-12 04:40:21,154 - Database_fr-mirror - INFO - Table 'articles' created/verified successfully
+2025-08-12 04:40:21,154 - Database_fr-mirror - INFO - Table 'committees' created/verified successfully
+2025-08-12 04:40:21,154 - Database_fr-mirror - INFO - All tables created/verified successfully
+2025-08-12 04:40:21,154 - Database_fr-mirror - INFO - Database initialization completed
+2025-08-12 04:40:21,154 - app.main - INFO - FastAPI app initialized!
+2025-08-12 04:40:33,719 - Database_fr-mirror - INFO - Initializing database: fr-mirror.db
+2025-08-12 04:40:33,720 - Database_fr-mirror - INFO - Successfully connected to database: fr-mirror.db
+2025-08-12 04:40:33,720 - Database_fr-mirror - INFO - Creating/verifying all database tables...
+2025-08-12 04:40:33,720 - Database_fr-mirror - INFO - Table 'transcripts' created/verified successfully
+2025-08-12 04:40:33,720 - Database_fr-mirror - INFO - Table 'journalists' created/verified successfully
+2025-08-12 04:40:33,720 - Database_fr-mirror - INFO - Table 'articles' created/verified successfully
+2025-08-12 04:40:33,721 - Database_fr-mirror - INFO - Table 'committees' created/verified successfully
+2025-08-12 04:40:33,721 - Database_fr-mirror - INFO - All tables created/verified successfully
+2025-08-12 04:40:33,721 - Database_fr-mirror - INFO - Database initialization completed
+2025-08-12 04:40:33,721 - app.main - INFO - FastAPI app initialized!
+2025-08-12 04:40:33,783 - Database_fr-mirror - INFO - Initializing database: fr-mirror.db
+2025-08-12 04:40:33,783 - Database_fr-mirror - INFO - Successfully connected to database: fr-mirror.db
+2025-08-12 04:40:33,783 - Database_fr-mirror - INFO - Creating/verifying all database tables...
+2025-08-12 04:40:33,783 - Database_fr-mirror - INFO - Table 'transcripts' created/verified successfully
+2025-08-12 04:40:33,784 - Database_fr-mirror - INFO - Table 'journalists' created/verified successfully
+2025-08-12 04:40:33,784 - Database_fr-mirror - INFO - Table 'articles' created/verified successfully
+2025-08-12 04:40:33,784 - Database_fr-mirror - INFO - Table 'committees' created/verified successfully
+2025-08-12 04:40:33,784 - Database_fr-mirror - INFO - All tables created/verified successfully
+2025-08-12 04:40:33,784 - Database_fr-mirror - INFO - Database initialization completed
+2025-08-12 04:40:33,784 - app.main - INFO - FastAPI app initialized!
+2025-08-12 04:40:39,128 - Database_fr-mirror - INFO - Initializing database: fr-mirror.db
+2025-08-12 04:40:39,129 - Database_fr-mirror - INFO - Successfully connected to database: fr-mirror.db
+2025-08-12 04:40:39,129 - Database_fr-mirror - INFO - Creating/verifying all database tables...
+2025-08-12 04:40:39,129 - Database_fr-mirror - INFO - Table 'transcripts' created/verified successfully
+2025-08-12 04:40:39,129 - Database_fr-mirror - INFO - Table 'journalists' created/verified successfully
+2025-08-12 04:40:39,129 - Database_fr-mirror - INFO - Table 'articles' created/verified successfully
+2025-08-12 04:40:39,129 - Database_fr-mirror - INFO - Table 'committees' created/verified successfully
+2025-08-12 04:40:39,129 - Database_fr-mirror - INFO - All tables created/verified successfully
+2025-08-12 04:40:39,130 - Database_fr-mirror - INFO - Database initialization completed
+2025-08-12 04:40:39,130 - app.main - INFO - FastAPI app initialized!
+2025-08-12 04:40:39,159 - Database_fr-mirror - INFO - Initializing database: fr-mirror.db
+2025-08-12 04:40:39,160 - Database_fr-mirror - INFO - Successfully connected to database: fr-mirror.db
+2025-08-12 04:40:39,160 - Database_fr-mirror - INFO - Creating/verifying all database tables...
+2025-08-12 04:40:39,160 - Database_fr-mirror - INFO - Table 'transcripts' created/verified successfully
+2025-08-12 04:40:39,160 - Database_fr-mirror - INFO - Table 'journalists' created/verified successfully
+2025-08-12 04:40:39,160 - Database_fr-mirror - INFO - Table 'articles' created/verified successfully
+2025-08-12 04:40:39,160 - Database_fr-mirror - INFO - Table 'committees' created/verified successfully
+2025-08-12 04:40:39,161 - Database_fr-mirror - INFO - All tables created/verified successfully
+2025-08-12 04:40:39,161 - Database_fr-mirror - INFO - Database initialization completed
+2025-08-12 04:40:39,161 - app.main - INFO - FastAPI app initialized!
+2025-08-12 04:40:45,689 - Database_fr-mirror - INFO - Initializing database: fr-mirror.db
+2025-08-12 04:40:45,689 - Database_fr-mirror - INFO - Successfully connected to database: fr-mirror.db
+2025-08-12 04:40:45,689 - Database_fr-mirror - INFO - Creating/verifying all database tables...
+2025-08-12 04:40:45,689 - Database_fr-mirror - INFO - Table 'transcripts' created/verified successfully
+2025-08-12 04:40:45,689 - Database_fr-mirror - INFO - Table 'journalists' created/verified successfully
+2025-08-12 04:40:45,690 - Database_fr-mirror - INFO - Table 'articles' created/verified successfully
+2025-08-12 04:40:45,690 - Database_fr-mirror - INFO - Table 'committees' created/verified successfully
+2025-08-12 04:40:45,690 - Database_fr-mirror - INFO - All tables created/verified successfully
+2025-08-12 04:40:45,690 - Database_fr-mirror - INFO - Database initialization completed
+2025-08-12 04:40:45,690 - app.main - INFO - FastAPI app initialized!
+2025-08-12 04:40:45,716 - Database_fr-mirror - INFO - Initializing database: fr-mirror.db
+2025-08-12 04:40:45,716 - Database_fr-mirror - INFO - Successfully connected to database: fr-mirror.db
+2025-08-12 04:40:45,716 - Database_fr-mirror - INFO - Creating/verifying all database tables...
+2025-08-12 04:40:45,717 - Database_fr-mirror - INFO - Table 'transcripts' created/verified successfully
+2025-08-12 04:40:45,717 - Database_fr-mirror - INFO - Table 'journalists' created/verified successfully
+2025-08-12 04:40:45,717 - Database_fr-mirror - INFO - Table 'articles' created/verified successfully
+2025-08-12 04:40:45,717 - Database_fr-mirror - INFO - Table 'committees' created/verified successfully
+2025-08-12 04:40:45,717 - Database_fr-mirror - INFO - All tables created/verified successfully
+2025-08-12 04:40:45,717 - Database_fr-mirror - INFO - Database initialization completed
+2025-08-12 04:40:45,717 - app.main - INFO - FastAPI app initialized!
+2025-08-12 04:41:05,062 - Database_fr-mirror - INFO - Initializing database: fr-mirror.db
+2025-08-12 04:41:05,063 - Database_fr-mirror - INFO - Successfully connected to database: fr-mirror.db
+2025-08-12 04:41:05,063 - Database_fr-mirror - INFO - Creating/verifying all database tables...
+2025-08-12 04:41:05,063 - Database_fr-mirror - INFO - Table 'transcripts' created/verified successfully
+2025-08-12 04:41:05,063 - Database_fr-mirror - INFO - Table 'journalists' created/verified successfully
+2025-08-12 04:41:05,064 - Database_fr-mirror - INFO - Table 'articles' created/verified successfully
+2025-08-12 04:41:05,064 - Database_fr-mirror - INFO - Table 'committees' created/verified successfully
+2025-08-12 04:41:05,064 - Database_fr-mirror - INFO - All tables created/verified successfully
+2025-08-12 04:41:05,064 - Database_fr-mirror - INFO - Database initialization completed
+2025-08-12 04:41:05,064 - app.main - INFO - FastAPI app initialized!
+2025-08-12 04:41:05,096 - Database_fr-mirror - INFO - Initializing database: fr-mirror.db
+2025-08-12 04:41:05,096 - Database_fr-mirror - INFO - Successfully connected to database: fr-mirror.db
+2025-08-12 04:41:05,096 - Database_fr-mirror - INFO - Creating/verifying all database tables...
+2025-08-12 04:41:05,096 - Database_fr-mirror - INFO - Table 'transcripts' created/verified successfully
+2025-08-12 04:41:05,097 - Database_fr-mirror - INFO - Table 'journalists' created/verified successfully
+2025-08-12 04:41:05,097 - Database_fr-mirror - INFO - Table 'articles' created/verified successfully
+2025-08-12 04:41:05,097 - Database_fr-mirror - INFO - Table 'committees' created/verified successfully
+2025-08-12 04:41:05,097 - Database_fr-mirror - INFO - All tables created/verified successfully
+2025-08-12 04:41:05,097 - Database_fr-mirror - INFO - Database initialization completed
+2025-08-12 04:41:05,097 - app.main - INFO - FastAPI app initialized!
+2025-08-12 04:52:00,897 - Database_fr-mirror - INFO - Initializing database: fr-mirror.db
+2025-08-12 04:52:00,897 - Database_fr-mirror - INFO - Successfully connected to database: fr-mirror.db
+2025-08-12 04:52:00,898 - Database_fr-mirror - INFO - Creating/verifying all database tables...
+2025-08-12 04:52:00,898 - Database_fr-mirror - INFO - Table 'transcripts' created/verified successfully
+2025-08-12 04:52:00,898 - Database_fr-mirror - INFO - Table 'journalists' created/verified successfully
+2025-08-12 04:52:00,898 - Database_fr-mirror - INFO - Table 'articles' created/verified successfully
+2025-08-12 04:52:00,898 - Database_fr-mirror - INFO - Table 'committees' created/verified successfully
+2025-08-12 04:52:00,898 - Database_fr-mirror - INFO - All tables created/verified successfully
+2025-08-12 04:52:00,899 - Database_fr-mirror - INFO - Database initialization completed
+2025-08-12 04:52:00,899 - app.main - INFO - FastAPI app initialized!
+2025-08-12 04:52:00,906 - Database_fr-mirror - INFO - Initializing database: fr-mirror.db
+2025-08-12 04:52:00,906 - Database_fr-mirror - INFO - Successfully connected to database: fr-mirror.db
+2025-08-12 04:52:00,907 - Database_fr-mirror - INFO - Creating/verifying all database tables...
+2025-08-12 04:52:00,907 - Database_fr-mirror - INFO - Table 'transcripts' created/verified successfully
+2025-08-12 04:52:00,907 - Database_fr-mirror - INFO - Table 'journalists' created/verified successfully
+2025-08-12 04:52:00,907 - Database_fr-mirror - INFO - Table 'articles' created/verified successfully
+2025-08-12 04:52:00,907 - Database_fr-mirror - INFO - Table 'committees' created/verified successfully
+2025-08-12 04:52:00,907 - Database_fr-mirror - INFO - All tables created/verified successfully
+2025-08-12 04:52:00,908 - Database_fr-mirror - INFO - Database initialization completed
+2025-08-12 04:52:00,908 - app.main - INFO - FastAPI app initialized!
+2025-08-12 04:55:35,483 - Database_fr-mirror - INFO - Initializing database: fr-mirror.db
+2025-08-12 04:55:35,484 - Database_fr-mirror - INFO - Successfully connected to database: fr-mirror.db
+2025-08-12 04:55:35,484 - Database_fr-mirror - INFO - Creating/verifying all database tables...
+2025-08-12 04:55:35,484 - Database_fr-mirror - INFO - Table 'transcripts' created/verified successfully
+2025-08-12 04:55:35,485 - Database_fr-mirror - INFO - Table 'journalists' created/verified successfully
+2025-08-12 04:55:35,485 - Database_fr-mirror - INFO - Table 'articles' created/verified successfully
+2025-08-12 04:55:35,485 - Database_fr-mirror - INFO - Table 'committees' created/verified successfully
+2025-08-12 04:55:35,485 - Database_fr-mirror - INFO - All tables created/verified successfully
+2025-08-12 04:55:35,485 - Database_fr-mirror - INFO - Database initialization completed
+2025-08-12 04:55:35,485 - app.main - INFO - FastAPI app initialized!
+2025-08-12 04:55:35,488 - Database_fr-mirror - INFO - Initializing database: fr-mirror.db
+2025-08-12 04:55:35,488 - Database_fr-mirror - INFO - Successfully connected to database: fr-mirror.db
+2025-08-12 04:55:35,489 - Database_fr-mirror - INFO - Creating/verifying all database tables...
+2025-08-12 04:55:35,489 - Database_fr-mirror - INFO - Table 'transcripts' created/verified successfully
+2025-08-12 04:55:35,489 - Database_fr-mirror - INFO - Table 'journalists' created/verified successfully
+2025-08-12 04:55:35,489 - Database_fr-mirror - INFO - Table 'articles' created/verified successfully
+2025-08-12 04:55:35,489 - Database_fr-mirror - INFO - Table 'committees' created/verified successfully
+2025-08-12 04:55:35,489 - Database_fr-mirror - INFO - All tables created/verified successfully
+2025-08-12 04:55:35,490 - Database_fr-mirror - INFO - Database initialization completed
+2025-08-12 04:55:35,490 - app.main - INFO - FastAPI app initialized!
