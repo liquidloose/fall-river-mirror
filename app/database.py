@@ -454,6 +454,153 @@ class Database:
         except Exception as e:
             self._log_error("get_transcripts", e)
             raise
+
+    def transcript_exists_by_youtube_id(self, youtube_id: str) -> bool:
+        """
+        Check if a transcript exists for a given YouTube video ID.
+        
+        Args:
+            youtube_id: YouTube video ID to check
+            
+        Returns:
+            bool: True if transcript exists, False otherwise
+        """
+        self._log_operation("transcript_exists_by_youtube_id", {"youtube_id": youtube_id})
+        
+        try:
+            # Create a fresh connection for this operation to avoid threading issues
+            fresh_conn = sqlite3.connect(self.db_path)
+            fresh_cursor = fresh_conn.cursor()
+            
+            try:
+                fresh_cursor.execute("SELECT COUNT(*) FROM transcripts WHERE title LIKE ?", (f"%{youtube_id}%",))
+                count = fresh_cursor.fetchone()[0]
+                exists = count > 0
+                self.logger.info(f"Transcript for YouTube ID '{youtube_id}' exists: {exists}")
+                return exists
+            finally:
+                fresh_cursor.close()
+                fresh_conn.close()
+                
+        except Exception as e:
+            self._log_error("transcript_exists_by_youtube_id", e, {"youtube_id": youtube_id})
+            return False
+
+    def get_transcript_by_youtube_id(self, youtube_id: str) -> Optional[Tuple[Union[int, str]]]:
+        """
+        Retrieve a transcript by YouTube video ID.
+        
+        Args:
+            youtube_id: YouTube video ID to retrieve
+            
+        Returns:
+            Tuple containing transcript data if found, None otherwise.
+            Each tuple contains: (id, committee, title, content, date, category)
+        """
+        self._log_operation("get_transcript_by_youtube_id", {"youtube_id": youtube_id})
+        
+        try:
+            # Create a fresh connection for this operation to avoid threading issues
+            fresh_conn = sqlite3.connect(self.db_path)
+            fresh_cursor = fresh_conn.cursor()
+            
+            try:
+                fresh_cursor.execute("SELECT * FROM transcripts WHERE title LIKE ?", (f"%{youtube_id}%",))
+                transcript = fresh_cursor.fetchone()
+                if transcript:
+                    self.logger.info(f"Retrieved transcript for YouTube ID '{youtube_id}' from database")
+                    return transcript
+                else:
+                    self.logger.info(f"No transcript found for YouTube ID '{youtube_id}' in database")
+                    return None
+            finally:
+                fresh_cursor.close()
+                fresh_conn.close()
+                
+        except Exception as e:
+            self._log_error("get_transcript_by_youtube_id", e, {"youtube_id": youtube_id})
+            return None
+
+    def add_youtube_transcript(self, youtube_id: str, transcript_content: str, committee: str = "YouTube", category: str = "Video Transcript") -> int:
+        """
+        Add a YouTube transcript to the database.
+        
+        Args:
+            youtube_id: YouTube video ID
+            transcript_content: Full transcript content
+            committee: Committee name (default: "YouTube")
+            category: Transcript category (default: "Video Transcript")
+            
+        Returns:
+            int: The ID of the newly created transcript
+        """
+        operation_details = {
+            "youtube_id": youtube_id, 
+            "committee": committee, 
+            "category": category,
+            "content_length": len(transcript_content)
+        }
+        self._log_operation("add_youtube_transcript", operation_details)
+        
+        try:
+            title = f"YouTube Transcript - {youtube_id}"
+            date = datetime.now().isoformat()
+            
+            # Debug: Log the database path and operation details
+            self.logger.info(f"Adding transcript to database: {self.db_path}")
+            self.logger.info(f"Title: {title}")
+            self.logger.info(f"Content length: {len(transcript_content)}")
+            self.logger.info(f"Date: {date}")
+            
+            # Create a fresh connection for this operation to avoid threading issues
+            fresh_conn = sqlite3.connect(self.db_path)
+            fresh_cursor = fresh_conn.cursor()
+            
+            try:
+                # Debug: Check if table exists
+                fresh_cursor.execute("SELECT name FROM sqlite_master WHERE type='table' AND name='transcripts'")
+                table_exists = fresh_cursor.fetchone()
+                self.logger.info(f"Transcripts table exists: {table_exists is not None}")
+                
+                if not table_exists:
+                    self.logger.error("Transcripts table does not exist!")
+                    # Create the table if it doesn't exist
+                    self.logger.info("Creating transcripts table...")
+                    fresh_cursor.execute("""
+                        CREATE TABLE IF NOT EXISTS transcripts (
+                            id INTEGER PRIMARY KEY AUTOINCREMENT,
+                            committee TEXT,
+                            title TEXT,
+                            content TEXT,
+                            date TEXT,
+                            category TEXT
+                        )
+                    """)
+                    fresh_conn.commit()
+                    self.logger.info("Transcripts table created successfully")
+                
+                # Now insert the transcript
+                fresh_cursor.execute(
+                    "INSERT INTO transcripts (committee, title, content, date, category) VALUES (?, ?, ?, ?, ?)", 
+                    (committee, title, transcript_content, date, category)
+                )
+                fresh_conn.commit()
+                
+                # Verify the insert worked
+                fresh_cursor.execute("SELECT COUNT(*) FROM transcripts WHERE title LIKE ?", (f"%{youtube_id}%",))
+                count = fresh_cursor.fetchone()[0]
+                self.logger.info(f"Transcripts in database after insert: {count}")
+                
+                transcript_id = fresh_cursor.lastrowid
+                self.logger.info(f"Added YouTube transcript for video '{youtube_id}' (ID: {transcript_id})")
+                return transcript_id
+            finally:
+                fresh_cursor.close()
+                fresh_conn.close()
+            
+        except Exception as e:
+            self._log_error("add_youtube_transcript", e, operation_details)
+            raise
     
     def close(self) -> None:
         """
