@@ -35,6 +35,7 @@ This project provides a development environment for The Fall River Mirror with:
 - Article storage and management
 - Committee and journalist tracking
 
+
 ## Getting Started
 
 Change the name of the file `.env.sample` to `.env` and adjust the values accordingly.
@@ -57,6 +58,7 @@ docker build -f Dockerfile.ai -t fr-mirror-ai .
 ### Running the Environment
 
 Now you are ready to create the environment! Type `docker compose up` in your terminal from inside the directory where the Dockerfiles live. The sites will be available at localhost running on the ports that you specified in your .env file: `<your-ip/localhost-goes-here>:<your-port-number-goes-here>`
+
 
 ## API Endpoints
 
@@ -99,14 +101,11 @@ Transcripts are automatically cached in the database:
 - **Subsequent requests**: Retrieved from database (~10-50ms)
 - **Performance improvement**: 10-100x faster for cached transcripts
 
+
 ## Helpful Tips
 
 ### Server Reload Command
 
-Use this command to reload the server from inside the container: 
-```bash
-uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload --log-level debug
-```
 
 ### Testing the API
 
@@ -134,6 +133,11 @@ curl -X POST "http://localhost:8000/experimental/" \
 ### 🔍 Debugging Tips
 
 **When endpoints won't load**: 🔍  Use the server reload command above with `--log-level debug` to see detailed Python errors and stack traces that can help identify issues.
+ 
+``` uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload --log-level debug
+```
+
+### Log Levels
 
 Here are the log levels:
 1. **debug**: Shows the most detailed information, useful for development and troubleshooting
