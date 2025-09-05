@@ -3,6 +3,7 @@ from datetime import datetime
 from enum import Enum
 import logging
 from typing import Dict, Any, List, Optional
+from app.db_sync import DatabaseSync
 
 # Third-party imports
 from fastapi import APIRouter, FastAPI, HTTPException, status
@@ -18,8 +19,6 @@ from .data_classes import (
     Committee,
     Journalist,
     Tone,
-    GenerateArticleRequest,
-    CreateArticleRequest,
     UpdateArticleRequest,
     PartialUpdateRequest,
 )
@@ -44,6 +43,12 @@ except Exception as e:
     logger.error(f"Failed to initialize database in main.py: {str(e)}")
     database = None
 
+# Initialize database sync and run it
+if database:
+    db_sync = DatabaseSync(database)
+    db_sync.sync_all_enums()
+    logger.info(f"Database sync completed: {db_sync}")
+
 # Initialize FastAPI application and XAI processor
 app = FastAPI(
     title="Article Generation API",
@@ -55,7 +60,7 @@ xai_processor = XAIProcessor()
 logger.info("FastAPI app initialized!")
 
 # Create class instances once at startup
-transcript_manager = TranscriptManager(database)
+transcript_manager = TranscriptManager(Committee.BOARD_OF_HEALTH, database)
 article_generator = ArticleGenerator()
 youtube_crawler = YouTubeCrawler(database)
 
@@ -86,13 +91,19 @@ def health_check() -> Dict[str, str]:
     }
 
 
-@app.get("/transcript/{youtube_id=VjaU4DAxP6s}", response_model=None)
+@app.get("/transcript/fetch/{committee}/{youtube_id=VjaU4DAxP6s}", response_model=None)
 def get_transcript_endpoint(
+    committee: Committee,
     youtube_id: str = "VjaU4DAxP6s",
 ) -> Dict[str, Any] | JSONResponse:
+
+    logger.info(
+        f"Fetching transcript for committee {committee} and YouTube ID {youtube_id}"
+    )
     """
     Endpoint to fetch YouTube video transcripts.
-    First checks database cache, then fetches from YouTube if not found.
+    First checks database cache, then fetches from YouTube if not found and
+    stores it in the database.
 
     Args:
         youtube_id (str): YouTube video ID (default: "VjaU4DAxP6s")
@@ -100,7 +111,7 @@ def get_transcript_endpoint(
     Returns:
         Dict[str, Any] | JSONResponse: YouTube transcript data or error response
     """
-    return transcript_manager.get_transcript(youtube_id)
+    return transcript_manager.get_transcript(committee, youtube_id)
 
 
 @app.get("/yt_crawler/{video_id}", response_model=None)

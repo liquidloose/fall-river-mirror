@@ -1,5 +1,7 @@
 FROM python:3.13
 
+# Install FFmpeg for audio processing
+RUN apt-get update && apt-get install -y ffmpeg && rm -rf /var/lib/apt/lists/*
 
 WORKDIR /code
 
@@ -9,7 +11,6 @@ COPY ./requirements.txt /code/requirements.txt
 # Install Python packages
 RUN pip install --no-cache-dir --upgrade pip
 RUN pip install --no-cache-dir -r /code/requirements.txt
-RUN code --install-extension ms-python.python
 
 # Configure git for the working directory
 RUN git config --global --add safe.directory /code

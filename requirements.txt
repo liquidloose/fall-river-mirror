@@ -5,3 +5,5 @@ youtube-transcript-api
 sqlalchemy>=2.0.0
 alembic>=1.13.0
 httpx>=0.24.0
+openai>=1.0.0
+yt-dlp>=2023.1.6
