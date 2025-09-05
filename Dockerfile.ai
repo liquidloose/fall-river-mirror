@@ -1,6 +1,7 @@
-
 FROM python:3.13
 
+# Install FFmpeg for audio processing
+RUN apt-get update && apt-get install -y ffmpeg && rm -rf /var/lib/apt/lists/*
 
 WORKDIR /code
 
@@ -13,6 +14,7 @@ RUN pip install --no-cache-dir -r /code/requirements.txt
 
 # Configure git for the working directory
 RUN git config --global --add safe.directory /code
+
 
 # Copy the app code (this will be overridden by volume mount in development)
 COPY ./app /code/app
