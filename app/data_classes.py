@@ -10,7 +10,7 @@ class ArticleType(str, Enum):
 
 
 class Tone(str, Enum):
-    FORMAL = "formal"
+    FORMAL = "formal tone"
     CASUAL = "casual"
     PROFESSIONAL = "professional"
     FRIENDLY = "friendly"
@@ -24,6 +24,7 @@ class Committee(str, Enum):
     BOARD_OF_ASSESSORS = "Board of Assessors"
     BOARD_OF_HEALTH = "Board of Health"
     CHARTER_COMMISSION = "Charter Commission"
+    CITY_COUNCIL = "City Council"
     COMMUNITY_PRESERVATION_COMMISSION = "Community Preservation Commission"
     CONSERVATION_COMMISSION = "Conservation Commission"
     COUNCIL_ON_AGING = "Council on Aging"
