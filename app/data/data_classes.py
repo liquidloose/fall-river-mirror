@@ -9,6 +9,11 @@ class ArticleType(str, Enum):
     OP_ED = "op_ed"
 
 
+class AIAgent(str, Enum):
+    GROK = "grok"
+    WHISPER = "whisper"
+
+
 class Tone(str, Enum):
     FORMAL = "formal tone"
     CASUAL = "casual"
