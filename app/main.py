@@ -3,7 +3,7 @@ from datetime import datetime
 from enum import Enum
 import logging
 from typing import Dict, Any, List, Optional
-from app.db_sync import DatabaseSync
+from app.data.db_sync import DatabaseSync
 
 # Third-party imports
 from fastapi import APIRouter, FastAPI, HTTPException, status
@@ -13,8 +13,8 @@ from youtube_transcript_api import YouTubeTranscriptApi
 # Local imports
 from app import TranscriptManager, ArticleGenerator, YouTubeCrawler
 from app.ai_journalists.aurelius_stone import AureliusStone
-from .xai_processor import XAIProcessor
-from .data_classes import (
+from app.ai.xai_processor import XAIProcessor
+from app.data.data_classes import (
     ArticleType,
     Committee,
     Journalist,
@@ -22,7 +22,7 @@ from .data_classes import (
     UpdateArticleRequest,
     PartialUpdateRequest,
 )
-from .database import Database
+from app.data.database import Database
 
 # Configure logging with both console and file output
 logging.basicConfig(
@@ -91,10 +91,10 @@ def health_check() -> Dict[str, str]:
     }
 
 
-@app.get("/transcript/fetch/{committee}/{youtube_id=VjaU4DAxP6s}", response_model=None)
+@app.get("/transcript/fetch/{committee}/{youtube_id=iGi8ymCBzhw}", response_model=None)
 def get_transcript_endpoint(
     committee: Committee,
-    youtube_id: str = "VjaU4DAxP6s",
+    youtube_id: str = "iGi8ymCBzhw",
 ) -> Dict[str, Any] | JSONResponse:
 
     logger.info(
@@ -112,6 +112,52 @@ def get_transcript_endpoint(
         Dict[str, Any] | JSONResponse: YouTube transcript data or error response
     """
     return transcript_manager.get_transcript(committee, youtube_id)
+
+
+@app.delete("/transcript/delete/{transcript_id}")
+def delete_transcript_endpoint(transcript_id: int) -> Dict[str, Any]:
+    """
+    Delete a transcript by its ID.
+
+    Args:
+        transcript_id: The ID of the transcript to delete
+
+    Returns:
+        Dict containing success status and message
+
+    Raises:
+        HTTPException: If transcript not found or database operation fails
+    """
+    try:
+        if not database:
+            raise HTTPException(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail="Database not available",
+            )
+
+        success = database.delete_transcript_by_id(transcript_id)
+
+        if success:
+            logger.info(f"Successfully deleted transcript with ID {transcript_id}")
+            return {
+                "success": True,
+                "message": f"Transcript with ID {transcript_id} deleted successfully",
+                "transcript_id": transcript_id,
+            }
+        else:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail=f"Transcript with ID {transcript_id} not found",
+            )
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Failed to delete transcript {transcript_id}: {str(e)}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to delete transcript: {str(e)}",
+        )
 
 
 @app.get("/yt_crawler/{video_id}", response_model=None)
