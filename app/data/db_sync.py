@@ -1,8 +1,8 @@
 import logging
 from typing import Dict, Any, List
 from enum import Enum
-from app.data_classes import Committee, Tone, ArticleType, Journalist
-from app.database import Database
+from .data_classes import Committee, Tone, ArticleType, Journalist
+from .database import Database
 
 logger = logging.getLogger(__name__)
 
