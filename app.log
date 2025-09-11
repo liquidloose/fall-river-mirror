@@ -8256,3 +8256,157 @@ If you are sure that the described cause is not responsible for this error and t
 2025-09-11 20:35:20,528 - app.data.db_sync - INFO - No missing values found for journalists
 2025-09-11 20:35:20,528 - app.main - INFO - Database sync completed: <app.data.db_sync.DatabaseSync object at 0x7f18aa4bf4d0>
 2025-09-11 20:35:20,529 - app.main - INFO - FastAPI app initialized!
+2025-09-11 20:45:28,700 - Database_fr-mirror - INFO - Initializing database: fr-mirror.db
+2025-09-11 20:45:28,701 - Database_fr-mirror - INFO - Successfully connected to database: fr-mirror.db
+2025-09-11 20:45:28,701 - Database_fr-mirror - INFO - Creating/verifying all database tables...
+2025-09-11 20:45:28,702 - Database_fr-mirror - INFO - Table 'transcripts' created/verified successfully
+2025-09-11 20:45:28,702 - Database_fr-mirror - INFO - Table 'journalists' created/verified successfully
+2025-09-11 20:45:28,702 - Database_fr-mirror - INFO - Table 'articles' created/verified successfully
+2025-09-11 20:45:28,702 - Database_fr-mirror - INFO - Table 'committees' created/verified successfully
+2025-09-11 20:45:28,702 - Database_fr-mirror - INFO - Table 'tones' created/verified successfully
+2025-09-11 20:45:28,703 - Database_fr-mirror - INFO - Table 'article_types' created/verified successfully
+2025-09-11 20:45:28,703 - Database_fr-mirror - INFO - All tables created/verified successfully
+2025-09-11 20:45:28,703 - Database_fr-mirror - INFO - Database initialization completed
+2025-09-11 20:45:28,703 - app.main - INFO - Database initialized successfully in main.py
+2025-09-11 20:45:28,704 - app.data.db_sync - INFO - Starting database enum synchronization...
+2025-09-11 20:45:28,704 - app.data.db_sync - INFO - Synchonization query made
+2025-09-11 20:45:28,704 - app.data.db_sync - INFO - No missing values found for committees
+2025-09-11 20:45:28,704 - app.data.db_sync - INFO - Synchonization query made
+2025-09-11 20:45:28,705 - app.data.db_sync - INFO - No missing values found for tones
+2025-09-11 20:45:28,705 - app.data.db_sync - INFO - Synchonization query made
+2025-09-11 20:45:28,705 - app.data.db_sync - INFO - No missing values found for article_types
+2025-09-11 20:45:28,705 - app.data.db_sync - INFO - Synchonization query made
+2025-09-11 20:45:28,705 - app.data.db_sync - INFO - No missing values found for journalists
+2025-09-11 20:45:28,706 - app.main - INFO - Database sync completed: <app.data.db_sync.DatabaseSync object at 0x7fce9a4834d0>
+2025-09-11 20:45:28,706 - app.main - INFO - FastAPI app initialized!
+2025-09-11 20:45:28,980 - Database_fr-mirror - INFO - Initializing database: fr-mirror.db
+2025-09-11 20:45:28,981 - Database_fr-mirror - INFO - Successfully connected to database: fr-mirror.db
+2025-09-11 20:45:28,982 - Database_fr-mirror - INFO - Creating/verifying all database tables...
+2025-09-11 20:45:28,982 - Database_fr-mirror - INFO - Table 'transcripts' created/verified successfully
+2025-09-11 20:45:28,983 - Database_fr-mirror - INFO - Table 'journalists' created/verified successfully
+2025-09-11 20:45:28,983 - Database_fr-mirror - INFO - Table 'articles' created/verified successfully
+2025-09-11 20:45:28,983 - Database_fr-mirror - INFO - Table 'committees' created/verified successfully
+2025-09-11 20:45:28,984 - Database_fr-mirror - INFO - Table 'tones' created/verified successfully
+2025-09-11 20:45:28,984 - Database_fr-mirror - INFO - Table 'article_types' created/verified successfully
+2025-09-11 20:45:28,984 - Database_fr-mirror - INFO - All tables created/verified successfully
+2025-09-11 20:45:28,985 - Database_fr-mirror - INFO - Database initialization completed
+2025-09-11 20:45:28,985 - app.main - INFO - Database initialized successfully in main.py
+2025-09-11 20:45:28,985 - app.data.db_sync - INFO - Starting database enum synchronization...
+2025-09-11 20:45:28,985 - app.data.db_sync - INFO - Synchonization query made
+2025-09-11 20:45:28,987 - app.data.db_sync - INFO - No missing values found for committees
+2025-09-11 20:45:28,987 - app.data.db_sync - INFO - Synchonization query made
+2025-09-11 20:45:28,988 - app.data.db_sync - INFO - No missing values found for tones
+2025-09-11 20:45:28,988 - app.data.db_sync - INFO - Synchonization query made
+2025-09-11 20:45:28,988 - app.data.db_sync - INFO - No missing values found for article_types
+2025-09-11 20:45:28,989 - app.data.db_sync - INFO - Synchonization query made
+2025-09-11 20:45:28,989 - app.data.db_sync - INFO - No missing values found for journalists
+2025-09-11 20:45:28,989 - app.main - INFO - Database sync completed: <app.data.db_sync.DatabaseSync object at 0x7fdae695f4d0>
+2025-09-11 20:45:28,990 - app.main - INFO - FastAPI app initialized!
+2025-09-11 20:45:30,227 - Database_fr-mirror - INFO - Initializing database: fr-mirror.db
+2025-09-11 20:45:30,227 - Database_fr-mirror - INFO - Successfully connected to database: fr-mirror.db
+2025-09-11 20:45:30,228 - Database_fr-mirror - INFO - Creating/verifying all database tables...
+2025-09-11 20:45:30,228 - Database_fr-mirror - INFO - Table 'transcripts' created/verified successfully
+2025-09-11 20:45:30,229 - Database_fr-mirror - INFO - Table 'journalists' created/verified successfully
+2025-09-11 20:45:30,229 - Database_fr-mirror - INFO - Table 'articles' created/verified successfully
+2025-09-11 20:45:30,229 - Database_fr-mirror - INFO - Table 'committees' created/verified successfully
+2025-09-11 20:45:30,230 - Database_fr-mirror - INFO - Table 'tones' created/verified successfully
+2025-09-11 20:45:30,230 - Database_fr-mirror - INFO - Table 'article_types' created/verified successfully
+2025-09-11 20:45:30,230 - Database_fr-mirror - INFO - All tables created/verified successfully
+2025-09-11 20:45:30,230 - Database_fr-mirror - INFO - Database initialization completed
+2025-09-11 20:45:30,231 - app.main - INFO - Database initialized successfully in main.py
+2025-09-11 20:45:30,231 - app.data.db_sync - INFO - Starting database enum synchronization...
+2025-09-11 20:45:30,233 - app.data.db_sync - INFO - Synchonization query made
+2025-09-11 20:45:30,233 - app.data.db_sync - INFO - No missing values found for committees
+2025-09-11 20:45:30,233 - app.data.db_sync - INFO - Synchonization query made
+2025-09-11 20:45:30,233 - app.data.db_sync - INFO - No missing values found for tones
+2025-09-11 20:45:30,234 - app.data.db_sync - INFO - Synchonization query made
+2025-09-11 20:45:30,234 - app.data.db_sync - INFO - No missing values found for article_types
+2025-09-11 20:45:30,234 - app.data.db_sync - INFO - Synchonization query made
+2025-09-11 20:45:30,234 - app.data.db_sync - INFO - No missing values found for journalists
+2025-09-11 20:45:30,234 - app.main - INFO - Database sync completed: <app.data.db_sync.DatabaseSync object at 0x7fae75c434d0>
+2025-09-11 20:45:30,235 - app.main - INFO - FastAPI app initialized!
+2025-09-11 20:45:30,482 - Database_fr-mirror - INFO - Initializing database: fr-mirror.db
+2025-09-11 20:45:30,483 - Database_fr-mirror - INFO - Successfully connected to database: fr-mirror.db
+2025-09-11 20:45:30,483 - Database_fr-mirror - INFO - Creating/verifying all database tables...
+2025-09-11 20:45:30,484 - Database_fr-mirror - INFO - Table 'transcripts' created/verified successfully
+2025-09-11 20:45:30,484 - Database_fr-mirror - INFO - Table 'journalists' created/verified successfully
+2025-09-11 20:45:30,484 - Database_fr-mirror - INFO - Table 'articles' created/verified successfully
+2025-09-11 20:45:30,485 - Database_fr-mirror - INFO - Table 'committees' created/verified successfully
+2025-09-11 20:45:30,485 - Database_fr-mirror - INFO - Table 'tones' created/verified successfully
+2025-09-11 20:45:30,485 - Database_fr-mirror - INFO - Table 'article_types' created/verified successfully
+2025-09-11 20:45:30,485 - Database_fr-mirror - INFO - All tables created/verified successfully
+2025-09-11 20:45:30,485 - Database_fr-mirror - INFO - Database initialization completed
+2025-09-11 20:45:30,485 - app.main - INFO - Database initialized successfully in main.py
+2025-09-11 20:45:30,485 - app.data.db_sync - INFO - Starting database enum synchronization...
+2025-09-11 20:45:30,486 - app.data.db_sync - INFO - Synchonization query made
+2025-09-11 20:45:30,486 - app.data.db_sync - INFO - No missing values found for committees
+2025-09-11 20:45:30,486 - app.data.db_sync - INFO - Synchonization query made
+2025-09-11 20:45:30,486 - app.data.db_sync - INFO - No missing values found for tones
+2025-09-11 20:45:30,486 - app.data.db_sync - INFO - Synchonization query made
+2025-09-11 20:45:30,486 - app.data.db_sync - INFO - No missing values found for article_types
+2025-09-11 20:45:30,487 - app.data.db_sync - INFO - Synchonization query made
+2025-09-11 20:45:30,487 - app.data.db_sync - INFO - No missing values found for journalists
+2025-09-11 20:45:30,487 - app.main - INFO - Database sync completed: <app.data.db_sync.DatabaseSync object at 0x7ff8ae0734d0>
+2025-09-11 20:45:30,487 - app.main - INFO - FastAPI app initialized!
+2025-09-11 20:46:56,498 - Database_fr-mirror - INFO - Initializing database: fr-mirror.db
+2025-09-11 20:46:56,498 - Database_fr-mirror - INFO - Successfully connected to database: fr-mirror.db
+2025-09-11 20:46:56,498 - Database_fr-mirror - INFO - Creating/verifying all database tables...
+2025-09-11 20:46:56,499 - Database_fr-mirror - INFO - Table 'transcripts' created/verified successfully
+2025-09-11 20:46:56,499 - Database_fr-mirror - INFO - Table 'journalists' created/verified successfully
+2025-09-11 20:46:56,499 - Database_fr-mirror - INFO - Table 'articles' created/verified successfully
+2025-09-11 20:46:56,499 - Database_fr-mirror - INFO - Table 'committees' created/verified successfully
+2025-09-11 20:46:56,499 - Database_fr-mirror - INFO - Table 'tones' created/verified successfully
+2025-09-11 20:46:56,499 - Database_fr-mirror - INFO - Table 'article_types' created/verified successfully
+2025-09-11 20:46:56,499 - Database_fr-mirror - INFO - All tables created/verified successfully
+2025-09-11 20:46:56,500 - Database_fr-mirror - INFO - Database initialization completed
+2025-09-11 20:46:56,500 - app.main - INFO - Database initialized successfully in main.py
+2025-09-11 20:46:56,500 - app.data.db_sync - INFO - Starting database enum synchronization...
+2025-09-11 20:46:56,500 - app.data.db_sync - INFO - Synchonization query made
+2025-09-11 20:46:56,500 - app.data.db_sync - INFO - No missing values found for committees
+2025-09-11 20:46:56,500 - app.data.db_sync - INFO - Synchonization query made
+2025-09-11 20:46:56,500 - app.data.db_sync - INFO - No missing values found for tones
+2025-09-11 20:46:56,500 - app.data.db_sync - INFO - Synchonization query made
+2025-09-11 20:46:56,500 - app.data.db_sync - INFO - No missing values found for article_types
+2025-09-11 20:46:56,500 - app.data.db_sync - INFO - Synchonization query made
+2025-09-11 20:46:56,500 - app.data.db_sync - INFO - No missing values found for journalists
+2025-09-11 20:46:56,500 - app.main - INFO - Database sync completed: <app.data.db_sync.DatabaseSync object at 0x7febfb5cb4d0>
+2025-09-11 20:46:56,501 - app.main - INFO - FastAPI app initialized!
+2025-09-11 20:46:56,540 - Database_fr-mirror - INFO - Initializing database: fr-mirror.db
+2025-09-11 20:46:56,540 - Database_fr-mirror - INFO - Successfully connected to database: fr-mirror.db
+2025-09-11 20:46:56,540 - Database_fr-mirror - INFO - Creating/verifying all database tables...
+2025-09-11 20:46:56,541 - Database_fr-mirror - INFO - Table 'transcripts' created/verified successfully
+2025-09-11 20:46:56,541 - Database_fr-mirror - INFO - Table 'journalists' created/verified successfully
+2025-09-11 20:46:56,541 - Database_fr-mirror - INFO - Table 'articles' created/verified successfully
+2025-09-11 20:46:56,541 - Database_fr-mirror - INFO - Table 'committees' created/verified successfully
+2025-09-11 20:46:56,541 - Database_fr-mirror - INFO - Table 'tones' created/verified successfully
+2025-09-11 20:46:56,542 - Database_fr-mirror - INFO - Table 'article_types' created/verified successfully
+2025-09-11 20:46:56,542 - Database_fr-mirror - INFO - All tables created/verified successfully
+2025-09-11 20:46:56,542 - Database_fr-mirror - INFO - Database initialization completed
+2025-09-11 20:46:56,542 - app.main - INFO - Database initialized successfully in main.py
+2025-09-11 20:46:56,542 - app.data.db_sync - INFO - Starting database enum synchronization...
+2025-09-11 20:46:56,542 - app.data.db_sync - INFO - Synchonization query made
+2025-09-11 20:46:56,542 - app.data.db_sync - INFO - No missing values found for committees
+2025-09-11 20:46:56,542 - app.data.db_sync - INFO - Synchonization query made
+2025-09-11 20:46:56,542 - app.data.db_sync - INFO - No missing values found for tones
+2025-09-11 20:46:56,543 - app.data.db_sync - INFO - Synchonization query made
+2025-09-11 20:46:56,543 - app.data.db_sync - INFO - No missing values found for article_types
+2025-09-11 20:46:56,543 - app.data.db_sync - INFO - Synchonization query made
+2025-09-11 20:46:56,543 - app.data.db_sync - INFO - No missing values found for journalists
+2025-09-11 20:46:56,543 - app.main - INFO - Database sync completed: <app.data.db_sync.DatabaseSync object at 0x7ff93173f4d0>
+2025-09-11 20:46:56,543 - app.main - INFO - FastAPI app initialized!
+2025-09-11 20:51:16,884 - app.main - INFO - Fetching transcript for committee Committee.BOARD_OF_ASSESSORS and YouTube ID iGi8ymCBzhw
+2025-09-11 20:51:16,884 - Database_fr-mirror - INFO - Database operation: transcript_exists_by_youtube_id - Details: {'youtube_id': 'iGi8ymCBzhw'}
+2025-09-11 20:51:16,885 - Database_fr-mirror - INFO - Transcript for YouTube ID 'iGi8ymCBzhw' exists: False
+2025-09-11 20:51:16,885 - app.data.transcript_manager - INFO - Transcript for video iGi8ymCBzhw not found in database, fetching from YouTube...
+2025-09-11 20:51:16,886 - urllib3.connectionpool - DEBUG - Starting new HTTPS connection (1): www.youtube.com:443
+2025-09-11 20:51:17,084 - urllib3.connectionpool - DEBUG - https://www.youtube.com:443 "GET /watch?v=iGi8ymCBzhw HTTP/1.1" 200 None
+2025-09-11 20:51:18,996 - urllib3.connectionpool - DEBUG - https://www.youtube.com:443 "POST /youtubei/v1/player?key=AIzaSyAO_FJ2SlqU8Q4STEHLGCilw_Y9_11qcW8 HTTP/1.1" 200 None
+2025-09-11 20:51:18,998 - app.data.transcript_manager - WARNING - YouTube Transcript API failed for video iGi8ymCBzhw: 
+Could not retrieve a transcript for the video https://www.youtube.com/watch?v=iGi8ymCBzhw! This is most likely caused by:
+
+Subtitles are disabled for this video
+
+If you are sure that the described cause is not responsible for this error and that a transcript should be retrievable, please create an issue at https://github.com/jdepoix/youtube-transcript-api/issues. Please add which version of youtube_transcript_api you are using and provide the information needed to replicate the error. Also make sure that there are no open issues which already describe your problem!
+2025-09-11 20:51:18,998 - app.data.transcript_manager - INFO - Attempting fallback to OpenAI Whisper for video: iGi8ymCBzhw
+2025-09-11 20:51:18,998 - app.data.transcript_manager - INFO - Changing category to: AIAgent.WHISPER
+2025-09-11 20:51:19,116 - app.ai.whisper_processor - INFO - Downloading audio for video: iGi8ymCBzhw
