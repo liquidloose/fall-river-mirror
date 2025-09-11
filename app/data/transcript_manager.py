@@ -1,4 +1,4 @@
-import datetime
+from datetime import datetime
 import os
 import logging
 from typing import Optional, Dict, Any, List
@@ -12,8 +12,8 @@ from youtube_transcript_api._errors import (
 )
 import sqlite3
 
-from app.data_classes import AIAgent, Committee
-from app.ai.whisper_processor import WhisperProcessor
+from .data_classes import AIAgent, Committee
+from ..ai.whisper_processor import WhisperProcessor
 
 logger = logging.getLogger(__name__)
 
@@ -33,6 +33,7 @@ class TranscriptManager:
         self,
         committee: Committee,
         video_id: str = "VjaU4DAxP6s",
+        category: AIAgent = AIAgent.GROK,
     ) -> Dict[str, Any] | JSONResponse:
         """
         Fetch YouTube video transcript using the YouTube Transcript API.
@@ -44,9 +45,6 @@ class TranscriptManager:
         Returns:
             Dict containing transcript data with source information, or error response
         """
-        # Set up logging
-        self.logger = logging.getLogger(f"Database Transcript Manager")
-        self.logger.setLevel(logging.INFO)
 
         try:
             # Check if transcript already exists in database
@@ -57,7 +55,9 @@ class TranscriptManager:
             logger.info(
                 f"Transcript for video {video_id} not found in database, fetching from YouTube..."
             )
-            transcript = self._fetch_from_youtube(video_id)
+
+            # This needs to return a dictionary with the transcript and the category
+            transcript = self._fetch_from_youtube(video_id, category)
 
             # Store transcript in database if available
             if self._can_cache():
@@ -104,6 +104,7 @@ class TranscriptManager:
             "status": "healthy",
             "message": "Transcript retrieved from database cache",
             "source": "database_cache",
+            "category": transcript_data[5],
             "youtube_id": video_id,
             "transcript_id": transcript_data[0],
             "content": transcript_content,
@@ -119,7 +120,7 @@ class TranscriptManager:
     # YOUTUBE API METHODS
     # =============================================================================
 
-    def _fetch_from_youtube(self, video_id: str) -> str:
+    def _fetch_from_youtube(self, video_id: str, category: AIAgent) -> str:
         """
         Fetch transcript from YouTube API with OpenAI Whisper fallback.
 
@@ -143,16 +144,10 @@ class TranscriptManager:
             )
             logger.info(f"Attempting fallback to OpenAI Whisper for video: {video_id}")
 
+            category = AIAgent.WHISPER
+            logger.info(f"Changing category to: {category}")
+
             # Fallback to OpenAI Whisper
-            return self._fetch_via_whisper(video_id)
-
-        except Exception as e:
-            logger.error(
-                f"Unexpected error with YouTube Transcript API for video {video_id}: {str(e)}"
-            )
-            logger.info(f"Attempting fallback to OpenAI Whisper for video: {video_id}")
-
-            # Fallback to OpenAI Whisper for any other errors
             return self._fetch_via_whisper(video_id)
 
     def _formatted_youtube_response(
@@ -218,20 +213,20 @@ class TranscriptManager:
             "category": f"{category} Transcript",
             "content_length": len(transcript_content),
         }
-        self._log_operation("add_youtube_transcript", operation_details)
+        logger.info(f"add_youtube_transcript: {operation_details}")
 
         try:
             title = youtube_id
             date = datetime.now().isoformat()
 
             # Debug: Log the database path and operation details
-            self.logger.info(f"Adding transcript to database: {self.db_path}")
-            self.logger.info(f"Title: {title}")
-            self.logger.info(f"Content length: {len(transcript_content)}")
-            self.logger.info(f"Date: {date}")
+            logger.info(f"Adding transcript to database: {self.database.db_path}")
+            logger.info(f"Title: {title}")
+            logger.info(f"Content length: {len(transcript_content)}")
+            logger.info(f"Date: {date}")
 
             # Create a fresh connection for this operation to avoid threading issues
-            fresh_conn = sqlite3.connect(self.db_path)
+            fresh_conn = sqlite3.connect(self.database.db_path)
             fresh_cursor = fresh_conn.cursor()
 
             try:
@@ -240,14 +235,12 @@ class TranscriptManager:
                     "SELECT name FROM sqlite_master WHERE type='table' AND name='transcripts'"
                 )
                 table_exists = fresh_cursor.fetchone()
-                self.logger.info(
-                    f"Transcripts table exists: {table_exists is not None}"
-                )
+                logger.info(f"Transcripts table exists: {table_exists is not None}")
 
                 if not table_exists:
-                    self.logger.error("Transcripts table does not exist!")
+                    logger.error("Transcripts table does not exist!")
                     # Create the table if it doesn't exist
-                    self.logger.info("Creating transcripts table...")
+                    logger.info("Creating transcripts table...")
                     fresh_cursor.execute(
                         """
                         CREATE TABLE IF NOT EXISTS transcripts (
@@ -261,10 +254,12 @@ class TranscriptManager:
                     """
                     )
                     fresh_conn.commit()
-                    self.logger.info("Transcripts table created successfully")
 
+                    logger.info("Transcripts table created successfully")
+
+                logger.info(f"NewCategory: {category}")
                 # Now insert the transcript
-                self.logger.info(
+                logger.info(
                     f"Inserting transcript into database: {committee}, {title}, {transcript_content}, {date}, {category}"
                 )
                 fresh_cursor.execute(
@@ -279,10 +274,10 @@ class TranscriptManager:
                     (f"%{youtube_id}%",),
                 )
                 count = fresh_cursor.fetchone()[0]
-                self.logger.info(f"Transcripts in database after insert: {count}")
+                logger.info(f"Transcripts in database after insert: {count}")
 
                 transcript_id = fresh_cursor.lastrowid
-                self.logger.info(
+                logger.info(
                     f"Added YouTube transcript for video '{youtube_id}' (ID: {transcript_id})"
                 )
                 return transcript_id
@@ -291,11 +286,14 @@ class TranscriptManager:
                 fresh_conn.close()
 
         except Exception as e:
-            self._log_error("add_youtube_transcript", e, operation_details)
+            logger.error(
+                f"add_youtube_transcript error: {e}, details: {operation_details}"
+            )
             raise
 
     def _cache_transcript(self, video_id: str, transcript: str, committee: str):
         """Store transcript in database cache."""
+
         try:
             transcript_id = self._add_youtube_transcript(
                 video_id, transcript, committee

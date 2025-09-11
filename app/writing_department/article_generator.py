@@ -1,8 +1,8 @@
 import logging
 from typing import Dict, Any
 from fastapi.responses import JSONResponse
-from .ai.xai_processor import XAIProcessor
-from .data_classes import ArticleType, Tone, Committee
+from ..ai.xai_processor import XAIProcessor
+from ..data.data_classes import ArticleType, Tone, Committee
 from .context_manager import ContextManager
 
 logger = logging.getLogger(__name__)

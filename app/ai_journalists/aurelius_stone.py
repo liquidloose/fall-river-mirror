@@ -1,6 +1,6 @@
 from typing import Dict, Any, Optional
 import os
-from app.data_classes import Tone, ArticleType
+from ..data.data_classes import Tone, ArticleType
 from app.ai_journalists.base_journalist import BaseJournalist
 
 
