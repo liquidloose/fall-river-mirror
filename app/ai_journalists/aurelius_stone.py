@@ -5,7 +5,9 @@ from app.ai_journalists.base_journalist import BaseJournalist
 
 
 class AureliusStone(BaseJournalist):
-    NAME = "Aurelius Stone"
+    FIRST_NAME = "Aurelius"
+    LAST_NAME = "Stone"
+    FULL_NAME = f"{FIRST_NAME} {LAST_NAME}"
     DEFAULT_TONE = Tone.FORMAL  # Change from CRITICAL to FORMAL
     DEFAULT_ARTICLE_TYPE = ArticleType.OP_ED  # Change from OPINION to OP_ED
     SLANT = "conservative"
@@ -33,7 +35,7 @@ class AureliusStone(BaseJournalist):
         """
 
         # Use provided values or fall back to instance values
-        selected_tone = tone if tone is not None else self.tone
+        selected_tone = tone
         selected_article_type = (
             article_type if article_type is not None else self.article_type
         )
