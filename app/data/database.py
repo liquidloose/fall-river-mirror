@@ -29,7 +29,7 @@ class Database:
         """
         # Set up logging
         self.logger = logging.getLogger(f"Database_{db_name}")
-        self.logger.setLevel(logging.INFO)
+        self.logger.setLevel(logging.DEBUG)
 
         # Create console handler if none exists
         if not self.logger.handlers:
@@ -110,10 +110,9 @@ class Database:
         self._create_table(
             "journalists",
             "id INTEGER PRIMARY KEY AUTOINCREMENT, "
-            "name TEXT UNIQUE NOT NULL, "  # Full journalist name (for enum sync)
+            "full_name TEXT UNIQUE NOT NULL, "  # Full journalist name (for enum sync)
             "first_name TEXT, "  # Journalist's first name
             "last_name TEXT, "  # Journalist's last name
-            "organization TEXT, "  # News organization
             "bio TEXT, "  # Journalist biography
             "articles TEXT, "  # List of articles (could be JSON)
             "description TEXT, "  # Additional description

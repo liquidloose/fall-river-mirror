@@ -1,6 +1,7 @@
 from datetime import datetime
 import os
 import logging
+from .state import category
 from typing import Optional, Dict, Any, List
 from fastapi.responses import JSONResponse
 from youtube_transcript_api import YouTubeTranscriptApi
@@ -24,6 +25,7 @@ class TranscriptManager:
     def __init__(self, committee: str, database=None):
         self.committee = committee
         self.database = database
+        self.category = AIAgent.GROK
 
     # =============================================================================
     # PUBLIC API METHODS
@@ -32,8 +34,7 @@ class TranscriptManager:
     def get_transcript(
         self,
         committee: Committee,
-        video_id: str = "VjaU4DAxP6s",
-        category: AIAgent = AIAgent.GROK,
+        youtube_id: str = "VjaU4DAxP6s",
     ) -> Dict[str, Any] | JSONResponse:
         """
         Fetch YouTube video transcript using the YouTube Transcript API.
@@ -48,25 +49,29 @@ class TranscriptManager:
 
         try:
             # Check if transcript already exists in database
-            if self._is_transcript_cached(video_id):
-                return self._get_cached_transcript(video_id)
+            if self._is_transcript_cached(youtube_id):
+                return self._get_cached_transcript(youtube_id)
 
             # If not in database, fetch from YouTube
             logger.info(
-                f"Transcript for video {video_id} not found in database, fetching from YouTube..."
+                f"Transcript for video {youtube_id} not found in database, fetching from YouTube..."
             )
 
             # This needs to return a dictionary with the transcript and the category
-            transcript = self._fetch_from_youtube(video_id, category)
+            transcript = self._fetch_from_youtube(youtube_id, category)
 
             # Store transcript in database if available
             if self._can_cache():
-                self._cache_transcript(video_id, transcript, committee)
+                logger.info(
+                    f"Caching transcript for video {youtube_id} with category {category}"
+                )
+                self._cache_transcript(youtube_id, transcript, category, committee)
 
-            return self._formatted_youtube_response(video_id, transcript)
+            return self._formatted_youtube_response(youtube_id, transcript)
 
         except Exception as e:
-            logger.error(f"Failed to get transcript from YouTube {video_id}: {str(e)}")
+            logger.error(f"Failed to get transcript from YouTube {youtube_id}")
+            logger.error(f"Failed to get transcript from YouTube: {str(e)}")
             return JSONResponse(
                 status_code=500,
                 content={"error": f"Failed to get transcript from YouTube: {str(e)}"},
@@ -75,14 +80,6 @@ class TranscriptManager:
     # =============================================================================
     # DATABASE CACHE METHODS
     # =============================================================================
-
-    def _is_transcript_cached(self, video_id: str) -> bool:
-        """Check if transcript exists in database cache."""
-        if not self._can_cache():
-            logger.warning("Database not available, skipping cache check")
-            return False
-
-        return self.database.transcript_exists_by_youtube_id(video_id)
 
     def _get_cached_transcript(self, video_id: str) -> Dict[str, Any]:
         """Retrieve transcript from database cache."""
@@ -116,84 +113,11 @@ class TranscriptManager:
             },
         }
 
-    # =============================================================================
-    # YOUTUBE API METHODS
-    # =============================================================================
-
-    def _fetch_from_youtube(self, video_id: str, category: AIAgent) -> str:
-        """
-        Fetch transcript from YouTube API with OpenAI Whisper fallback.
-
-        First attempts to get transcript via YouTube Transcript API.
-        If that fails, downloads the video and uses OpenAI Whisper API.
-        """
-        # First try YouTube Transcript API
-        try:
-            ytt_api = YouTubeTranscriptApi()
-            transcript_data = ytt_api.fetch(video_id)
-            logger.info(f"Successfully fetched transcript for video: {video_id}")
-            return transcript_data
-        except (
-            TranscriptsDisabled,
-            NoTranscriptFound,
-            VideoUnavailable,
-            CouldNotRetrieveTranscript,
-        ) as e:
-            logger.warning(
-                f"YouTube Transcript API failed for video {video_id}: {str(e)}"
-            )
-            logger.info(f"Attempting fallback to OpenAI Whisper for video: {video_id}")
-
-            category = AIAgent.WHISPER
-            logger.info(f"Changing category to: {category}")
-
-            # Fallback to OpenAI Whisper
-            return self._fetch_via_whisper(video_id)
-
-    def _formatted_youtube_response(
-        self, video_id: str, transcript: str
-    ) -> Dict[str, Any]:
-        """Format response for transcript fetched from YouTube."""
-        all_transcripts = self._get_all_transcripts_info()
-
-        return {
-            "message": (
-                "Youtube Transcript fetched already cached in the database"
-                if self._can_cache()
-                else "Transcript fetched from YouTube (this transcript is new)"
-            ),
-            "source": "youtube_api",
-            "youtube_id": video_id,
-            "transcript": transcript,
-            "database_path": self.database.db_path if self.database else "No database",
-            "database_contents": {
-                "total_transcripts": len(all_transcripts),
-                "all_transcripts": all_transcripts,
-            },
-        }
-
-    # =============================================================================
-    # OPENAI WHISPER METHODS
-    # =============================================================================
-
-    def _fetch_via_whisper(self, video_id: str) -> str:
-        """
-        Download video and transcribe using OpenAI Whisper API.
-        """
-        whisper_processor = WhisperProcessor(video_id=video_id)
-
-        return whisper_processor.transcribe_youtube_video(video_id)
-
-    # =============================================================================
-    # DATABASE STORAGE METHODS
-    # =============================================================================
-
-    def _add_youtube_transcript(
+    def _cache_transcript(
         self,
         youtube_id: str,
         transcript_content: str,
         committee: object = Committee.BOARD_OF_HEALTH,
-        category: object = AIAgent.GROK,
     ) -> int:
         """
         Add a YouTube transcript to the database.
@@ -210,7 +134,7 @@ class TranscriptManager:
         operation_details = {
             "youtube_id": youtube_id,
             "committee": committee,
-            "category": f"{category} Transcript",
+            "category": f"{self.category.value} Transcript",
             "content_length": len(transcript_content),
         }
         logger.info(f"add_youtube_transcript: {operation_details}")
@@ -278,7 +202,7 @@ class TranscriptManager:
 
                 transcript_id = fresh_cursor.lastrowid
                 logger.info(
-                    f"Added YouTube transcript for video '{youtube_id}' (ID: {transcript_id})"
+                    f"Added YouTube t ranscript for video '{youtube_id}' (ID: {transcript_id})"
                 )
                 return transcript_id
             finally:
@@ -291,19 +215,62 @@ class TranscriptManager:
             )
             raise
 
-    def _cache_transcript(self, video_id: str, transcript: str, committee: str):
-        """Store transcript in database cache."""
+    # =============================================================================
+    # YOUTUBE API METHODS
+    # =============================================================================
 
+    def _fetch_from_youtube(self, youtube_id: str) -> str:
+        """
+        Fetch transcript from YouTube API with OpenAI Whisper fallback.
+
+        First attempts to get transcript via YouTube Transcript API.
+        If that fails, downloads the video and uses OpenAI Whisper API.
+        """
+        # First try YouTube Transcript API
         try:
-            transcript_id = self._add_youtube_transcript(
-                video_id, transcript, committee
+            ytt_api = YouTubeTranscriptApi()
+            transcript_data = ytt_api.fetch(youtube_id)
+            logger.info(f"Successfully fetched transcript for video: {youtube_id}")
+            # Extract the text content from the FetchedTranscript object
+            transcript_text = " ".join(
+                [snippet.text for snippet in transcript_data.snippets]
+            )
+            return transcript_text
+        except (
+            TranscriptsDisabled,
+            NoTranscriptFound,
+            VideoUnavailable,
+            CouldNotRetrieveTranscript,
+        ) as e:
+            logger.warning(
+                f"YouTube Transcript API failed for video {youtube_id}: {str(e)}"
             )
             logger.info(
-                f"Successfully stored transcript for video {video_id} in database with ID: {transcript_id}"
+                f"Attempting fallback to OpenAI Whisper for video: {youtube_id}"
             )
-        except Exception as db_error:
-            logger.warning(f"Failed to store transcript in database: {str(db_error)}")
-            # Continue even if database storage fails
+
+            # change the value of the category that's stored in state management
+            print("changing category from", category)
+            logger.info(f"Changing state.category to: {category}")
+
+            # Fallback to OpenAI Whisper
+            return self._fetch_via_whisper(youtube_id, category)
+
+    # =============================================================================
+    # OPENAI WHISPER API METHODS
+    # =============================================================================
+
+    def _fetch_via_whisper(self, video_id: str, category: object) -> str:
+        """
+        Download video and transcribe using OpenAI Whisper API.
+        """
+
+        whisper_processor = WhisperProcessor(video_id=video_id)
+
+        whisper_processor.category = AIAgent.WHISPER
+
+        logger.info(f"Transcribing video {video_id} with category {category}")
+        return whisper_processor.transcribe_youtube_video(video_id)
 
     # =============================================================================
     # UTILITY METHODS
@@ -312,6 +279,14 @@ class TranscriptManager:
     def _can_cache(self) -> bool:
         """Check if database is available for caching."""
         return self.database and self.database.is_connected
+
+    def _is_transcript_cached(self, video_id: str) -> bool:
+        """Check if transcript exists in database cache."""
+        if not self._can_cache():
+            logger.warning("Database not available, skipping cache check")
+            return False
+
+        return self.database.transcript_exists_by_youtube_id(video_id)
 
     def _get_all_transcripts_info(self) -> list:
         """Get information about all transcripts in the database."""
@@ -340,3 +315,25 @@ class TranscriptManager:
             logger.warning(f"Could not fetch all transcripts: {str(e)}")
 
         return all_transcripts
+
+    def _formatted_youtube_response(
+        self, youtube_id: str, transcript: str
+    ) -> Dict[str, Any]:
+        """Format response for transcript fetched from YouTube."""
+        all_transcripts = self._get_all_transcripts_info()
+
+        return {
+            "message": (
+                "Youtube Transcript fetched already cached in the database"
+                if self._can_cache()
+                else "Transcript fetched from YouTube (this transcript is new)"
+            ),
+            "source": "youtube_api",
+            "youtube_id": youtube_id,
+            "transcript": transcript,
+            "database_path": self.database.db_path if self.database else "No database",
+            "database_contents": {
+                "total_transcripts": len(all_transcripts),
+                "all_transcripts": all_transcripts,
+            },
+        }

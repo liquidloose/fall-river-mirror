@@ -134,7 +134,7 @@ curl -X POST "http://localhost:8000/experimental/" \
 
 **When endpoints won't load**: 🔍  Use the server reload command above with `--log-level debug` to see detailed Python errors and stack traces that can help identify issues.
  
-``` uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload --log-level debug
+``` uvicorn app.main:app --host 0.0.0.0 --port 80 --reload --log-level debug
 ```
 
 ### Log Levels
