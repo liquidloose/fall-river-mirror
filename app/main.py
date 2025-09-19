@@ -2,8 +2,17 @@
 from datetime import datetime
 from enum import Enum
 import logging
+import os
 from typing import Dict, Any, List, Optional
 from app.data.db_sync import DatabaseSync
+
+# Load environment variables
+try:
+    from dotenv import load_dotenv
+
+    load_dotenv()
+except ImportError:
+    pass
 
 # Third-party imports
 from fastapi import APIRouter, FastAPI, HTTPException, status
@@ -15,7 +24,7 @@ from app import TranscriptManager, ArticleGenerator, YouTubeCrawler
 from app.ai_journalists.aurelius_stone import AureliusStone
 from app.ai.xai_processor import XAIProcessor
 from app.data.data_classes import (
-    ArticleType,
+    Category,
     Committee,
     Journalist,
     Tone,
@@ -23,6 +32,7 @@ from app.data.data_classes import (
     PartialUpdateRequest,
 )
 from app.data.database import Database
+from app.data.journalist_manager import JournalistManager
 
 # Configure logging with both console and file output
 logging.basicConfig(
@@ -37,7 +47,7 @@ logger = logging.getLogger(__name__)
 
 # Initialize database instance at the top level
 try:
-    database = Database("fr-mirror")
+    database = Database("app/data/fr-mirror")
     logger.info("Database initialized successfully in main.py")
 except Exception as e:
     logger.error(f"Failed to initialize database in main.py: {str(e)}")
@@ -48,6 +58,20 @@ if database:
     db_sync = DatabaseSync(database)
     db_sync.sync_all_enums()
     logger.info(f"Database sync completed: {db_sync}")
+    
+    # Initialize journalists as proper entities
+    journalist_manager = JournalistManager(database)
+    aurelius = AureliusStone()
+    
+    # Create/update Aurelius Stone with bio and description
+    journalist_manager.upsert_journalist(
+        full_name=aurelius.FULL_NAME,
+        first_name=aurelius.FIRST_NAME,
+        last_name=aurelius.LAST_NAME,
+        bio=aurelius.get_bio(),
+        description=aurelius.get_description()
+    )
+    logger.info("Journalist initialization completed")
 
 # Initialize FastAPI application and XAI processor
 app = FastAPI(
@@ -205,7 +229,7 @@ async def get_article_count() -> Dict[str, Any]:
 async def get_all_articles(
     skip: int = 0,
     limit: int = 100,
-    article_type: Optional[ArticleType] = None,
+    article_type: Optional[Category] = None,
     tone: Optional[Tone] = None,
     committee: Optional[Committee] = None,
 ) -> List[Dict[str, Any]]:
@@ -286,7 +310,7 @@ def generate_article(
     content: str = "",
     journalist: Journalist = Journalist.AURELIUS_STONE,  # This creates the dropdown
     tone: Optional[Tone] = None,
-    article_type: Optional[ArticleType] = None,
+    article_type: Optional[Category] = None,
 ):
     try:
         journalist = AureliusStone()
@@ -358,7 +382,7 @@ async def update_article(
                 new_content = article_generator.write_article(
                     context=article["context"],
                     prompt=article["prompt"],
-                    article_type=ArticleType(article["article_type"]),
+                    article_type=Category(article["article_type"]),
                     tone=Tone(article["tone"]),
                     committee=Committee(article["committee"]),
                 )
@@ -433,7 +457,7 @@ async def partial_update_article(
                 new_content = article_generator.write_article(
                     context=article["context"],
                     prompt=article["prompt"],
-                    article_type=ArticleType(article["article_type"]),
+                    article_type=Category(article["article_type"]),
                     tone=Tone(article["tone"]),
                     committee=Committee(article["committee"]),
                 )

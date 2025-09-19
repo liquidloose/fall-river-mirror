@@ -125,13 +125,29 @@ class WhisperProcessor:
         """Transcribe a single audio file using OpenAI Whisper."""
         logger.info(f"Transcribing audio using OpenAI Whisper for video: {video_id}")
 
-        with open(audio_path, "rb") as audio_file:
-            transcript_response = self.client.audio.transcriptions.create(
-                model="whisper-1", file=audio_file, response_format="text"
-            )
+        try:
+            with open(audio_path, "rb") as audio_file:
+                transcript_response = self.client.audio.transcriptions.create(
+                    model="whisper-1", file=audio_file, response_format="text"
+                )
 
-        logger.info(f"Successfully transcribed video {video_id} using OpenAI Whisper")
-        return transcript_response
+            logger.info(
+                f"Successfully transcribed video {video_id} using OpenAI Whisper"
+            )
+            return transcript_response
+
+        except Exception as e:
+            # Check if this is a timeout error
+            if "timeout" in str(e).lower() or "ReadTimeout" in str(e):
+                logger.info(
+                    f"OpenAI API timeout occurred for video {video_id}. Falling back to chunked transcription."
+                )
+                # Fall back to chunked transcription
+                temp_dir = os.path.dirname(audio_path)
+                return self._transcribe_large_file(audio_path, video_id, temp_dir)
+            else:
+                # Re-raise other exceptions
+                raise
 
     def _transcribe_large_file(
         self, audio_path: str, video_id: str, temp_dir: str

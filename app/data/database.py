@@ -71,7 +71,7 @@ class Database:
 
         Args:
             table_name: Name of the table to create
-            columns: SQL column definitions
+            columns: SQL column de finitions
         """
         try:
             self.cursor.execute(f"CREATE TABLE IF NOT EXISTS {table_name} ({columns})")
@@ -100,10 +100,11 @@ class Database:
             "transcripts",
             "id INTEGER PRIMARY KEY AUTOINCREMENT, "
             "committee TEXT, "  # Committee name as text
-            "title TEXT, "  # Transcript title
+            "youtube_id TEXT, "  # YouTube video ID
             "content TEXT, "  # Full transcript content
-            "date TEXT, "  # Meeting date
-            "category TEXT",
+            "yt_published_date TEXT, "  # YouTube video published date
+            "fetch_date TEXT, "  # Date when transcript was fetched
+            "model TEXT",  # Transcript model
         )  # Transcript category
 
         # Journalists table - stores reporter information
@@ -140,7 +141,6 @@ class Database:
             "committees",
             "id INTEGER PRIMARY KEY AUTOINCREMENT, "
             "name TEXT NOT NULL, "  # Committee name (required)
-            "description TEXT, "  # Committee description
             "created_date TEXT",
         )  # When committee was established
 
@@ -149,16 +149,14 @@ class Database:
             "tones",
             "id INTEGER PRIMARY KEY AUTOINCREMENT, "
             "name TEXT UNIQUE NOT NULL, "  # Tone name (required, unique)
-            "description TEXT, "  # Tone description
             "created_date TEXT",
         )  # When tone was added
 
         # Article Types table - stores available article types
         self._create_table(
-            "article_types",
+            "categories",
             "id INTEGER PRIMARY KEY AUTOINCREMENT, "
             "name TEXT UNIQUE NOT NULL, "  # Article type name (required, unique)
-            "description TEXT, "  # Article type description
             "created_date TEXT",
         )  # When article type was added
 
