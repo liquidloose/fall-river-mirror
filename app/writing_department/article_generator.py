@@ -2,7 +2,7 @@ import logging
 from typing import Dict, Any
 from fastapi.responses import JSONResponse
 from ..ai.xai_processor import XAIProcessor
-from ..data.data_classes import ArticleType, Tone, Committee
+from ..data.data_classes import Category, Tone, Committee
 from .context_manager import ContextManager
 
 logger = logging.getLogger(__name__)
@@ -19,7 +19,7 @@ class ArticleGenerator:
         self,
         context: str,
         prompt: str,
-        article_type: ArticleType,
+        article_type: Category,
         tone: Tone,
         committee: Committee,
     ) -> Dict[str, Any] | JSONResponse:
@@ -70,15 +70,15 @@ class ArticleGenerator:
                 content={"error": f"Failed to generate article: {str(e)}"},
             )
 
-    def _build_article_context(self, context: str, article_type: ArticleType) -> str:
+    def _build_article_context(self, context: str, article_type: Category) -> str:
         """Build context based on article type."""
         final_context = context
         match article_type:
-            case ArticleType.OP_ED:
+            case Category.OP_ED:
                 final_context = context + self.context_manager.read_context_file(
                     "article_types", "op_ed.txt"
                 )
-            case ArticleType.SUMMARY:
+            case Category.SUMMARY:
                 final_context = context + self.context_manager.read_context_file(
                     "article_types", "summary.txt"
                 )

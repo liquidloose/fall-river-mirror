@@ -1,7 +1,6 @@
 from datetime import datetime
 import os
 import logging
-from .state import category
 from typing import Optional, Dict, Any, List
 from fastapi.responses import JSONResponse
 from youtube_transcript_api import YouTubeTranscriptApi
@@ -12,9 +11,9 @@ from youtube_transcript_api._errors import (
     CouldNotRetrieveTranscript,
 )
 import sqlite3
-
 from .data_classes import AIAgent, Committee
 from ..ai.whisper_processor import WhisperProcessor
+from .youtube_data_api import YouTubeDataAPI
 
 logger = logging.getLogger(__name__)
 
@@ -58,14 +57,14 @@ class TranscriptManager:
             )
 
             # This needs to return a dictionary with the transcript and the category
-            transcript = self._fetch_from_youtube(youtube_id, category)
+            transcript = self._fetch_from_youtube(youtube_id)
 
             # Store transcript in database if available
             if self._can_cache():
                 logger.info(
-                    f"Caching transcript for video {youtube_id} with category {category}"
+                    f"Caching transcript for video {youtube_id} with category {self.category}"
                 )
-                self._cache_transcript(youtube_id, transcript, category, committee)
+                self._cache_transcript(youtube_id, transcript, committee)
 
             return self._formatted_youtube_response(youtube_id, transcript)
 
@@ -90,7 +89,7 @@ class TranscriptManager:
             raise Exception("Transcript data not found in database")
 
         # Return the transcript content from the database
-        transcript_content = transcript_data[3]  # content is at index 3
+        content = transcript_data[3]  # content is at index 3
         logger.info(
             f"Successfully retrieved transcript for video {video_id} from database"
         )
@@ -104,19 +103,20 @@ class TranscriptManager:
             "category": transcript_data[5],
             "youtube_id": video_id,
             "transcript_id": transcript_data[0],
-            "content": transcript_content,
-            "cached_at": transcript_data[4],  # date is at index 4
+            "content": content,
+            "cached_at": transcript_data[4],  # fetch_date is at index 4
             "database_path": self.database.db_path,
             "database_contents": {
                 "total_transcripts": len(all_transcripts),
                 "all_transcripts": all_transcripts,
             },
+            "category": all_transcripts,
         }
 
     def _cache_transcript(
         self,
         youtube_id: str,
-        transcript_content: str,
+        content: str,
         committee: object = Committee.BOARD_OF_HEALTH,
     ) -> int:
         """
@@ -124,7 +124,7 @@ class TranscriptManager:
 
         Args:
             youtube_id: YouTube video ID
-            transcript_content: Full transcript content
+            content: Full transcript content
             committee: Committee name (default: "YouTube")
             category: Transcript category (default: "Video Transcript")
 
@@ -135,19 +135,19 @@ class TranscriptManager:
             "youtube_id": youtube_id,
             "committee": committee,
             "category": f"{self.category.value} Transcript",
-            "content_length": len(transcript_content),
+            "content_length": len(content),
         }
         logger.info(f"add_youtube_transcript: {operation_details}")
 
         try:
-            title = youtube_id
-            date = datetime.now().isoformat()
+            youtube_id = youtube_id
+            fetch_date = datetime.now().isoformat()
 
             # Debug: Log the database path and operation details
             logger.info(f"Adding transcript to database: {self.database.db_path}")
-            logger.info(f"Title: {title}")
-            logger.info(f"Content length: {len(transcript_content)}")
-            logger.info(f"Date: {date}")
+            logger.info(f"youtube_id: {youtube_id}")
+            logger.info(f"Content length: {len(content)}")
+            logger.info(f"fetch_Date: {fetch_date}")
 
             # Create a fresh connection for this operation to avoid threading issues
             fresh_conn = sqlite3.connect(self.database.db_path)
@@ -170,31 +170,46 @@ class TranscriptManager:
                         CREATE TABLE IF NOT EXISTS transcripts (
                             id INTEGER PRIMARY KEY AUTOINCREMENT,
                             committee TEXT,
-                            title TEXT,
+                            youtube_id TEXT,
                             content TEXT,
-                            date TEXT,
-                            category TEXT
+                            yt_published_date TEXT,
+                            fetch_date TEXT,
+                            model TEXT
                         )
                     """
                     )
                     fresh_conn.commit()
-
                     logger.info("Transcripts table created successfully")
 
-                logger.info(f"NewCategory: {category}")
+                logger.info(f"NewCategory: {self.category}")
                 # Now insert the transcript
                 logger.info(
-                    f"Inserting transcript into database: {committee}, {title}, {transcript_content}, {date}, {category}"
+                    f"Inserting transcript into database: {committee}, {youtube_id}, {content}, {fetch_date}, {self.category}"
                 )
+
+                api_key = os.getenv("YOUTUBE_API_KEY")
+
+                yt_data = YouTubeDataAPI(api_key).get_video_published_date(youtube_id)
+                yt_published_date = yt_data[
+                    "published_at"
+                ]  # Extract just the date string
+
                 fresh_cursor.execute(
-                    "INSERT INTO transcripts (committee, title, content, date, category) VALUES (?, ?, ?, ?, ?)",
-                    (committee, title, transcript_content, date, category),
+                    "INSERT INTO transcripts (committee, youtube_id, content, yt_published_date, fetch_date, model) VALUES (?, ?, ?, ?, ?, ?)",
+                    (
+                        committee,
+                        youtube_id,
+                        content,
+                        yt_published_date,
+                        fetch_date,
+                        self.category,
+                    ),
                 )
                 fresh_conn.commit()
 
                 # Verify the insert worked
                 fresh_cursor.execute(
-                    "SELECT COUNT(*) FROM transcripts WHERE title LIKE ?",
+                    "SELECT COUNT(*) FROM transcripts WHERE youtube_id LIKE ?",
                     (f"%{youtube_id}%",),
                 )
                 count = fresh_cursor.fetchone()[0]
@@ -230,7 +245,9 @@ class TranscriptManager:
         try:
             ytt_api = YouTubeTranscriptApi()
             transcript_data = ytt_api.fetch(youtube_id)
-            logger.info(f"Successfully fetched transcript for video: {youtube_id}")
+            logger.info(
+                f"Successfully fetched transcript for video: {youtube_id} data: {transcript_data}"
+            )
             # Extract the text content from the FetchedTranscript object
             transcript_text = " ".join(
                 [snippet.text for snippet in transcript_data.snippets]
@@ -250,26 +267,28 @@ class TranscriptManager:
             )
 
             # change the value of the category that's stored in state management
-            print("changing category from", category)
-            logger.info(f"Changing state.category to: {category}")
+            print("changing self.category from", self.category)
+            logger.info(f"Changing state.category to: {self.category}")
 
             # Fallback to OpenAI Whisper
-            return self._fetch_via_whisper(youtube_id, category)
+            return self._fetch_via_whisper(youtube_id)
 
     # =============================================================================
     # OPENAI WHISPER API METHODS
     # =============================================================================
 
-    def _fetch_via_whisper(self, video_id: str, category: object) -> str:
+    def _fetch_via_whisper(self, video_id: str) -> str:
         """
         Download video and transcribe using OpenAI Whisper API.
         """
 
         whisper_processor = WhisperProcessor(video_id=video_id)
 
-        whisper_processor.category = AIAgent.WHISPER
+        self.category = AIAgent.WHISPER
 
-        logger.info(f"Transcribing video {video_id} with category {category}")
+        logger.info(
+            f"Transcribing video {video_id} with self.category.value: {self.category.value}"
+        )
         return whisper_processor.transcribe_youtube_video(video_id)
 
     # =============================================================================
@@ -298,13 +317,13 @@ class TranscriptManager:
             fresh_conn = sqlite3.connect(self.database.db_path)
             fresh_cursor = fresh_conn.cursor()
             fresh_cursor.execute(
-                "SELECT id, title, date, LENGTH(content) as content_length FROM transcripts ORDER BY id"
+                "SELECT id, youtube_id, fetch_date, LENGTH(content) as content_length FROM transcripts ORDER BY id"
             )
             all_transcripts = [
                 {
                     "id": row[0],
-                    "title": row[1],
-                    "date": row[2],
+                    "youtube_id": row[1],
+                    "fetch_date": row[2],
                     "content_length": row[3],
                 }
                 for row in fresh_cursor.fetchall()
@@ -323,12 +342,9 @@ class TranscriptManager:
         all_transcripts = self._get_all_transcripts_info()
 
         return {
-            "message": (
-                "Youtube Transcript fetched already cached in the database"
-                if self._can_cache()
-                else "Transcript fetched from YouTube (this transcript is new)"
-            ),
-            "source": "youtube_api",
+            "message": ("Youtube Transcript fetched already cached in the database"),
+            "model": self.category.value,
+            "source": "YouTube Data API",
             "youtube_id": youtube_id,
             "transcript": transcript,
             "database_path": self.database.db_path if self.database else "No database",
@@ -336,4 +352,5 @@ class TranscriptManager:
                 "total_transcripts": len(all_transcripts),
                 "all_transcripts": all_transcripts,
             },
+            "transcript": transcript,
         }
