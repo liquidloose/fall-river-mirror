@@ -4,14 +4,14 @@ from typing import Optional
 from pydantic import BaseModel
 
 
-class ArticleType(str, Enum):
+class Category(str, Enum):
     SUMMARY = "summary"
     OP_ED = "op_ed"
 
 
 class AIAgent(str, Enum):
-    GROK = "grok"
-    WHISPER = "whisper"
+    GROK = "Grok"
+    WHISPER = "Whisper"
 
 
 class Tone(str, Enum):
@@ -68,7 +68,7 @@ class BaseArticleRequest(BaseModel):
 
     context: Optional[str] = None
     prompt: Optional[str] = None
-    article_type: Optional[ArticleType] = None
+    article_type: Optional[Category] = None
     tone: Optional[Tone] = None
     committee: Optional[Committee] = None
 
@@ -78,7 +78,7 @@ class CreateArticleRequest(BaseArticleRequest):
 
     context: str  # Override to make required
     prompt: str  # Override to make required
-    article_type: ArticleType  # Override to make required
+    article_type: Category  # Override to make required
     tone: Tone  # Override to make required
     committee: Committee  # Override to make required
 

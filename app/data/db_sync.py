@@ -1,7 +1,6 @@
 import logging
-from typing import Dict, Any, List
 from enum import Enum
-from .data_classes import Committee, Tone, ArticleType, Journalist
+from .data_classes import Category, Committee, Tone
 from .database import Database
 
 logger = logging.getLogger(__name__)
@@ -10,7 +9,6 @@ logger = logging.getLogger(__name__)
 class DatabaseSync:
     """
     Synchronizes enum values with database tables. Ensures all current Enum
-    values exist in their corresponding database tables.
     """
 
     def __init__(self, database: Database):
@@ -18,8 +16,7 @@ class DatabaseSync:
         self.enum_table_mapping = {
             Committee: "committees",
             Tone: "tones",
-            ArticleType: "article_types",
-            Journalist: "journalists",
+            Category: "categories",  # Fixed: database creates 'categories' not 'article_types'
         }
 
     def sync_all_enums(self):
@@ -87,10 +84,10 @@ class DatabaseSync:
             from datetime import datetime
 
             for value in values:
-                query = f"INSERT INTO {table_name} (name, description, created_date) VALUES (?, ?, ?)"
+                query = f"INSERT INTO {table_name} (name, created_date) VALUES (?, ?)"
                 logger.info(f"Inserting value: {value} into {table_name}")
                 self.database.cursor.execute(
-                    query, (value, None, datetime.now().isoformat())
+                    query, (value, datetime.now().isoformat())
                 )
             self.database.conn.commit()
             return True

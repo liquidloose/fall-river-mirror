@@ -4,7 +4,7 @@ from typing import Dict, Any
 from fastapi.responses import JSONResponse
 from app.data.transcript_manager import TranscriptManager
 from app.writing_department.article_generator import ArticleGenerator
-from app.data.data_classes import ArticleType, Tone, Committee
+from app.data.data_classes import Category, Tone, Committee
 
 logger = logging.getLogger(__name__)
 
@@ -43,7 +43,7 @@ class YouTubeCrawler:
             article_result = self.article_generator.write_article(
                 context=f"YouTube video {video_id} transcript: {transcript_text}",
                 prompt="Create a comprehensive summary of this YouTube video transcript",
-                article_type=ArticleType.SUMMARY,
+                article_type=Category.SUMMARY,
                 tone=Tone.FORMAL,
                 committee=Committee.PLANNING_BOARD,
             )
@@ -74,7 +74,7 @@ class YouTubeCrawler:
         self,
         context: str,
         prompt: str,
-        article_type: ArticleType,
+        article_type: Category,
         tone: Tone,
         committee: Committee,
     ) -> Dict[str, Any] | JSONResponse:

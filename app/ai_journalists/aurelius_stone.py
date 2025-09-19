@@ -1,6 +1,6 @@
 from typing import Dict, Any, Optional
 import os
-from ..data.data_classes import Tone, ArticleType
+from ..data.data_classes import Tone, Category
 from app.ai_journalists.base_journalist import BaseJournalist
 
 
@@ -8,13 +8,14 @@ class AureliusStone(BaseJournalist):
     FIRST_NAME = "Aurelius"
     LAST_NAME = "Stone"
     FULL_NAME = f"{FIRST_NAME} {LAST_NAME}"
+    NAME = FULL_NAME  # Required by BaseJournalist
     DEFAULT_TONE = Tone.FORMAL  # Change from CRITICAL to FORMAL
-    DEFAULT_ARTICLE_TYPE = ArticleType.OP_ED  # Change from OPINION to OP_ED
+    DEFAULT_ARTICLE_TYPE = Category.OP_ED  # Change from OPINION to OP_ED
     SLANT = "conservative"
     STYLE = "conversational"
 
     def __init__(
-        self, tone: Optional[Tone] = None, article_type: Optional[ArticleType] = None
+        self, tone: Optional[Tone] = None, article_type: Optional[Category] = None
     ):
         """
         Constructor to allow instance-specific mutable attributes.
@@ -28,7 +29,7 @@ class AureliusStone(BaseJournalist):
         self,
         base_path: str = "./app/context_files",
         tone: Optional[Tone] = None,
-        article_type: Optional[ArticleType] = None,
+        article_type: Optional[Category] = None,
     ) -> str:
         """
         Load and concatenate context files for all attributes, using provided or instance values.
@@ -70,6 +71,48 @@ class AureliusStone(BaseJournalist):
         )
 
         return concatenated_context
+
+    def get_bio(self) -> str:
+        """Load and return the journalist's biographical information."""
+        bio_filename = f"{self.FIRST_NAME.lower()}_{self.LAST_NAME.lower()}_bio.txt"
+        # Navigate to context_files/bios from the ai_journalists directory
+        context_files_path = os.path.join(os.path.dirname(__file__), '..', 'context_files', 'bios')
+        bio_path = os.path.join(context_files_path, bio_filename)
+        try:
+            with open(bio_path, 'r', encoding='utf-8') as file:
+                return file.read().strip()
+        except FileNotFoundError:
+            return f"Bio file not found for {self.FULL_NAME}: {bio_path}"
+        except Exception as e:
+            return f"Error loading bio: {str(e)}"
+
+    def get_description(self) -> str:
+        """Load and return the journalist's professional description."""
+        description_filename = f"{self.FIRST_NAME.lower()}_{self.LAST_NAME.lower()}_description.txt"
+        # Navigate to context_files/descriptions from the ai_journalists directory
+        context_files_path = os.path.join(os.path.dirname(__file__), '..', 'context_files', 'descriptions')
+        description_path = os.path.join(context_files_path, description_filename)
+        try:
+            with open(description_path, 'r', encoding='utf-8') as file:
+                return file.read().strip()
+        except FileNotFoundError:
+            return f"Description file not found for {self.FULL_NAME}: {description_path}"
+        except Exception as e:
+            return f"Error loading description: {str(e)}"
+
+    def get_full_profile(self) -> Dict[str, str]:
+        """Return a complete profile including bio, description, and basic info."""
+        return {
+            'name': self.FULL_NAME,
+            'first_name': self.FIRST_NAME,
+            'last_name': self.LAST_NAME,
+            'bio': self.get_bio(),
+            'description': self.get_description(),
+            'tone': self.DEFAULT_TONE.value,
+            'article_type': self.DEFAULT_ARTICLE_TYPE.value,
+            'slant': self.SLANT,
+            'style': self.STYLE
+        }
 
     def _load_attribute_context(
         self, base_path: str, attribute_type: str, attribute_value: str
@@ -118,3 +161,4 @@ class AureliusStone(BaseJournalist):
             "tone": self.tone,
             "article_type": self.article_type,
         }
+

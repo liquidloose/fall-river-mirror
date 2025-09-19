@@ -1,18 +1,18 @@
 from abc import ABC, abstractmethod
 from typing import Dict, Any, Optional
-from ..data.data_classes import Tone, ArticleType
+from ..data.data_classes import Tone, Category
 
 
 class BaseJournalist(ABC):
     NAME: str
     DEFAULT_TONE: Tone
-    DEFAULT_ARTICLE_TYPE: ArticleType
+    DEFAULT_ARTICLE_TYPE: Category
     SLANT: str
     STYLE: str
 
     @classmethod
     def get_personality(
-        cls, tone: Optional[Tone] = None, article_type: Optional[ArticleType] = None
+        cls, tone: Optional[Tone] = None, article_type: Optional[Category] = None
     ) -> Dict[str, Any]:
         """
         Get personality traits, allowing for mutable tone and article_type.
@@ -36,7 +36,7 @@ class BaseJournalist(ABC):
         cls,
         base_path: str = "./context_files",
         tone: Optional[Tone] = None,
-        article_type: Optional[ArticleType] = None,
+        article_type: Optional[Category] = None,
     ) -> str:
         pass
 
@@ -47,6 +47,6 @@ class BaseJournalist(ABC):
         context: str,
         user_content: str,
         tone: Optional[Tone] = None,
-        article_type: Optional[ArticleType] = None,
+        article_type: Optional[Category] = None,
     ) -> str:
         pass
