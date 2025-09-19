@@ -7,6 +7,12 @@ from pydantic import BaseModel
 class Category(str, Enum):
     SUMMARY = "summary"
     OP_ED = "op_ed"
+    CRITICAL = "critical"
+    NEWS = "news"
+    FEATURE = "feature"
+    PROFILE = "profile"
+    INVESTIGATIVE = "investigative"
+    EDITORIAL = "editorial"
 
 
 class AIAgent(str, Enum):
@@ -15,10 +21,18 @@ class AIAgent(str, Enum):
 
 
 class Tone(str, Enum):
-    FORMAL = "formal tone"
+    FORMAL = "formal"
     CASUAL = "casual"
     PROFESSIONAL = "professional"
     FRIENDLY = "friendly"
+    INVESTIGATIVE = "investigative"
+    URGENT = "urgent"
+    SATIRICAL = "satirical"
+    EMPATHETIC = "empathetic"
+    ANALYTICAL = "analytical"
+    CONVERSATIONAL = "conversational"
+    AUTHORITATIVE = "authoritative"
+    CRITICAL = "critical"
 
 
 class Journalist(str, Enum):
