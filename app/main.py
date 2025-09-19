@@ -58,18 +58,18 @@ if database:
     db_sync = DatabaseSync(database)
     db_sync.sync_all_enums()
     logger.info(f"Database sync completed: {db_sync}")
-    
+
     # Initialize journalists as proper entities
     journalist_manager = JournalistManager(database)
     aurelius = AureliusStone()
-    
+
     # Create/update Aurelius Stone with bio and description
     journalist_manager.upsert_journalist(
         full_name=aurelius.FULL_NAME,
         first_name=aurelius.FIRST_NAME,
         last_name=aurelius.LAST_NAME,
         bio=aurelius.get_bio(),
-        description=aurelius.get_description()
+        description=aurelius.get_description(),
     )
     logger.info("Journalist initialization completed")
 
@@ -299,6 +299,88 @@ async def get_article(article_id: str) -> Dict[str, Any]:
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Failed to retrieve article: {str(e)}",
+        )
+
+
+@app.get("/journalist/{journalist_name}")
+def get_journalist_profile(journalist_name: Journalist):
+    """
+    Get complete profile information for a specific journalist.
+    Returns bio, description, writing style, slant, and all other attributes.
+    """
+    try:
+        # Map journalist enum values to their classes
+        journalist_classes = {
+            Journalist.AURELIUS_STONE: AureliusStone,
+        }
+
+        # Get the journalist class
+        journalist_class = journalist_classes.get(journalist_name)
+        if not journalist_class:
+            available_journalists = [j.value for j in Journalist]
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail=f"Journalist '{journalist_name.value}' not found. Available journalists: {available_journalists}",
+            )
+
+        # Create journalist instance
+        journalist = journalist_class()
+
+        # Get complete profile information
+        profile = journalist.get_full_profile()
+
+        # Add additional context information
+        profile.update(
+            {
+                "default_tone": journalist.DEFAULT_TONE.value,
+                "default_article_type": journalist.DEFAULT_ARTICLE_TYPE.value,
+                "slant": journalist.SLANT,
+                "style": journalist.STYLE,
+                "first_name": journalist.FIRST_NAME,
+                "last_name": journalist.LAST_NAME,
+                "full_name": journalist.FULL_NAME,
+            }
+        )
+
+        # Load context files for slant, style, and tone
+        try:
+            slant = journalist._load_attribute_context(
+                "./app/context_files", "slant", journalist.SLANT
+            )
+            style = journalist._load_attribute_context(
+                "./app/context_files", "style", journalist.STYLE
+            )
+            tone = journalist._load_attribute_context(
+                "./app/context_files", "tone", journalist.DEFAULT_TONE.value
+            )
+
+            profile.update(
+                {
+                    "slant": slant,
+                    "style": style,
+                    "tone": tone,
+                }
+            )
+        except Exception as e:
+            logger.warning(f"Could not load context files: {str(e)}")
+            profile.update(
+                {
+                    "slant": "Context file not available",
+                    "style": "Context file not available",
+                    "tone": "Context file not available",
+                }
+            )
+
+        logger.info(f"Retrieved complete profile for {journalist.FULL_NAME}")
+        return profile
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Failed to retrieve journalist profile: {str(e)}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to retrieve journalist profile: {str(e)}",
         )
 
 

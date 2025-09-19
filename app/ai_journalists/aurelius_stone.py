@@ -9,9 +9,9 @@ class AureliusStone(BaseJournalist):
     LAST_NAME = "Stone"
     FULL_NAME = f"{FIRST_NAME} {LAST_NAME}"
     NAME = FULL_NAME  # Required by BaseJournalist
-    DEFAULT_TONE = Tone.FORMAL  # Change from CRITICAL to FORMAL
+    DEFAULT_TONE = Tone.ANALYTICAL  # Change from CRITICAL to FORMAL
     DEFAULT_ARTICLE_TYPE = Category.OP_ED  # Change from OPINION to OP_ED
-    SLANT = "conservative"
+    SLANT = "libertarian"
     STYLE = "conversational"
 
     def __init__(
