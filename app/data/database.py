@@ -669,6 +669,47 @@ class Database:
             )
             return None
 
+    def get_transcript_by_id(self, transcript_id: int) -> Optional[Tuple]:
+        """
+        Retrieve a transcript by its ID.
+
+        Args:
+            transcript_id: The ID of the transcript to retrieve
+
+        Returns:
+            Tuple containing transcript data if found, None otherwise.
+            Each tuple contains: (id, committee, title, content, date, category)
+        """
+        self._log_operation("get_transcript_by_id", {"transcript_id": transcript_id})
+
+        try:
+            # Create a fresh connection for this operation to avoid threading issues
+            fresh_conn = sqlite3.connect(self.db_path)
+            fresh_cursor = fresh_conn.cursor()
+
+            try:
+                fresh_cursor.execute(
+                    "SELECT * FROM transcripts WHERE id = ?", (transcript_id,)
+                )
+                transcript = fresh_cursor.fetchone()
+                if transcript:
+                    self.logger.info(
+                        f"Retrieved transcript with ID '{transcript_id}' from database"
+                    )
+                    return transcript
+                else:
+                    self.logger.info(
+                        f"No transcript found with ID '{transcript_id}' in database"
+                    )
+                    return None
+            finally:
+                fresh_cursor.close()
+                fresh_conn.close()
+
+        except Exception as e:
+            self._log_error("get_transcript_by_id", e, {"transcript_id": transcript_id})
+            return None
+
     def close(self) -> None:
         """
         Close the database connection.
