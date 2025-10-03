@@ -163,19 +163,23 @@ Write an article with the following characteristics:
 - Political Slant: {personality['slant']}
 
 Guidelines:
-- The meeting takes place in Fall River, MA
 - Don't introduce yourself in the article.
-- Don't talk as if the reader has never read about Fall River, MA before in your articles.
-- Your only job is to write an account of what happened in the transcript. Do not add any analysis or commentary.
-- Write a complete, well-structured article about the transcript content
+- Write a comprehensive, factual account of what was discussed and decided in the meeting
 - Use proper journalistic formatting with headline, lead paragraph, and body
 - Maintain the specified tone and style throughout
-- Include relevant analysis appropriate to the article type
-- Do not compliment, criticize, or comment on the members of the council, the mayor, or city staff. Your job is to write an account of what happened in the transcript.
-- Keep the political slant subtle but present in your analysis, unless the slant is 'unbiased'
+- Report what happened without expressing opinions about whether decisions are good or bad
+- Provide factual context and background for decisions and discussions
+- Explain what was decided, who said what, and what the outcomes were
 - Focus on the key points, decisions, and discussions from the transcript
 - If there are any emergencies, mention them in the article and explain why they are scheduled and when they are happening.
--Explain why issues matter (e.g., speed bumps near a school) and note public participation to show local engagement.
+- Explain what issues were discussed and note public participation to show local engagement
+- Write at least 500-800 words with substantial detail about what transpired
+- Include multiple paragraphs with thorough coverage of the meeting's content
+- Present information objectively without bias or commentary on the merits of decisions
+- Do not mention procedural details like roll call, reading of decorum rules, agenda approvals, or other routine administrative housekeeping
+- Focus exclusively on substantive content, decisions, debates, and outcomes
+- Do not use generic, repetitive openings like "Ever wonder how..." or "Let's break down..." - start directly with the specific content and decisions from this meeting
+- Write as if this is one of many articles about the same city, so avoid explaining basic concepts about how city government works
 """
 
         # Create the user message
@@ -200,10 +204,43 @@ Write a full article that would be suitable for publication.
 
             # Check if response is an error (JSONResponse)
             if hasattr(response, "status_code"):
-                return f"Error generating article: {response.content}"
+                return {
+                    "title": "Error",
+                    "content": f"Error generating article: {response.content}",
+                }
 
-            # Return the generated article content
-            return response.get("response", "No article content generated")
+            # Get the generated article content
+            article_text = response.get("response", "No article content generated")
+
+            # Extract title from the article (assuming it starts with # Title)
+            lines = article_text.split("\n")
+            title = "Untitled Article"
+            content = article_text
+
+            # Look for markdown-style title (# Title) at the beginning
+            if lines and lines[0].startswith("# "):
+                title = lines[0][2:].strip()  # Remove '# ' prefix
+                raw_content = "\n".join(lines[1:]).strip()  # Rest of the content
+            else:
+                raw_content = content
+
+            # Format content with WCAG compliant HTML
+            # Split content into paragraphs and wrap each in <p> tags
+            paragraphs = [p.strip() for p in raw_content.split("\n\n") if p.strip()]
+            formatted_paragraphs = [f"<p>{paragraph}</p>" for paragraph in paragraphs]
+
+            # Create WCAG compliant article structure
+            article_content = f"""<article role="article" aria-labelledby="article-title">
+    <header>
+        <h1 id="article-title">{title}</h1>
+    </header>
+    <div class="article-body">
+        {chr(10).join(f"        {p}" for p in formatted_paragraphs)}
+    </div>
+</article>"""
+
+            # Return structured response
+            return {"title": title, "content": article_content}
 
         except Exception as e:
             return f"Failed to generate article: {str(e)}"

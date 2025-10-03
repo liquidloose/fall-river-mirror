@@ -56,17 +56,23 @@ class TranscriptManager:
                 f"Transcript for video {youtube_id} not found in database, fetching from YouTube..."
             )
 
-            # This needs to return a dictionary with the transcript and the category
-            transcript = self._fetch_from_youtube(youtube_id)
+            # Fetch rich data object with transcript and video metadata
+            rich_data = self._fetch_from_youtube(youtube_id)
+            transcript = rich_data["transcript"]  # Extract transcript string
+            video_metadata = rich_data["video_metadata"]  # Extract metadata
 
             # Store transcript in database if available
             if self._can_cache():
                 logger.info(
                     f"Caching transcript for video {youtube_id} with category {self.category}"
                 )
-                self._cache_transcript(youtube_id, transcript, committee)
+                self._cache_transcript(
+                    youtube_id, transcript, committee, video_metadata
+                )
 
-            return self._formatted_youtube_response(youtube_id, transcript)
+            return self._formatted_youtube_response(
+                youtube_id, transcript, video_metadata
+            )
 
         except Exception as e:
             logger.error(f"Failed to get transcript from YouTube {youtube_id}")
@@ -118,6 +124,7 @@ class TranscriptManager:
         youtube_id: str,
         content: str,
         committee: object = Committee.BOARD_OF_HEALTH,
+        video_metadata: Dict[str, Any] = None,
     ) -> int:
         """
         Add a YouTube transcript to the database.
@@ -163,28 +170,35 @@ class TranscriptManager:
 
                 if not table_exists:
                     logger.error("Transcripts table does not exist!")
-                    # Create the table if it doesn't exist
-                    logger.info("Creating transcripts table...")
-                    fresh_cursor.execute(
-                        """
-                        CREATE TABLE IF NOT EXISTS transcripts (
-                            id INTEGER PRIMARY KEY AUTOINCREMENT,
-                            committee TEXT,
-                            youtube_id TEXT,
-                            content TEXT,
-                            yt_published_date TEXT,
-                            fetch_date TEXT,
-                            model TEXT
+                    # Let the Database class handle table creation with proper schema
+                    logger.info("Creating transcripts table using Database class...")
+                    fresh_cursor.close()
+                    fresh_conn.close()
+
+                    # Create a new Database instance to avoid connection issues
+                    if self.database:
+                        from .database import Database
+
+                        temp_db = Database(self.database.db_path)
+                        temp_db._create_all_tables()
+                        temp_db.close()
+                        logger.info(
+                            "Transcripts table created successfully via Database class"
                         )
-                    """
-                    )
-                    fresh_conn.commit()
-                    logger.info("Transcripts table created successfully")
+                    else:
+                        logger.error(
+                            "No database instance available for table creation"
+                        )
+                        return transcript_id
+
+                    # Reconnect after table creation
+                    fresh_conn = sqlite3.connect(self.database.db_path)
+                    fresh_cursor = fresh_conn.cursor()
 
                 logger.info(f"NewCategory: {self.category}")
                 # Now insert the transcript
                 logger.info(
-                    f"Inserting transcript into database: {committee}, {youtube_id}, {content}, {fetch_date}, {self.category}"
+                    f"Inserting transcript into database: {committee}, {youtube_id}, content_length: {len(content)}, {fetch_date}, {self.category}"
                 )
 
                 api_key = os.getenv("YOUTUBE_API_KEY")
@@ -194,8 +208,23 @@ class TranscriptManager:
                     "published_at"
                 ]  # Extract just the date string
 
+                # Extract video metadata if available
+                video_title = yt_data.get("title", "") if yt_data else ""
+                video_duration_seconds = (
+                    yt_data.get("duration_seconds", 0) if yt_data else 0
+                )
+                video_duration_formatted = (
+                    yt_data.get("duration_formatted", "") if yt_data else ""
+                )
+                video_channel = yt_data.get("channel_title", "") if yt_data else ""
+                video_description = yt_data.get("description", "") if yt_data else ""
+
                 fresh_cursor.execute(
-                    "INSERT INTO transcripts (committee, youtube_id, content, yt_published_date, fetch_date, model) VALUES (?, ?, ?, ?, ?, ?)",
+                    """INSERT INTO transcripts 
+                    (committee, youtube_id, content, yt_published_date, fetch_date, model,
+                     video_title, video_duration_seconds, video_duration_formatted, 
+                     video_channel, video_description) 
+                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
                     (
                         committee,
                         youtube_id,
@@ -203,9 +232,21 @@ class TranscriptManager:
                         yt_published_date,
                         fetch_date,
                         self.category,
+                        video_title,
+                        video_duration_seconds,
+                        video_duration_formatted,
+                        video_channel,
+                        video_description,
                     ),
                 )
                 fresh_conn.commit()
+
+                # Log successful insertion with video metadata
+                logger.info(
+                    f"Successfully inserted transcript with video metadata: "
+                    f"title='{video_title}', duration={video_duration_formatted}, "
+                    f"channel='{video_channel}', published={yt_published_date}"
+                )
 
                 # Verify the insert worked
                 fresh_cursor.execute(
@@ -234,12 +275,16 @@ class TranscriptManager:
     # YOUTUBE API METHODS
     # =============================================================================
 
-    def _fetch_from_youtube(self, youtube_id: str) -> str:
+    def _fetch_from_youtube(self, youtube_id: str) -> Dict[str, Any]:
         """
-        Fetch transcript from YouTube API with OpenAI Whisper fallback.
+        Fetch transcript and video metadata from YouTube APIs.
 
+        Returns a rich data object containing both transcript and video metadata.
         First attempts to get transcript via YouTube Transcript API.
         If that fails, downloads the video and uses OpenAI Whisper API.
+
+        Returns:
+            Dict containing transcript, video metadata (title, duration, date, etc.)
         """
         # First try YouTube Transcript API
         try:
@@ -248,11 +293,46 @@ class TranscriptManager:
             logger.info(
                 f"Successfully fetched transcript for video: {youtube_id} data: {transcript_data}"
             )
-            # Extract the text content from the FetchedTranscript object
-            transcript_text = " ".join(
-                [snippet.text for snippet in transcript_data.snippets]
-            )
-            return transcript_text
+            # Convert FetchedTranscript object to stringified dict
+            import json
+
+            transcript_dict = {
+                "snippets": [
+                    {
+                        "text": snippet.text,
+                        "start": snippet.start,
+                        "duration": snippet.duration,
+                    }
+                    for snippet in transcript_data.snippets
+                ],
+                "video_id": transcript_data.video_id,
+                "language": transcript_data.language,
+                "language_code": transcript_data.language_code,
+                "is_generated": transcript_data.is_generated,
+            }
+
+            # Fetch video metadata (title, duration, published date, etc.)
+            video_metadata = None
+            try:
+                api_key = os.getenv("YOUTUBE_API_KEY")
+                if api_key:
+                    from .youtube_data_api import YouTubeDataAPI
+
+                    youtube_api = YouTubeDataAPI(api_key)
+                    video_metadata = youtube_api.get_video_published_date(youtube_id)
+                    logger.info(
+                        f"Retrieved video metadata for {youtube_id}: {video_metadata['title']}"
+                    )
+            except Exception as e:
+                logger.warning(f"Could not fetch video metadata: {str(e)}")
+                video_metadata = None
+
+            # Return rich data object
+            return {
+                "transcript": json.dumps(transcript_dict),
+                "video_metadata": video_metadata,
+                "source": "youtube_transcript_api",
+            }
         except (
             TranscriptsDisabled,
             NoTranscriptFound,
@@ -336,12 +416,12 @@ class TranscriptManager:
         return all_transcripts
 
     def _formatted_youtube_response(
-        self, youtube_id: str, transcript: str
+        self, youtube_id: str, transcript: str, video_metadata: Dict[str, Any] = None
     ) -> Dict[str, Any]:
-        """Format response for transcript fetched from YouTube."""
+        """Format response for transcript fetched from YouTube with video metadata."""
         all_transcripts = self._get_all_transcripts_info()
 
-        return {
+        response = {
             "message": ("Youtube Transcript fetched already cached in the database"),
             "model": self.category.value,
             "source": "YouTube Data API",
@@ -352,5 +432,17 @@ class TranscriptManager:
                 "total_transcripts": len(all_transcripts),
                 "all_transcripts": all_transcripts,
             },
-            "transcript": transcript,
         }
+
+        # Add video metadata if available
+        if video_metadata:
+            response["video"] = {
+                "title": video_metadata.get("title", "Unknown"),
+                "duration": video_metadata.get("duration_formatted", "Unknown"),
+                "duration_seconds": video_metadata.get("duration_seconds", 0),
+                "published_date": video_metadata.get("published_at", "Unknown"),
+                "channel": video_metadata.get("channel_title", "Unknown"),
+                "youtube_id": video_metadata.get("youtube_id", youtube_id),
+            }
+
+        return response

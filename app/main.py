@@ -17,7 +17,6 @@ except ImportError:
 # Third-party imports
 from fastapi import APIRouter, FastAPI, HTTPException, status
 from fastapi.responses import JSONResponse
-from youtube_transcript_api import YouTubeTranscriptApi
 
 # Local imports
 from app import TranscriptManager, ArticleGenerator, YouTubeCrawler
@@ -461,7 +460,7 @@ def generate_article_from_strings(
         )
 
         # Generate article with transcript content (no additional user context for automated calls)
-        article_content = journalist_instance.generate_article(full_context, "")
+        article_result = journalist_instance.generate_article(full_context, "")
 
         # TODO: Write article_content to database using transcript_id
         # database.save_article(transcript_id=transcript_id, content=article_content, ...)
@@ -472,7 +471,16 @@ def generate_article_from_strings(
         return {
             "journalist": journalist_instance.NAME,
             "context": full_context,
-            "content": article_content,  # This is the generated article content
+            "title": (
+                article_result.get("title", "Untitled Article")
+                if isinstance(article_result, dict)
+                else "Untitled Article"
+            ),
+            "content": (
+                article_result.get("content", article_result)
+                if isinstance(article_result, dict)
+                else article_result
+            ),
             "transcript_id": int(transcript_id),
             "transcript_content_length": len(transcript_content),
         }
@@ -518,7 +526,7 @@ def generate_article(
         )
 
         # Use additional_context as user input if provided
-        article_content = journalist_instance.generate_article(
+        article_result = journalist_instance.generate_article(
             full_context, additional_context
         )
 
@@ -528,7 +536,16 @@ def generate_article(
         return {
             "journalist": journalist_instance.NAME,
             "context": full_context,
-            "generated_article": article_content,
+            "article_title": (
+                article_result.get("title", "Untitled Article")
+                if isinstance(article_result, dict)
+                else "Untitled Article"
+            ),
+            "article_content": (
+                article_result.get("content", article_result)
+                if isinstance(article_result, dict)
+                else article_result
+            ),
             "transcript_id": article_id,
             "transcript_content_length": len(transcript_content),
         }

@@ -43,7 +43,7 @@ class YouTubeDataAPI:
             url = f"{self.base_url}/videos"
 
             params = {
-                "part": "snippet",  # Get basic video info including publish date
+                "part": "snippet,contentDetails",  # Get basic info + duration
                 "id": youtube_id,
                 "key": self.api_key,
             }
@@ -59,12 +59,43 @@ class YouTubeDataAPI:
                 raise Exception(f"Video with ID '{youtube_id}' not found")
 
             video_info = data["items"][0]["snippet"]
+            content_details = data["items"][0]["contentDetails"]
 
             # Extract published date (ISO 8601 format)
             published_at = video_info["publishedAt"]
 
             # Parse the date string to datetime object
             published_date = datetime.fromisoformat(published_at.replace("Z", "+00:00"))
+
+            # Extract and parse duration (ISO 8601 format like PT19M3S)
+            duration_iso = content_details["duration"]
+
+            # Convert ISO 8601 duration to seconds
+            def parse_duration(duration_str):
+                import re
+
+                pattern = r"PT(?:(\d+)H)?(?:(\d+)M)?(?:(\d+)S)?"
+                match = re.match(pattern, duration_str)
+                if not match:
+                    return 0
+                hours = int(match.group(1) or 0)
+                minutes = int(match.group(2) or 0)
+                seconds = int(match.group(3) or 0)
+                return hours * 3600 + minutes * 60 + seconds
+
+            duration_seconds = parse_duration(duration_iso)
+
+            # Format duration as readable string (e.g., "19:03" or "1:23:45")
+            def format_duration(total_seconds):
+                hours = total_seconds // 3600
+                minutes = (total_seconds % 3600) // 60
+                seconds = total_seconds % 60
+                if hours > 0:
+                    return f"{hours}:{minutes:02d}:{seconds:02d}"
+                else:
+                    return f"{minutes}:{seconds:02d}"
+
+            duration_formatted = format_duration(duration_seconds)
 
             result = {
                 "youtube_id": youtube_id,
@@ -74,6 +105,9 @@ class YouTubeDataAPI:
                 "channel_title": video_info["channelTitle"],
                 "description": video_info.get("description", ""),
                 "thumbnail_url": video_info["thumbnails"]["default"]["url"],
+                "duration_iso": duration_iso,
+                "duration_seconds": duration_seconds,
+                "duration_formatted": duration_formatted,
             }
 
             logger.info(

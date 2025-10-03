@@ -104,8 +104,13 @@ class Database:
             "content TEXT, "  # Full transcript content
             "yt_published_date TEXT, "  # YouTube video published date
             "fetch_date TEXT, "  # Date when transcript was fetched
-            "model TEXT",  # Transcript model
-        )  # Transcript category
+            "model TEXT, "  # Transcript model
+            "video_title TEXT, "  # YouTube video title
+            "video_duration_seconds INTEGER, "  # Video duration in seconds
+            "video_duration_formatted TEXT, "  # Video duration in readable format (e.g., "19:03")
+            "video_channel TEXT, "  # YouTube channel name
+            "video_description TEXT",  # YouTube video description
+        )
 
         # Journalists table - stores reporter information
         self._create_table(
@@ -398,30 +403,72 @@ class Database:
         self.logger.error(log_message)
 
     def add_transcript(
-        self, committee: str, title: str, content: str, date: str, category: str
+        self,
+        committee: str,
+        title: str,
+        content: str,
+        date: str,
+        category: str,
+        video_title: str = None,
+        video_duration_seconds: int = None,
+        video_duration_formatted: str = None,
+        video_channel: str = None,
+        video_description: str = None,
+        youtube_id: str = None,
+        fetch_date: str = None,
+        model: str = None,
     ) -> None:
         """
-        Add a new transcript to the database.
+        Add a new transcript to the database with optional video metadata.
 
         Args:
             committee: Name of the committee
             title: Title of the transcript
             content: Full transcript content
-            date: Date of the meeting
+            date: Date of the meeting (yt_published_date)
             category: Category of the transcript
+            video_title: YouTube video title
+            video_duration_seconds: Video duration in seconds
+            video_duration_formatted: Video duration in readable format
+            video_channel: YouTube channel name
+            video_description: YouTube video description
+            youtube_id: YouTube video ID
+            fetch_date: Date when transcript was fetched
+            model: Transcript model used
         """
         operation_details = {
             "committee": committee,
             "title": title,
             "date": date,
             "category": category,
+            "video_title": video_title,
+            "video_duration_seconds": video_duration_seconds,
+            "video_duration_formatted": video_duration_formatted,
+            "video_channel": video_channel,
+            "youtube_id": youtube_id,
         }
         self._log_operation("add_transcript", operation_details)
 
         try:
             self.cursor.execute(
-                "INSERT INTO transcripts (committee, title, content, date, category) VALUES (?, ?, ?, ?, ?)",
-                (committee, title, content, date, category),
+                """INSERT INTO transcripts 
+                (committee, youtube_id, content, yt_published_date, fetch_date, model, 
+                 video_title, video_duration_seconds, video_duration_formatted, 
+                 video_channel, video_description) 
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
+                (
+                    committee,
+                    youtube_id,
+                    content,
+                    date,
+                    fetch_date,
+                    model,
+                    video_title,
+                    video_duration_seconds,
+                    video_duration_formatted,
+                    video_channel,
+                    video_description,
+                ),
             )
             self.conn.commit()
             transcript_id = self.cursor.lastrowid
