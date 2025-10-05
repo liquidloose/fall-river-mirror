@@ -56,7 +56,8 @@ class Database:
         Establish database connection and update state.
         """
         try:
-            self.conn = sqlite3.connect(self.db_path)
+            # Enable threading mode for SQLite
+            self.conn = sqlite3.connect(self.db_path, check_same_thread=False)
             self.cursor = self.conn.cursor()
             self.is_connected = True
             self.logger.info(f"Successfully connected to database: {self.db_path}")
@@ -71,7 +72,7 @@ class Database:
 
         Args:
             table_name: Name of the table to create
-            columns: SQL column de finitions
+            columns: SQL column definitions
         """
         try:
             self.cursor.execute(f"CREATE TABLE IF NOT EXISTS {table_name} ({columns})")
@@ -107,7 +108,7 @@ class Database:
             "model TEXT, "  # Transcript model
             "video_title TEXT, "  # YouTube video title
             "video_duration_seconds INTEGER, "  # Video duration in seconds
-            "video_duration_formatted TEXT, "  # Video duration in readable format (e.g., "19:03")
+            "video_duration_formatted TEXT, "  # Video duration in readable format (e.g., "19:03"),
             "video_channel TEXT, "  # YouTube channel name
             "video_description TEXT",  # YouTube video description
         )
@@ -402,6 +403,24 @@ class Database:
             log_message += f" - Details: {details}"
         self.logger.error(log_message)
 
+    def test_write_permissions(self) -> bool:
+        """
+        Test if the database file is writable by attempting a simple write operation.
+
+        Returns:
+            bool: True if writable, False otherwise
+        """
+        try:
+            # Try to create a test table and drop it
+            self.cursor.execute("CREATE TABLE IF NOT EXISTS test_write (id INTEGER)")
+            self.cursor.execute("DROP TABLE test_write")
+            self.conn.commit()
+            self.logger.info("Database write permissions test passed")
+            return True
+        except Exception as e:
+            self.logger.error(f"Database write permissions test failed: {str(e)}")
+            return False
+
     def add_transcript(
         self,
         committee: str,
@@ -646,24 +665,17 @@ class Database:
         )
 
         try:
-            # Create a fresh connection for this operation to avoid threading issues
-            fresh_conn = sqlite3.connect(self.db_path)
-            fresh_cursor = fresh_conn.cursor()
-
-            try:
-                fresh_cursor.execute(
-                    "SELECT COUNT(*) FROM transcripts WHERE title LIKE ?",
-                    (f"%{youtube_id}%",),
-                )
-                count = fresh_cursor.fetchone()[0]
-                exists = count > 0
-                self.logger.info(
-                    f"Transcript for YouTube ID '{youtube_id}' exists: {exists}"
-                )
-                return exists
-            finally:
-                fresh_cursor.close()
-                fresh_conn.close()
+            # Use the existing thread-safe connection
+            self.cursor.execute(
+                "SELECT COUNT(*) FROM transcripts WHERE youtube_id = ?",
+                (youtube_id,),
+            )
+            count = self.cursor.fetchone()[0]
+            exists = count > 0
+            self.logger.info(
+                f"Transcript for YouTube ID '{youtube_id}' exists: {exists}"
+            )
+            return exists
 
         except Exception as e:
             self._log_error(
@@ -687,28 +699,21 @@ class Database:
         self._log_operation("get_transcript_by_youtube_id", {"youtube_id": youtube_id})
 
         try:
-            # Create a fresh connection for this operation to avoid threading issues
-            fresh_conn = sqlite3.connect(self.db_path)
-            fresh_cursor = fresh_conn.cursor()
-
-            try:
-                fresh_cursor.execute(
-                    "SELECT * FROM transcripts WHERE title LIKE ?", (f"%{youtube_id}%",)
+            # Use the existing thread-safe connection
+            self.cursor.execute(
+                "SELECT * FROM transcripts WHERE youtube_id = ?", (youtube_id,)
+            )
+            transcript = self.cursor.fetchone()
+            if transcript:
+                self.logger.info(
+                    f"Retrieved transcript for YouTube ID '{youtube_id}' from database"
                 )
-                transcript = fresh_cursor.fetchone()
-                if transcript:
-                    self.logger.info(
-                        f"Retrieved transcript for YouTube ID '{youtube_id}' from database"
-                    )
-                    return transcript
-                else:
-                    self.logger.info(
-                        f"No transcript found for YouTube ID '{youtube_id}' in database"
-                    )
-                    return None
-            finally:
-                fresh_cursor.close()
-                fresh_conn.close()
+                return transcript
+            else:
+                self.logger.info(
+                    f"No transcript found for YouTube ID '{youtube_id}' in database"
+                )
+                return None
 
         except Exception as e:
             self._log_error(
@@ -730,28 +735,21 @@ class Database:
         self._log_operation("get_transcript_by_id", {"transcript_id": transcript_id})
 
         try:
-            # Create a fresh connection for this operation to avoid threading issues
-            fresh_conn = sqlite3.connect(self.db_path)
-            fresh_cursor = fresh_conn.cursor()
-
-            try:
-                fresh_cursor.execute(
-                    "SELECT * FROM transcripts WHERE id = ?", (transcript_id,)
+            # Use the existing thread-safe connection
+            self.cursor.execute(
+                "SELECT * FROM transcripts WHERE id = ?", (transcript_id,)
+            )
+            transcript = self.cursor.fetchone()
+            if transcript:
+                self.logger.info(
+                    f"Retrieved transcript with ID '{transcript_id}' from database"
                 )
-                transcript = fresh_cursor.fetchone()
-                if transcript:
-                    self.logger.info(
-                        f"Retrieved transcript with ID '{transcript_id}' from database"
-                    )
-                    return transcript
-                else:
-                    self.logger.info(
-                        f"No transcript found with ID '{transcript_id}' in database"
-                    )
-                    return None
-            finally:
-                fresh_cursor.close()
-                fresh_conn.close()
+                return transcript
+            else:
+                self.logger.info(
+                    f"No transcript found with ID '{transcript_id}' in database"
+                )
+                return None
 
         except Exception as e:
             self._log_error("get_transcript_by_id", e, {"transcript_id": transcript_id})
@@ -805,41 +803,31 @@ class Database:
         self._log_operation("delete_transcript_by_id", operation_details)
 
         try:
-            # Create a fresh connection for this operation to avoid threading issues
-            fresh_conn = sqlite3.connect(self.db_path)
-            fresh_cursor = fresh_conn.cursor()
+            # Use the existing thread-safe connection
+            # First check if transcript exists
+            self.cursor.execute(
+                "SELECT id FROM transcripts WHERE id = ?", (transcript_id,)
+            )
+            if not self.cursor.fetchone():
+                self.logger.warning(f"Transcript with ID {transcript_id} not found")
+                return False
 
-            try:
-                # First check if transcript exists
-                fresh_cursor.execute(
-                    "SELECT id FROM transcripts WHERE id = ?", (transcript_id,)
+            # Delete the transcript
+            self.cursor.execute(
+                "DELETE FROM transcripts WHERE id = ?", (transcript_id,)
+            )
+            self.conn.commit()
+
+            # Check if deletion was successful
+            rows_affected = self.cursor.rowcount
+            if rows_affected > 0:
+                self.logger.info(
+                    f"Successfully deleted transcript with ID {transcript_id}"
                 )
-                if not fresh_cursor.fetchone():
-                    self.logger.warning(f"Transcript with ID {transcript_id} not found")
-                    return False
-
-                # Delete the transcript
-                fresh_cursor.execute(
-                    "DELETE FROM transcripts WHERE id = ?", (transcript_id,)
-                )
-                fresh_conn.commit()
-
-                # Check if deletion was successful
-                rows_affected = fresh_cursor.rowcount
-                if rows_affected > 0:
-                    self.logger.info(
-                        f"Successfully deleted transcript with ID {transcript_id}"
-                    )
-                    return True
-                else:
-                    self.logger.warning(
-                        f"No transcript was deleted for ID {transcript_id}"
-                    )
-                    return False
-
-            finally:
-                fresh_cursor.close()
-                fresh_conn.close()
+                return True
+            else:
+                self.logger.warning(f"No transcript was deleted for ID {transcript_id}")
+                return False
 
         except Exception as e:
             self._log_error("delete_transcript_by_id", e, operation_details)
