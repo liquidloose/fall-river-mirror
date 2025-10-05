@@ -114,7 +114,7 @@ def health_check() -> Dict[str, str]:
     }
 
 
-@app.get("/transcript/fetch/{committee}/{youtube_id=iGi8ymCBzhw}", response_model=None)
+@app.get("/transcript/fetch/{committee}/{youtube_id}", response_model=None)
 def get_transcript_endpoint(
     committee: Committee,
     youtube_id: str = "iGi8ymCBzhw",
