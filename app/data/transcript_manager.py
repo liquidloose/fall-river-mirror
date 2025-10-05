@@ -156,69 +156,62 @@ class TranscriptManager:
             logger.info(f"Content length: {len(content)}")
             logger.info(f"fetch_Date: {fetch_date}")
 
-            # Create a fresh connection for this operation to avoid threading issues
-            fresh_conn = sqlite3.connect(self.database.db_path)
-            fresh_cursor = fresh_conn.cursor()
+            # Use the existing database connection (now thread-safe)
+            fresh_conn = self.database.conn
+            fresh_cursor = self.database.cursor
+
+            # Debug: Check if table exists
+            fresh_cursor.execute(
+                "SELECT name FROM sqlite_master WHERE type='table' AND name='transcripts'"
+            )
+            table_exists = fresh_cursor.fetchone()
+            logger.info(f"Transcripts table exists: {table_exists is not None}")
+
+            if not table_exists:
+                logger.error("Transcripts table does not exist!")
+                # Let the Database class handle table creation with proper schema
+                logger.info("Creating transcripts table using Database class...")
+
+                # Create a new Database instance to avoid connection issues
+                if self.database:
+                    from .database import Database
+
+                    temp_db = Database(self.database.db_path)
+                    temp_db._create_all_tables()
+                    temp_db.close()
+                    logger.info(
+                        "Transcripts table created successfully via Database class"
+                    )
+                else:
+                    logger.error("No database instance available for table creation")
+                    return -1  # Return error code instead of undefined variable
+
+            logger.info(f"NewCategory: {self.category}")
+            # Now insert the transcript
+            logger.info(
+                f"Inserting transcript into database: {committee}, {youtube_id}, content_length: {len(content)}, {fetch_date}, {self.category}"
+            )
+
+            # Use passed video metadata or fetch if not available
+            if video_metadata:
+                yt_published_date = video_metadata.get("published_at", "")
+                video_title = video_metadata.get("title", "")
+                video_duration_seconds = video_metadata.get("duration_seconds", 0)
+                video_duration_formatted = video_metadata.get("duration_formatted", "")
+                video_channel = video_metadata.get("channel_title", "")
+                video_description = video_metadata.get("description", "")
+            else:
+                # Fallback: fetch metadata if not provided
+                api_key = os.getenv("YOUTUBE_API_KEY")
+                yt_data = YouTubeDataAPI(api_key).get_video_published_date(youtube_id)
+                yt_published_date = yt_data.get("published_at", "")
+                video_title = yt_data.get("title", "")
+                video_duration_seconds = yt_data.get("duration_seconds", 0)
+                video_duration_formatted = yt_data.get("duration_formatted", "")
+                video_channel = yt_data.get("channel_title", "")
+                video_description = yt_data.get("description", "")
 
             try:
-                # Debug: Check if table exists
-                fresh_cursor.execute(
-                    "SELECT name FROM sqlite_master WHERE type='table' AND name='transcripts'"
-                )
-                table_exists = fresh_cursor.fetchone()
-                logger.info(f"Transcripts table exists: {table_exists is not None}")
-
-                if not table_exists:
-                    logger.error("Transcripts table does not exist!")
-                    # Let the Database class handle table creation with proper schema
-                    logger.info("Creating transcripts table using Database class...")
-                    fresh_cursor.close()
-                    fresh_conn.close()
-
-                    # Create a new Database instance to avoid connection issues
-                    if self.database:
-                        from .database import Database
-
-                        temp_db = Database(self.database.db_path)
-                        temp_db._create_all_tables()
-                        temp_db.close()
-                        logger.info(
-                            "Transcripts table created successfully via Database class"
-                        )
-                    else:
-                        logger.error(
-                            "No database instance available for table creation"
-                        )
-                        return transcript_id
-
-                    # Reconnect after table creation
-                    fresh_conn = sqlite3.connect(self.database.db_path)
-                    fresh_cursor = fresh_conn.cursor()
-
-                logger.info(f"NewCategory: {self.category}")
-                # Now insert the transcript
-                logger.info(
-                    f"Inserting transcript into database: {committee}, {youtube_id}, content_length: {len(content)}, {fetch_date}, {self.category}"
-                )
-
-                api_key = os.getenv("YOUTUBE_API_KEY")
-
-                yt_data = YouTubeDataAPI(api_key).get_video_published_date(youtube_id)
-                yt_published_date = yt_data[
-                    "published_at"
-                ]  # Extract just the date string
-
-                # Extract video metadata if available
-                video_title = yt_data.get("title", "") if yt_data else ""
-                video_duration_seconds = (
-                    yt_data.get("duration_seconds", 0) if yt_data else 0
-                )
-                video_duration_formatted = (
-                    yt_data.get("duration_formatted", "") if yt_data else ""
-                )
-                video_channel = yt_data.get("channel_title", "") if yt_data else ""
-                video_description = yt_data.get("description", "") if yt_data else ""
-
                 fresh_cursor.execute(
                     """INSERT INTO transcripts 
                     (committee, youtube_id, content, yt_published_date, fetch_date, model,
@@ -247,29 +240,31 @@ class TranscriptManager:
                     f"title='{video_title}', duration={video_duration_formatted}, "
                     f"channel='{video_channel}', published={yt_published_date}"
                 )
+            except Exception as e:
+                logger.error(f"Failed to insert transcript into database: {str(e)}")
+                logger.error(f"Full error traceback:", exc_info=True)
+                return -1
 
                 # Verify the insert worked
                 fresh_cursor.execute(
-                    "SELECT COUNT(*) FROM transcripts WHERE youtube_id LIKE ?",
-                    (f"%{youtube_id}%",),
+                    "SELECT COUNT(*) FROM transcripts WHERE youtube_id = ?",
+                    (youtube_id,),
                 )
                 count = fresh_cursor.fetchone()[0]
                 logger.info(f"Transcripts in database after insert: {count}")
 
                 transcript_id = fresh_cursor.lastrowid
                 logger.info(
-                    f"Added YouTube t ranscript for video '{youtube_id}' (ID: {transcript_id})"
+                    f"Added YouTube transcript for video '{youtube_id}' (ID: {transcript_id})"
                 )
                 return transcript_id
-            finally:
-                fresh_cursor.close()
-                fresh_conn.close()
 
         except Exception as e:
             logger.error(
                 f"add_youtube_transcript error: {e}, details: {operation_details}"
             )
-            raise
+            logger.error(f"Full error traceback:", exc_info=True)
+            return -1  # Return error code instead of raising
 
     # =============================================================================
     # YOUTUBE API METHODS
@@ -377,7 +372,16 @@ class TranscriptManager:
 
     def _can_cache(self) -> bool:
         """Check if database is available for caching."""
-        return self.database and self.database.is_connected
+        if not self.database or not self.database.is_connected:
+            logger.warning("Database not available for caching")
+            return False
+
+        # Test if database is writable
+        if not self.database.test_write_permissions():
+            logger.error("Database is not writable - caching disabled")
+            return False
+
+        return True
 
     def _is_transcript_cached(self, video_id: str) -> bool:
         """Check if transcript exists in database cache."""
