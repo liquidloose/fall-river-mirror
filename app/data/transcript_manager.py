@@ -1,5 +1,6 @@
 from datetime import datetime
 import os
+import re
 import logging
 from typing import Optional, Dict, Any, List
 from fastapi.responses import JSONResponse
@@ -215,14 +216,16 @@ class TranscriptManager:
                 f"Inserting transcript into database: {committee}, {youtube_id}, content_length: {len(content)}, {fetch_date}, {self.category}"
             )
 
-            # Use passed video metadata or fetch if not available
             if video_metadata:
                 yt_published_date = video_metadata.get("published_at", "")
                 video_title = video_metadata.get("title", "")
                 video_duration_seconds = video_metadata.get("duration_seconds", 0)
                 video_duration_formatted = video_metadata.get("duration_formatted", "")
                 video_channel = video_metadata.get("channel_title", "")
-                video_description = video_metadata.get("description", "")
+                date_match = re.match(r'(\d{1,2})\.(\d{1,2})\.(\d{4})', video_title)
+                # Parse date from video title and format as MM-DD-YYYY (e.g., "11.5.2025" -> "11-05-2025")
+                meeting_date = f"{date_match.group(1).zfill(2)}-{date_match.group(2).zfill(2)}-{date_match.group(3)}" if date_match else None
+
             else:
                 # Fallback: fetch metadata if not provided
                 api_key = os.getenv("YOUTUBE_API_KEY")
@@ -232,7 +235,9 @@ class TranscriptManager:
                 video_duration_seconds = yt_data.get("duration_seconds", 0)
                 video_duration_formatted = yt_data.get("duration_formatted", "")
                 video_channel = yt_data.get("channel_title", "")
-                meeting_date = yt_data.get("meeting_date", "")
+                date_match = re.match(r'(\d{1,2})\.(\d{1,2})\.(\d{4})', video_title)
+                # Parse date from video title and format as MM-DD-YYYY (e.g., "11.5.2025" -> "11-05-2025")
+                meeting_date = f"{date_match.group(1).zfill(2)}-{date_match.group(2).zfill(2)}-{date_match.group(3)}" if date_match else None
 
             try:
                 fresh_cursor.execute(
@@ -263,10 +268,6 @@ class TranscriptManager:
                     f"title='{video_title}', duration={video_duration_formatted}, "
                     f"channel='{video_channel}', published={yt_published_date}"
                 )
-            except Exception as e:
-                logger.error(f"Failed to insert transcript into database: {str(e)}")
-                logger.error(f"Full error traceback:", exc_info=True)
-                return -1
 
                 # Verify the insert worked
                 fresh_cursor.execute(
@@ -281,6 +282,11 @@ class TranscriptManager:
                     f"Added YouTube transcript for video '{youtube_id}' (ID: {transcript_id})"
                 )
                 return transcript_id
+
+            except Exception as e:
+                logger.error(f"Failed to insert transcript into database: {str(e)}")
+                logger.error(f"Full error traceback:", exc_info=True)
+                return -1
 
         except Exception as e:
             logger.error(
