@@ -1,5 +1,7 @@
 {
     "recommendations": [
-        "ms-vscode-remote.vscode-remote-extensionpack"
+        "ms-vscode-remote.vscode-remote-extensionpack",
+        "ms-python.python",
+        "cweijan.vscode-database-client2"
     ]
 }
