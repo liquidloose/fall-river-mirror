@@ -1,18 +1,21 @@
 from typing import Dict, Any, Optional
 import os
-from app.data_classes import Tone, ArticleType
+from ..data.data_classes import Tone, Category
 from app.ai_journalists.base_journalist import BaseJournalist
 
 
 class AureliusStone(BaseJournalist):
-    NAME = "Aurelius Stone"
-    DEFAULT_TONE = Tone.FORMAL  # Change from CRITICAL to FORMAL
-    DEFAULT_ARTICLE_TYPE = ArticleType.OP_ED  # Change from OPINION to OP_ED
-    SLANT = "conservative"
+    FIRST_NAME = "Aurelius"
+    LAST_NAME = "Stone"
+    FULL_NAME = f"{FIRST_NAME} {LAST_NAME}"
+    NAME = FULL_NAME  # Required by BaseJournalist
+    DEFAULT_TONE = Tone.ANALYTICAL  # Change from CRITICAL to FORMAL
+    DEFAULT_ARTICLE_TYPE = Category.OP_ED  # Change from OPINION to OP_ED
+    SLANT = "unbiased"
     STYLE = "conversational"
 
     def __init__(
-        self, tone: Optional[Tone] = None, article_type: Optional[ArticleType] = None
+        self, tone: Optional[Tone] = None, article_type: Optional[Category] = None
     ):
         """
         Constructor to allow instance-specific mutable attributes.
@@ -26,14 +29,14 @@ class AureliusStone(BaseJournalist):
         self,
         base_path: str = "./app/context_files",
         tone: Optional[Tone] = None,
-        article_type: Optional[ArticleType] = None,
+        article_type: Optional[Category] = None,
     ) -> str:
         """
         Load and concatenate context files for all attributes, using provided or instance values.
         """
 
         # Use provided values or fall back to instance values
-        selected_tone = tone if tone is not None else self.tone
+        selected_tone = tone
         selected_article_type = (
             article_type if article_type is not None else self.article_type
         )
@@ -69,6 +72,56 @@ class AureliusStone(BaseJournalist):
 
         return concatenated_context
 
+    def get_bio(self) -> str:
+        """Load and return the journalist's biographical information."""
+        bio_filename = f"{self.FIRST_NAME.lower()}_{self.LAST_NAME.lower()}_bio.txt"
+        # Navigate to context_files/bios from the ai_journalists directory
+        context_files_path = os.path.join(
+            os.path.dirname(__file__), "..", "context_files", "bios"
+        )
+        bio_path = os.path.join(context_files_path, bio_filename)
+        try:
+            with open(bio_path, "r", encoding="utf-8") as file:
+                return file.read().strip()
+        except FileNotFoundError:
+            return f"Bio file not found for {self.FULL_NAME}: {bio_path}"
+        except Exception as e:
+            return f"Error loading bio: {str(e)}"
+
+    def get_description(self) -> str:
+        """Load and return the journalist's professional description."""
+        description_filename = (
+            f"{self.FIRST_NAME.lower()}_{self.LAST_NAME.lower()}_description.txt"
+        )
+        # Navigate to context_files/descriptions from the ai_journalists directory
+        context_files_path = os.path.join(
+            os.path.dirname(__file__), "..", "context_files", "descriptions"
+        )
+        description_path = os.path.join(context_files_path, description_filename)
+        try:
+            with open(description_path, "r", encoding="utf-8") as file:
+                return file.read().strip()
+        except FileNotFoundError:
+            return (
+                f"Description file not found for {self.FULL_NAME}: {description_path}"
+            )
+        except Exception as e:
+            return f"Error loading description: {str(e)}"
+
+    def get_full_profile(self) -> Dict[str, str]:
+        """Return a complete profile including bio, description, and basic info."""
+        return {
+            "name": self.FULL_NAME,
+            "first_name": self.FIRST_NAME,
+            "last_name": self.LAST_NAME,
+            "bio": self.get_bio(),
+            "description": self.get_description(),
+            "tone": self.DEFAULT_TONE.value,
+            "article_type": self.DEFAULT_ARTICLE_TYPE.value,
+            "slant": self.SLANT,
+            "style": self.STYLE,
+        }
+
     def _load_attribute_context(
         self, base_path: str, attribute_type: str, attribute_value: str
     ) -> str:
@@ -90,20 +143,107 @@ class AureliusStone(BaseJournalist):
         user_content: str,
     ) -> str:
         """
-        Generate the actual article content based on context and user input.
-        This is a placeholder for actual AI generation logic.
+        Generate the actual article content using XAI/Grok API.
         """
+        from ..ai.xai_processor import XAIProcessor
+
         personality = self.get_personality()
-        # Placeholder for article generation logic
-        generated_content = (
-            f"Generated Article by {personality['name']}:\n\n"
-            f"Based on the following context:\n{context[:100]}...\n\n"
-            f"User Input: {user_content if user_content else 'No user content provided.'}\n\n"
-            f"This is a placeholder article written in a {personality['tone'].lower()} tone "
-            f"about {personality['article_type'].lower()} with a {personality['slant'].lower()} slant "
-            f"and a {personality['style'].lower()} style."
-        )
-        return generated_content
+
+        # Create the system prompt with context and personality
+        system_prompt = f"""
+{context}
+
+You are {personality['name']}, a {personality['slant']} journalist with a {personality['style']} writing style.
+
+Write an article with the following characteristics:
+- Subject: The transcript content provided above
+- Tone: {personality['tone']}
+- Article Type: {personality['article_type']}
+- Style: {personality['style']}
+- Political Slant: {personality['slant']}
+
+Guidelines:
+- Don't introduce yourself in the article.
+- Write a comprehensive, factual account of what was discussed and decided in the meeting
+- Use proper journalistic formatting with headline, lead paragraph, and body
+- Maintain the specified tone and style throughout
+- Report what happened without expressing opinions about whether decisions are good or bad
+- Provide factual context and background for decisions and discussions
+- Explain what was decided, who said what, and what the outcomes were
+- Focus on the key points, decisions, and discussions from the transcript
+- If there are any emergencies, mention them in the article and explain why they are scheduled and when they are happening.
+- Explain what issues were discussed and note public participation to show local engagement
+- Write at least 500-800 words with substantial detail about what transpired
+- Include multiple paragraphs with thorough coverage of the meeting's content
+- Present information objectively without bias or commentary on the merits of decisions
+- Do not mention procedural details like roll call, reading of decorum rules, agenda approvals, or other routine administrative housekeeping
+- Focus exclusively on substantive content, decisions, debates, and outcomes
+- Do not use generic, repetitive openings like "Ever wonder how..." or "Let's break down..." - start directly with the specific content and decisions from this meeting
+- Write as if this is one of many articles about the same city, so avoid explaining basic concepts about how city government works
+"""
+
+        # Create the user message
+        user_message = f"""
+Please write a complete article based on the provided context.
+
+{f"Additional context from user: {user_content}" if user_content else ""}
+
+Write a full article that would be suitable for publication.
+"""
+
+        # Initialize XAI processor and get response
+        xai_processor = XAIProcessor()
+
+        try:
+            response = xai_processor.get_response(
+                context=system_prompt,
+                message=user_message,
+                article_type=personality["article_type"],
+                tone=personality["tone"],
+            )
+
+            # Check if response is an error (JSONResponse)
+            if hasattr(response, "status_code"):
+                return {
+                    "title": "Error",
+                    "content": f"Error generating article: {response.content}",
+                }
+
+            # Get the generated article content
+            article_text = response.get("response", "No article content generated")
+
+            # Extract title from the article (assuming it starts with # Title)
+            lines = article_text.split("\n")
+            title = "Untitled Article"
+            content = article_text
+
+            # Look for markdown-style title (# Title) at the beginning
+            if lines and lines[0].startswith("# "):
+                title = lines[0][2:].strip()  # Remove '# ' prefix
+                raw_content = "\n".join(lines[1:]).strip()  # Rest of the content
+            else:
+                raw_content = content
+
+            # Format content with WCAG compliant HTML
+            # Split content into paragraphs and wrap each in <p> tags
+            paragraphs = [p.strip() for p in raw_content.split("\n\n") if p.strip()]
+            formatted_paragraphs = [f"<p>{paragraph}</p>" for paragraph in paragraphs]
+
+            # Create WCAG compliant article structure
+            article_content = f"""<article role="article" aria-labelledby="article-title">
+    <header>
+        <h1 id="article-title">{title}</h1>
+    </header>
+    <div class="article-body">
+        {chr(10).join(f"        {p}" for p in formatted_paragraphs)}
+    </div>
+</article>"""
+
+            # Return structured response
+            return {"title": title, "content": article_content}
+
+        except Exception as e:
+            return f"Failed to generate article: {str(e)}"
 
     def get_personality(self) -> Dict[str, str]:
         """

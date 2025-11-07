@@ -4,16 +4,35 @@ from typing import Optional
 from pydantic import BaseModel
 
 
-class ArticleType(str, Enum):
+class Category(str, Enum):
     SUMMARY = "summary"
     OP_ED = "op_ed"
+    CRITICAL = "critical"
+    NEWS = "news"
+    FEATURE = "feature"
+    PROFILE = "profile"
+    INVESTIGATIVE = "investigative"
+    EDITORIAL = "editorial"
+
+
+class AIAgent(str, Enum):
+    GROK = "Grok"
+    WHISPER = "Whisper"
 
 
 class Tone(str, Enum):
-    FORMAL = "formal tone"
+    FORMAL = "formal"
     CASUAL = "casual"
     PROFESSIONAL = "professional"
     FRIENDLY = "friendly"
+    INVESTIGATIVE = "investigative"
+    URGENT = "urgent"
+    SATIRICAL = "satirical"
+    EMPATHETIC = "empathetic"
+    ANALYTICAL = "analytical"
+    CONVERSATIONAL = "conversational"
+    AUTHORITATIVE = "authoritative"
+    CRITICAL = "critical"
 
 
 class Journalist(str, Enum):
@@ -40,6 +59,7 @@ class Committee(str, Enum):
     PORT_AUTHORITY = "Port Authority"
     REDEVELOPMENT_AUTHORITY_BOARD = "Redevelopment Authority Board"
     RETIREMENT_BOARD = "Retirement Board"
+    SCHOOL_COMMITTEE = "School Committee"
     SEWER_COMMISSION = "Sewer Commission"
     SPECIAL_CHARTER_COMMITTEE = "Special Charter Committee"
     TAX_INCREMENT_FINANCE_BOARD = "Tax Increment Finance Board"
@@ -63,7 +83,7 @@ class BaseArticleRequest(BaseModel):
 
     context: Optional[str] = None
     prompt: Optional[str] = None
-    article_type: Optional[ArticleType] = None
+    article_type: Optional[Category] = None
     tone: Optional[Tone] = None
     committee: Optional[Committee] = None
 
@@ -73,7 +93,7 @@ class CreateArticleRequest(BaseArticleRequest):
 
     context: str  # Override to make required
     prompt: str  # Override to make required
-    article_type: ArticleType  # Override to make required
+    article_type: Category  # Override to make required
     tone: Tone  # Override to make required
     committee: Committee  # Override to make required
 

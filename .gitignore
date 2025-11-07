@@ -22,7 +22,7 @@
 /WordPress/wp-content/themes/twentytwentyfour/
 /WordPress/wp-content/themes/twentytwentythree/
 
-/app/__pycache__/
-
+# Python cache files
+__pycache__/
 /vendor/*
 

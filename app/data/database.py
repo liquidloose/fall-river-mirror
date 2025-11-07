@@ -3,7 +3,7 @@ import logging
 from typing import List, Tuple, Optional, Union
 from datetime import datetime
 
-from app.data_classes import Committee
+from .data_classes import AIAgent, Committee
 
 
 class Database:
@@ -29,7 +29,7 @@ class Database:
         """
         # Set up logging
         self.logger = logging.getLogger(f"Database_{db_name}")
-        self.logger.setLevel(logging.INFO)
+        self.logger.setLevel(logging.DEBUG)
 
         # Create console handler if none exists
         if not self.logger.handlers:
@@ -56,7 +56,8 @@ class Database:
         Establish database connection and update state.
         """
         try:
-            self.conn = sqlite3.connect(self.db_path)
+            # Enable threading mode for SQLite
+            self.conn = sqlite3.connect(self.db_path, check_same_thread=False)
             self.cursor = self.conn.cursor()
             self.is_connected = True
             self.logger.info(f"Successfully connected to database: {self.db_path}")
@@ -100,20 +101,25 @@ class Database:
             "transcripts",
             "id INTEGER PRIMARY KEY AUTOINCREMENT, "
             "committee TEXT, "  # Committee name as text
-            "title TEXT, "  # Transcript title
+            "youtube_id TEXT, "  # YouTube video ID
             "content TEXT, "  # Full transcript content
-            "date TEXT, "  # Meeting date
-            "category TEXT",
-        )  # Transcript category
+            "meeting_date TEXT, "  # YouTube video description
+            "yt_published_date TEXT, "  # YouTube video published date
+            "fetch_date TEXT, "  # Date when transcript was fetched
+            "model TEXT, "  # Transcript model
+            "video_title TEXT, "  # YouTube video title
+            "video_duration_seconds INTEGER, "  # Video duration in seconds
+            "video_duration_formatted TEXT, "  # Video duration in readable format (e.g., "19:03")
+            "video_channel TEXT"  # YouTube channel name
+        )
 
         # Journalists table - stores reporter information
         self._create_table(
             "journalists",
             "id INTEGER PRIMARY KEY AUTOINCREMENT, "
-            "name TEXT UNIQUE NOT NULL, "  # Full journalist name (for enum sync)
+            "full_name TEXT UNIQUE NOT NULL, "  # Full journalist name (for enum sync)
             "first_name TEXT, "  # Journalist's first name
             "last_name TEXT, "  # Journalist's last name
-            "organization TEXT, "  # News organization
             "bio TEXT, "  # Journalist biography
             "articles TEXT, "  # List of articles (could be JSON)
             "description TEXT, "  # Additional description
@@ -141,7 +147,6 @@ class Database:
             "committees",
             "id INTEGER PRIMARY KEY AUTOINCREMENT, "
             "name TEXT NOT NULL, "  # Committee name (required)
-            "description TEXT, "  # Committee description
             "created_date TEXT",
         )  # When committee was established
 
@@ -150,16 +155,14 @@ class Database:
             "tones",
             "id INTEGER PRIMARY KEY AUTOINCREMENT, "
             "name TEXT UNIQUE NOT NULL, "  # Tone name (required, unique)
-            "description TEXT, "  # Tone description
             "created_date TEXT",
         )  # When tone was added
 
         # Article Types table - stores available article types
         self._create_table(
-            "article_types",
+            "categories",
             "id INTEGER PRIMARY KEY AUTOINCREMENT, "
             "name TEXT UNIQUE NOT NULL, "  # Article type name (required, unique)
-            "description TEXT, "  # Article type description
             "created_date TEXT",
         )  # When article type was added
 
@@ -400,31 +403,91 @@ class Database:
             log_message += f" - Details: {details}"
         self.logger.error(log_message)
 
+    def test_write_permissions(self) -> bool:
+        """
+        Test if the database file is writable by attempting a simple write operation.
+
+        Returns:
+            bool: True if writable, False otherwise
+        """
+        try:
+            # Try to create a test table and drop it
+            self.cursor.execute("CREATE TABLE IF NOT EXISTS test_write (id INTEGER)")
+            self.cursor.execute("DROP TABLE test_write")
+            self.conn.commit()
+            self.logger.info("Database write permissions test passed")
+            return True
+        except Exception as e:
+            self.logger.error(f"Database write permissions test failed: {str(e)}")
+            return False
+
     def add_transcript(
-        self, committee: str, title: str, content: str, date: str, category: str
+        self,
+        committee: str,
+        title: str,
+        content: str,
+        date: str,
+        category: str,
+        video_title: str = None,
+        video_duration_seconds: int = None,
+        video_duration_formatted: str = None,
+        video_channel: str = None,
+        video_description: str = None,
+        youtube_id: str = None,
+        fetch_date: str = None,
+        model: str = None,
     ) -> None:
         """
-        Add a new transcript to the database.
+        Add a new transcript to the database with optional video metadata.
 
         Args:
             committee: Name of the committee
             title: Title of the transcript
             content: Full transcript content
-            date: Date of the meeting
+            date: Date of the meeting (yt_published_date)
             category: Category of the transcript
+            video_title: YouTube video title
+            video_duration_seconds: Video duration in seconds
+            video_duration_formatted: Video duration in readable format
+            video_channel: YouTube channel name
+            video_description: YouTube video description
+            youtube_id: YouTube video ID
+            fetch_date: Date when transcript was fetched
+            model: Transcript model used
         """
         operation_details = {
             "committee": committee,
             "title": title,
             "date": date,
             "category": category,
+            "video_title": video_title,
+            "video_duration_seconds": video_duration_seconds,
+            "video_duration_formatted": video_duration_formatted,
+            "video_channel": video_channel,
+            "youtube_id": youtube_id,
         }
         self._log_operation("add_transcript", operation_details)
 
         try:
             self.cursor.execute(
-                "INSERT INTO transcripts (committee, title, content, date, category) VALUES (?, ?, ?, ?, ?)",
-                (committee, title, content, date, category),
+                """INSERT INTO transcripts 
+                (committee, youtube_id, content, yt_published_date, fetch_date, model, 
+                 video_title, video_duration_seconds, video_duration_formatted, 
+                 video_channel, video_description) 
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
+                (
+                    committee,
+                    youtube_id,
+                    content,
+                    date,
+                    fetch_date,
+                    model,
+                    video_title,
+                    video_duration_seconds,
+                    video_duration_formatted,
+                    video_channel,
+                    video_description,
+                ),
             )
             self.conn.commit()
             transcript_id = self.cursor.lastrowid
@@ -602,24 +665,17 @@ class Database:
         )
 
         try:
-            # Create a fresh connection for this operation to avoid threading issues
-            fresh_conn = sqlite3.connect(self.db_path)
-            fresh_cursor = fresh_conn.cursor()
-
-            try:
-                fresh_cursor.execute(
-                    "SELECT COUNT(*) FROM transcripts WHERE title LIKE ?",
-                    (f"%{youtube_id}%",),
-                )
-                count = fresh_cursor.fetchone()[0]
-                exists = count > 0
-                self.logger.info(
-                    f"Transcript for YouTube ID '{youtube_id}' exists: {exists}"
-                )
-                return exists
-            finally:
-                fresh_cursor.close()
-                fresh_conn.close()
+            # Use the existing thread-safe connection
+            self.cursor.execute(
+                "SELECT COUNT(*) FROM transcripts WHERE youtube_id = ?",
+                (youtube_id,),
+            )
+            count = self.cursor.fetchone()[0]
+            exists = count > 0
+            self.logger.info(
+                f"Transcript for YouTube ID '{youtube_id}' exists: {exists}"
+            )
+            return exists
 
         except Exception as e:
             self._log_error(
@@ -643,28 +699,21 @@ class Database:
         self._log_operation("get_transcript_by_youtube_id", {"youtube_id": youtube_id})
 
         try:
-            # Create a fresh connection for this operation to avoid threading issues
-            fresh_conn = sqlite3.connect(self.db_path)
-            fresh_cursor = fresh_conn.cursor()
-
-            try:
-                fresh_cursor.execute(
-                    "SELECT * FROM transcripts WHERE title LIKE ?", (f"%{youtube_id}%",)
+            # Use the existing thread-safe connection
+            self.cursor.execute(
+                "SELECT * FROM transcripts WHERE youtube_id = ?", (youtube_id,)
+            )
+            transcript = self.cursor.fetchone()
+            if transcript:
+                self.logger.info(
+                    f"Retrieved transcript for YouTube ID '{youtube_id}' from database"
                 )
-                transcript = fresh_cursor.fetchone()
-                if transcript:
-                    self.logger.info(
-                        f"Retrieved transcript for YouTube ID '{youtube_id}' from database"
-                    )
-                    return transcript
-                else:
-                    self.logger.info(
-                        f"No transcript found for YouTube ID '{youtube_id}' in database"
-                    )
-                    return None
-            finally:
-                fresh_cursor.close()
-                fresh_conn.close()
+                return transcript
+            else:
+                self.logger.info(
+                    f"No transcript found for YouTube ID '{youtube_id}' in database"
+                )
+                return None
 
         except Exception as e:
             self._log_error(
@@ -672,106 +721,39 @@ class Database:
             )
             return None
 
-    def add_youtube_transcript(
-        self,
-        youtube_id: str,
-        transcript_content: str,
-        committee: object = Committee.BOARD_OF_HEALTH,
-        category: str = "YouTube Transcript",
-    ) -> int:
+    def get_transcript_by_id(self, transcript_id: int) -> Optional[Tuple]:
         """
-        Add a YouTube transcript to the database.
+        Retrieve a transcript by its ID.
 
         Args:
-            youtube_id: YouTube video ID
-            transcript_content: Full transcript content
-            committee: Committee name (default: "YouTube")
-            category: Transcript category (default: "Video Transcript")
+            transcript_id: The ID of the transcript to retrieve
 
         Returns:
-            int: The ID of the newly created transcript
+            Tuple containing transcript data if found, None otherwise.
+            Each tuple contains: (id, committee, title, content, date, category)
         """
-        operation_details = {
-            "youtube_id": youtube_id,
-            "committee": committee,
-            "category": category,
-            "content_length": len(transcript_content),
-        }
-        self._log_operation("add_youtube_transcript", operation_details)
+        self._log_operation("get_transcript_by_id", {"transcript_id": transcript_id})
 
         try:
-            title = youtube_id
-            date = datetime.now().isoformat()
-
-            # Debug: Log the database path and operation details
-            self.logger.info(f"Adding transcript to database: {self.db_path}")
-            self.logger.info(f"Title: {title}")
-            self.logger.info(f"Content length: {len(transcript_content)}")
-            self.logger.info(f"Date: {date}")
-
-            # Create a fresh connection for this operation to avoid threading issues
-            fresh_conn = sqlite3.connect(self.db_path)
-            fresh_cursor = fresh_conn.cursor()
-
-            try:
-                # Debug: Check if table exists
-                fresh_cursor.execute(
-                    "SELECT name FROM sqlite_master WHERE type='table' AND name='transcripts'"
-                )
-                table_exists = fresh_cursor.fetchone()
+            # Use the existing thread-safe connection
+            self.cursor.execute(
+                "SELECT * FROM transcripts WHERE id = ?", (transcript_id,)
+            )
+            transcript = self.cursor.fetchone()
+            if transcript:
                 self.logger.info(
-                    f"Transcripts table exists: {table_exists is not None}"
+                    f"Retrieved transcript with ID '{transcript_id}' from database"
                 )
-
-                if not table_exists:
-                    self.logger.error("Transcripts table does not exist!")
-                    # Create the table if it doesn't exist
-                    self.logger.info("Creating transcripts table...")
-                    fresh_cursor.execute(
-                        """
-                        CREATE TABLE IF NOT EXISTS transcripts (
-                            id INTEGER PRIMARY KEY AUTOINCREMENT,
-                            committee TEXT,
-                            title TEXT,
-                            content TEXT,
-                            date TEXT,
-                            category TEXT
-                        )
-                    """
-                    )
-                    fresh_conn.commit()
-                    self.logger.info("Transcripts table created successfully")
-
-                # Now insert the transcript
+                return transcript
+            else:
                 self.logger.info(
-                    f"Inserting transcript into database: {committee}, {title}, {transcript_content}, {date}, {category}"
+                    f"No transcript found with ID '{transcript_id}' in database"
                 )
-                fresh_cursor.execute(
-                    "INSERT INTO transcripts (committee, title, content, date, category) VALUES (?, ?, ?, ?, ?)",
-                    (committee, title, transcript_content, date, category),
-                )
-                fresh_conn.commit()
-
-                # Verify the insert worked
-                fresh_cursor.execute(
-                    "SELECT COUNT(*) FROM transcripts WHERE title LIKE ?",
-                    (f"%{youtube_id}%",),
-                )
-                count = fresh_cursor.fetchone()[0]
-                self.logger.info(f"Transcripts in database after insert: {count}")
-
-                transcript_id = fresh_cursor.lastrowid
-                self.logger.info(
-                    f"Added YouTube transcript for video '{youtube_id}' (ID: {transcript_id})"
-                )
-                return transcript_id
-            finally:
-                fresh_cursor.close()
-                fresh_conn.close()
+                return None
 
         except Exception as e:
-            self._log_error("add_youtube_transcript", e, operation_details)
-            raise
+            self._log_error("get_transcript_by_id", e, {"transcript_id": transcript_id})
+            return None
 
     def close(self) -> None:
         """
@@ -803,3 +785,50 @@ class Database:
         self.logger.info("Reconnecting to database...")
         self._connect()
         self.logger.info("Database reconnection completed")
+
+    def delete_transcript_by_id(self, transcript_id: int) -> bool:
+        """
+        Delete a transcript by its ID.
+
+        Args:
+            transcript_id: The ID of the transcript to delete
+
+        Returns:
+            bool: True if transcript was deleted, False if not found
+
+        Raises:
+            Exception: If database operation fails
+        """
+        operation_details = {"transcript_id": transcript_id}
+        self._log_operation("delete_transcript_by_id", operation_details)
+
+        try:
+            # Use the existing thread-safe connection
+            # First check if transcript exists
+            self.cursor.execute(
+                "SELECT id FROM transcripts WHERE id = ?", (transcript_id,)
+            )
+            if not self.cursor.fetchone():
+                self.logger.warning(f"Transcript with ID {transcript_id} not found")
+                return False
+
+            # Delete the transcript
+            self.cursor.execute(
+                "DELETE FROM transcripts WHERE id = ?", (transcript_id,)
+            )
+            self.conn.commit()
+
+            # Check if deletion was successful
+            rows_affected = self.cursor.rowcount
+            if rows_affected > 0:
+                self.logger.info(
+                    f"Successfully deleted transcript with ID {transcript_id}"
+                )
+                return True
+            else:
+                self.logger.warning(f"No transcript was deleted for ID {transcript_id}")
+                return False
+
+        except Exception as e:
+            self._log_error("delete_transcript_by_id", e, operation_details)
+            raise
