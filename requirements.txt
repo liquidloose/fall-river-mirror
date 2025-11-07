@@ -1,5 +1,6 @@
 fastapi[standard]>=0.113.0,<0.114.0
 pydantic>=2.7.0,<3.0.0
+python-dotenv>=1.0.0
 xai-sdk
 youtube-transcript-api
 sqlalchemy>=2.0.0
@@ -7,3 +8,11 @@ alembic>=1.13.0
 httpx>=0.24.0
 openai>=1.0.0
 yt-dlp>=2023.1.6
+
+# Testing dependencies
+pytest>=7.4.0
+pytest-asyncio>=0.21.0
+pytest-mock>=3.11.0
+pytest-cov>=4.1.0
+pytest-env>=0.8.2
+factory-boy>=3.3.0

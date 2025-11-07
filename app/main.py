@@ -2,27 +2,36 @@
 from datetime import datetime
 from enum import Enum
 import logging
+import os
 from typing import Dict, Any, List, Optional
-from app.db_sync import DatabaseSync
+from app.data.db_sync import DatabaseSync
+
+# Load environment variables
+try:
+    from dotenv import load_dotenv
+
+    load_dotenv()
+except ImportError:
+    pass
 
 # Third-party imports
 from fastapi import APIRouter, FastAPI, HTTPException, status
 from fastapi.responses import JSONResponse
-from youtube_transcript_api import YouTubeTranscriptApi
 
 # Local imports
 from app import TranscriptManager, ArticleGenerator, YouTubeCrawler
 from app.ai_journalists.aurelius_stone import AureliusStone
-from .xai_processor import XAIProcessor
-from .data_classes import (
-    ArticleType,
+from app.ai.xai_processor import XAIProcessor
+from app.data.data_classes import (
+    Category,
     Committee,
     Journalist,
     Tone,
     UpdateArticleRequest,
     PartialUpdateRequest,
 )
-from .database import Database
+from app.data.database import Database
+from app.data.journalist_manager import JournalistManager
 
 # Configure logging with both console and file output
 logging.basicConfig(
@@ -37,7 +46,7 @@ logger = logging.getLogger(__name__)
 
 # Initialize database instance at the top level
 try:
-    database = Database("fr-mirror")
+    database = Database("app/data/fr-mirror")
     logger.info("Database initialized successfully in main.py")
 except Exception as e:
     logger.error(f"Failed to initialize database in main.py: {str(e)}")
@@ -48,6 +57,20 @@ if database:
     db_sync = DatabaseSync(database)
     db_sync.sync_all_enums()
     logger.info(f"Database sync completed: {db_sync}")
+
+    # Initialize journalists as proper entities
+    journalist_manager = JournalistManager(database)
+    aurelius = AureliusStone()
+
+    # Create/update Aurelius Stone with bio and description
+    journalist_manager.upsert_journalist(
+        full_name=aurelius.FULL_NAME,
+        first_name=aurelius.FIRST_NAME,
+        last_name=aurelius.LAST_NAME,
+        bio=aurelius.get_bio(),
+        description=aurelius.get_description(),
+    )
+    logger.info("Journalist initialization completed")
 
 # Initialize FastAPI application and XAI processor
 app = FastAPI(
@@ -91,10 +114,10 @@ def health_check() -> Dict[str, str]:
     }
 
 
-@app.get("/transcript/fetch/{committee}/{youtube_id=VjaU4DAxP6s}", response_model=None)
+@app.get("/transcript/fetch/{committee}/{youtube_id}", response_model=None)
 def get_transcript_endpoint(
     committee: Committee,
-    youtube_id: str = "VjaU4DAxP6s",
+    youtube_id: str = "iGi8ymCBzhw",
 ) -> Dict[str, Any] | JSONResponse:
 
     logger.info(
@@ -112,6 +135,52 @@ def get_transcript_endpoint(
         Dict[str, Any] | JSONResponse: YouTube transcript data or error response
     """
     return transcript_manager.get_transcript(committee, youtube_id)
+
+
+@app.delete("/transcript/delete/{transcript_id}")
+def delete_transcript_endpoint(transcript_id: int) -> Dict[str, Any]:
+    """
+    Delete a transcript by its ID.
+
+    Args:
+        transcript_id: The ID of the transcript to delete
+
+    Returns:
+        Dict containing success status and message
+
+    Raises:
+        HTTPException: If transcript not found or database operation fails
+    """
+    try:
+        if not database:
+            raise HTTPException(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail="Database not available",
+            )
+
+        success = database.delete_transcript_by_id(transcript_id)
+
+        if success:
+            logger.info(f"Successfully deleted transcript with ID {transcript_id}")
+            return {
+                "success": True,
+                "message": f"Transcript with ID {transcript_id} deleted successfully",
+                "transcript_id": transcript_id,
+            }
+        else:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail=f"Transcript with ID {transcript_id} not found",
+            )
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Failed to delete transcript {transcript_id}: {str(e)}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to delete transcript: {str(e)}",
+        )
 
 
 @app.get("/yt_crawler/{video_id}", response_model=None)
@@ -159,7 +228,7 @@ async def get_article_count() -> Dict[str, Any]:
 async def get_all_articles(
     skip: int = 0,
     limit: int = 100,
-    article_type: Optional[ArticleType] = None,
+    article_type: Optional[Category] = None,
     tone: Optional[Tone] = None,
     committee: Optional[Committee] = None,
 ) -> List[Dict[str, Any]]:
@@ -232,25 +301,253 @@ async def get_article(article_id: str) -> Dict[str, Any]:
         )
 
 
+@app.get("/journalist/{journalist_name}")
+def get_journalist_profile(journalist_name: Journalist):
+    """
+    Get complete profile information for a specific journalist.
+    Returns bio, description, writing style, slant, and all other attributes.
+    """
+    try:
+        # Map journalist enum values to their classes
+        journalist_classes = {
+            Journalist.AURELIUS_STONE: AureliusStone,
+        }
+
+        # Get the journalist class
+        journalist_class = journalist_classes.get(journalist_name)
+        if not journalist_class:
+            available_journalists = [j.value for j in Journalist]
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail=f"Journalist '{journalist_name.value}' not found. Available journalists: {available_journalists}",
+            )
+
+        # Create journalist instance
+        journalist = journalist_class()
+
+        # Get complete profile information
+        profile = journalist.get_full_profile()
+
+        # Add additional context information
+        profile.update(
+            {
+                "default_tone": journalist.DEFAULT_TONE.value,
+                "default_article_type": journalist.DEFAULT_ARTICLE_TYPE.value,
+                "slant": journalist.SLANT,
+                "style": journalist.STYLE,
+                "first_name": journalist.FIRST_NAME,
+                "last_name": journalist.LAST_NAME,
+                "full_name": journalist.FULL_NAME,
+            }
+        )
+
+        # Load context files for slant, style, and tone
+        try:
+            slant = journalist._load_attribute_context(
+                "./app/context_files", "slant", journalist.SLANT
+            )
+            style = journalist._load_attribute_context(
+                "./app/context_files", "style", journalist.STYLE
+            )
+            tone = journalist._load_attribute_context(
+                "./app/context_files", "tone", journalist.DEFAULT_TONE.value
+            )
+
+            profile.update(
+                {
+                    "slant": slant,
+                    "style": style,
+                    "tone": tone,
+                }
+            )
+        except Exception as e:
+            logger.warning(f"Could not load context files: {str(e)}")
+            profile.update(
+                {
+                    "slant": "Context file not available",
+                    "style": "Context file not available",
+                    "tone": "Context file not available",
+                }
+            )
+
+        logger.info(f"Retrieved complete profile for {journalist.FULL_NAME}")
+        return profile
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Failed to retrieve journalist profile: {str(e)}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to retrieve journalist profile: {str(e)}",
+        )
+
+
 # ===== POST ENDPOINTS =====
 
 
-@app.post("/article/generate")
+@app.post("/article/generate/{journalist}/{tone}/{article_type}/{transcript_id}")
+def generate_article_from_strings(
+    journalist: str,
+    tone: str,
+    article_type: str,
+    transcript_id: str,
+):
+    """
+    Generate article using string parameters instead of enums.
+    Useful for automated calls or external integrations.
+    """
+    try:
+        # Map string parameters to enums
+        journalist_enum = None
+        tone_enum = None
+        article_type_enum = None
+
+        # Map journalist string to enum
+        try:
+            journalist_enum = Journalist(journalist)
+        except ValueError:
+            raise HTTPException(
+                status_code=400,
+                detail=f"Invalid journalist '{journalist}'. Valid options: {[j.value for j in Journalist]}",
+            )
+
+        # Map tone string to enum
+        try:
+            tone_enum = Tone(tone)
+        except ValueError:
+            raise HTTPException(
+                status_code=400,
+                detail=f"Invalid tone '{tone}'. Valid options: {[t.value for t in Tone]}",
+            )
+
+        # Map article_type string to enum
+        try:
+            article_type_enum = Category(article_type)
+        except ValueError:
+            raise HTTPException(
+                status_code=400,
+                detail=f"Invalid article_type '{article_type}'. Valid options: {[c.value for c in Category]}",
+            )
+
+        # Fetch transcript content from database
+        if not database:
+            raise HTTPException(status_code=500, detail="Database not available")
+
+        transcript_data = database.get_transcript_by_id(int(transcript_id))
+        if not transcript_data:
+            raise HTTPException(
+                status_code=404, detail=f"No transcript found with ID {transcript_id}"
+            )
+
+        # Extract content from transcript data (content is at index 3)
+        transcript_content = transcript_data[3]
+
+        # Create journalist instance (currently only Aurelius Stone is implemented)
+        if journalist_enum == Journalist.AURELIUS_STONE:
+            journalist_instance = AureliusStone()
+        else:
+            # Fallback to default
+            journalist_instance = AureliusStone()
+
+        base_context = journalist_instance.load_context(
+            tone=tone_enum, article_type=article_type_enum
+        )
+
+        # Concatenate transcript content with the context
+        full_context = (
+            f"{base_context}\n\nTRANSCRIPT CONTENT TO ANALYZE:\n{transcript_content}"
+        )
+
+        # Generate article with transcript content (no additional user context for automated calls)
+        article_result = journalist_instance.generate_article(full_context, "")
+
+        # TODO: Write article_content to database using transcript_id
+        # database.save_article(transcript_id=transcript_id, content=article_content, ...)
+
+        logger.info(
+            f"Article generated successfully by {journalist_instance.NAME} using transcript ID {transcript_id}"
+        )
+        return {
+            "journalist": journalist_instance.NAME,
+            "context": full_context,
+            "title": (
+                article_result.get("title", "Untitled Article")
+                if isinstance(article_result, dict)
+                else "Untitled Article"
+            ),
+            "content": (
+                article_result.get("content", article_result)
+                if isinstance(article_result, dict)
+                else article_result
+            ),
+            "transcript_id": int(transcript_id),
+            "transcript_content_length": len(transcript_content),
+        }
+    except Exception as e:
+        logger.error(f"Failed to generate article: {str(e)}", exc_info=True)
+        raise HTTPException(
+            status_code=500, detail=f"Failed to generate article: {str(e)}"
+        )
+
+
+@app.post("/article/create/manually")
 def generate_article(
-    content: str = "",
+    additional_context: str = "",
     journalist: Journalist = Journalist.AURELIUS_STONE,  # This creates the dropdown
     tone: Optional[Tone] = None,
-    article_type: Optional[ArticleType] = None,
-):
+    article_type: Optional[Category] = None,
+) -> Dict[str, Any]:
     try:
-        journalist = AureliusStone()
-        context = journalist.load_context(tone=tone, article_type=article_type)
-        article_content = journalist.generate_article(context, content)
-        logger.info(f"Article generated successfully by {journalist.NAME}")
+        # Hardcoded article ID of 1
+        article_id = 1
+
+        # Fetch transcript content from database
+        if not database:
+            raise HTTPException(status_code=500, detail="Database not available")
+
+        transcript_data = database.get_transcript_by_id(article_id)
+        if not transcript_data:
+            raise HTTPException(
+                status_code=404, detail=f"No transcript found with ID {article_id}"
+            )
+
+        # Extract content from transcript data (content is at index 3)
+        transcript_content = transcript_data[3]
+
+        journalist_instance = AureliusStone()
+        base_context = journalist_instance.load_context(
+            tone=tone, article_type=article_type
+        )
+
+        # Concatenate transcript content with the context
+        full_context = (
+            f"{base_context}\n\nTRANSCRIPT CONTENT TO ANALYZE:\n{transcript_content}"
+        )
+
+        # Use additional_context as user input if provided
+        article_result = journalist_instance.generate_article(
+            full_context, additional_context
+        )
+
+        logger.info(
+            f"Article generated successfully by {journalist_instance.NAME} using transcript ID {article_id}"
+        )
         return {
-            "journalist": journalist.NAME,
-            "context": context,
-            "generated_article": article_content,
+            "journalist": journalist_instance.NAME,
+            "context": full_context,
+            "article_title": (
+                article_result.get("title", "Untitled Article")
+                if isinstance(article_result, dict)
+                else "Untitled Article"
+            ),
+            "article_content": (
+                article_result.get("content", article_result)
+                if isinstance(article_result, dict)
+                else article_result
+            ),
+            "transcript_id": article_id,
+            "transcript_content_length": len(transcript_content),
         }
     except Exception as e:
         logger.error(f"Failed to generate article: {str(e)}", exc_info=True)
@@ -312,7 +609,7 @@ async def update_article(
                 new_content = article_generator.write_article(
                     context=article["context"],
                     prompt=article["prompt"],
-                    article_type=ArticleType(article["article_type"]),
+                    article_type=Category(article["article_type"]),
                     tone=Tone(article["tone"]),
                     committee=Committee(article["committee"]),
                 )
@@ -387,7 +684,7 @@ async def partial_update_article(
                 new_content = article_generator.write_article(
                     context=article["context"],
                     prompt=article["prompt"],
-                    article_type=ArticleType(article["article_type"]),
+                    article_type=Category(article["article_type"]),
                     tone=Tone(article["tone"]),
                     committee=Committee(article["committee"]),
                 )
