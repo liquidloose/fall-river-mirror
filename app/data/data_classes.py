@@ -59,6 +59,7 @@ class Committee(str, Enum):
     PORT_AUTHORITY = "Port Authority"
     REDEVELOPMENT_AUTHORITY_BOARD = "Redevelopment Authority Board"
     RETIREMENT_BOARD = "Retirement Board"
+    SCHOOL_COMMITTEE = "School Committee"
     SEWER_COMMISSION = "Sewer Commission"
     SPECIAL_CHARTER_COMMITTEE = "Special Charter Committee"
     TAX_INCREMENT_FINANCE_BOARD = "Tax Increment Finance Board"

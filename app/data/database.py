@@ -103,14 +103,14 @@ class Database:
             "committee TEXT, "  # Committee name as text
             "youtube_id TEXT, "  # YouTube video ID
             "content TEXT, "  # Full transcript content
+            "meeting_date TEXT, "  # YouTube video description
             "yt_published_date TEXT, "  # YouTube video published date
             "fetch_date TEXT, "  # Date when transcript was fetched
             "model TEXT, "  # Transcript model
             "video_title TEXT, "  # YouTube video title
             "video_duration_seconds INTEGER, "  # Video duration in seconds
-            "video_duration_formatted TEXT, "  # Video duration in readable format (e.g., "19:03"),
-            "video_channel TEXT, "  # YouTube channel name
-            "video_description TEXT",  # YouTube video description
+            "video_duration_formatted TEXT, "  # Video duration in readable format (e.g., "19:03")
+            "video_channel TEXT"  # YouTube channel name
         )
 
         # Journalists table - stores reporter information

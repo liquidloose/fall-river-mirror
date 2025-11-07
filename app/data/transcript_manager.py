@@ -19,7 +19,30 @@ logger = logging.getLogger(__name__)
 
 
 class TranscriptManager:
-    """Manages YouTube transcript operations including fetching, caching, and database operations."""
+    """
+    Manages YouTube transcript operations including fetching, caching, and database operations.
+    
+    Public Methods:
+    ---------------
+    get_transcript(committee: Committee, youtube_id: str) -> Dict[str, Any] | JSONResponse
+        Fetches a YouTube video transcript, checking database cache first. If not cached,
+        fetches from YouTube Transcript API. Falls back to OpenAI Whisper if transcript
+        is unavailable. Automatically caches new transcripts to database.
+        
+        Args:
+            committee: Committee enum value for categorization
+            youtube_id: YouTube video ID (e.g., "VjaU4DAxP6s")
+            
+        Returns:
+            Dict containing transcript content, video metadata, and database info
+            or JSONResponse with error details if fetch fails
+    
+    Usage Example:
+    --------------
+    >>> manager = TranscriptManager(committee="Planning Board", database=db)
+    >>> result = manager.get_transcript(Committee.PLANNING_BOARD, "VjaU4DAxP6s")
+    >>> print(result['transcript'])
+    """
 
     def __init__(self, committee: str, database=None):
         self.committee = committee
@@ -205,23 +228,24 @@ class TranscriptManager:
                 api_key = os.getenv("YOUTUBE_API_KEY")
                 yt_data = YouTubeDataAPI(api_key).get_video_published_date(youtube_id)
                 yt_published_date = yt_data.get("published_at", "")
-                video_title = yt_data.get("title", "")
+                video_title = yt_data.get("title", "") # Video titles have the meeting date data in them
                 video_duration_seconds = yt_data.get("duration_seconds", 0)
                 video_duration_formatted = yt_data.get("duration_formatted", "")
                 video_channel = yt_data.get("channel_title", "")
-                video_description = yt_data.get("description", "")
+                meeting_date = yt_data.get("meeting_date", "")
 
             try:
                 fresh_cursor.execute(
                     """INSERT INTO transcripts 
-                    (committee, youtube_id, content, yt_published_date, fetch_date, model,
+                    (committee, youtube_id, content, meeting_date, yt_published_date, fetch_date, model,
                      video_title, video_duration_seconds, video_duration_formatted, 
-                     video_channel, video_description) 
+                     video_channel) 
                     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
                     (
                         committee,
                         youtube_id,
                         content,
+                        meeting_date,
                         yt_published_date,
                         fetch_date,
                         self.category,
@@ -229,7 +253,6 @@ class TranscriptManager:
                         video_duration_seconds,
                         video_duration_formatted,
                         video_channel,
-                        video_description,
                     ),
                 )
                 fresh_conn.commit()
