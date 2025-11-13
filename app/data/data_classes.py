@@ -38,41 +38,6 @@ class Tone(str, Enum):
 class Journalist(str, Enum):
     AURELIUS_STONE = "Aurelius Stone"
 
-
-class Committee(str, Enum):
-    BOARD_OF_ASSESSORS = "Board of Assessors"
-    BOARD_OF_HEALTH = "Board of Health"
-    CHARTER_COMMISSION = "Charter Commission"
-    CITY_COUNCIL = "City Council"
-    COMMUNITY_PRESERVATION_COMMISSION = "Community Preservation Commission"
-    CONSERVATION_COMMISSION = "Conservation Commission"
-    COUNCIL_ON_AGING = "Council on Aging"
-    CULTURAL_COUNCIL = "Cultural Council"
-    DISABILITY_COMMISSION = "Disability Commission"
-    ELECTION_COMMISSION = "Election Commission"
-    HISTORICAL_COMMISSION = "Historical Commission"
-    HOUSING_AUTHORITY = "Housing Authority"
-    LIBRARY_BOARD_OF_TRUSTEES = "Library Board of Trustees"
-    LICENSING_BOARD = "Licensing Board"
-    PARK_BOARD = "Park Board"
-    PLANNING_BOARD = "Planning Board"
-    PORT_AUTHORITY = "Port Authority"
-    REDEVELOPMENT_AUTHORITY_BOARD = "Redevelopment Authority Board"
-    RETIREMENT_BOARD = "Retirement Board"
-    SCHOOL_COMMITTEE = "School Committee"
-    SEWER_COMMISSION = "Sewer Commission"
-    SPECIAL_CHARTER_COMMITTEE = "Special Charter Committee"
-    TAX_INCREMENT_FINANCE_BOARD = "Tax Increment Finance Board"
-    TRAFFIC_COMMISSION = "Traffic Commission"
-    WATUPPA_WATER_BOARD = "Watuppa Water Board"
-    ZONING_BOARD_OF_APPEALS = "Zoning Board of Appeals"
-
-    @property
-    def normalized(self) -> str:
-        """Get normalized version for database keys, etc."""
-        return self.value.lower().replace(" ", "_").replace("&", "and")
-
-
 # Request/Response models
 # Using inheritance to avoid code duplication:
 # - BaseArticleRequest: Contains all common fields as optional
@@ -85,7 +50,7 @@ class BaseArticleRequest(BaseModel):
     prompt: Optional[str] = None
     article_type: Optional[Category] = None
     tone: Optional[Tone] = None
-    committee: Optional[Committee] = None
+    committee: Optional[str] = None  # Committee name (required)
 
 
 class CreateArticleRequest(BaseArticleRequest):
@@ -95,7 +60,7 @@ class CreateArticleRequest(BaseArticleRequest):
     prompt: str  # Override to make required
     article_type: Category  # Override to make required
     tone: Tone  # Override to make required
-    committee: Committee  # Override to make required
+    committee: str  # Override to make required (Committee name)
 
 
 class UpdateArticleRequest(BaseArticleRequest):

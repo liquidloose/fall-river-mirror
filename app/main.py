@@ -24,7 +24,6 @@ from app.ai_journalists.aurelius_stone import AureliusStone
 from app.ai.xai_processor import XAIProcessor
 from app.data.data_classes import (
     Category,
-    Committee,
     Journalist,
     Tone,
     UpdateArticleRequest,
@@ -83,7 +82,7 @@ xai_processor = XAIProcessor()
 logger.info("FastAPI app initialized!")
 
 # Create class instances once at startup
-transcript_manager = TranscriptManager(Committee.BOARD_OF_HEALTH, database)
+transcript_manager = TranscriptManager(database)
 article_generator = ArticleGenerator()
 youtube_crawler = YouTubeCrawler(database)
 
@@ -114,14 +113,13 @@ def health_check() -> Dict[str, str]:
     }
 
 
-@app.get("/transcript/fetch/{committee}/{youtube_id}", response_model=None)
+@app.get("/transcript/fetch/{youtube_id}", response_model=None)
 def get_transcript_endpoint(
-    committee: Committee,
     youtube_id: str = "iGi8ymCBzhw",
 ) -> Dict[str, Any] | JSONResponse:
 
     logger.info(
-        f"Fetching transcript for committee {committee} and YouTube ID {youtube_id}"
+        f"Fetching transcript for YouTube ID {youtube_id}"
     )
     """
     Endpoint to fetch YouTube video transcripts.
@@ -134,7 +132,7 @@ def get_transcript_endpoint(
     Returns:
         Dict[str, Any] | JSONResponse: YouTube transcript data or error response
     """
-    return transcript_manager.get_transcript(committee, youtube_id)
+    return transcript_manager.get_transcript( youtube_id)
 
 
 @app.delete("/transcript/delete/{transcript_id}")
@@ -230,7 +228,7 @@ async def get_all_articles(
     limit: int = 100,
     article_type: Optional[Category] = None,
     tone: Optional[Tone] = None,
-    committee: Optional[Committee] = None,
+    committee: Optional[str] = None,
 ) -> List[Dict[str, Any]]:
     """
     Retrieve all articles with optional filtering.

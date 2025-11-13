@@ -2,7 +2,7 @@ import logging
 from typing import Dict, Any
 from fastapi.responses import JSONResponse
 from ..ai.xai_processor import XAIProcessor
-from ..data.data_classes import Category, Tone, Committee
+from ..data.data_classes import Category, Tone
 from .context_manager import ContextManager
 
 logger = logging.getLogger(__name__)
@@ -21,7 +21,7 @@ class ArticleGenerator:
         prompt: str,
         article_type: Category,
         tone: Tone,
-        committee: Committee,
+        committee: str,
     ) -> Dict[str, Any] | JSONResponse:
         """
         Generate article content based on context and parameters.

@@ -4,7 +4,7 @@ from typing import Dict, Any
 from fastapi.responses import JSONResponse
 from app.data.transcript_manager import TranscriptManager
 from app.writing_department.article_generator import ArticleGenerator
-from app.data.data_classes import Category, Tone, Committee
+from app.data.data_classes import Category, Tone
 
 logger = logging.getLogger(__name__)
 
@@ -45,7 +45,7 @@ class YouTubeCrawler:
                 prompt="Create a comprehensive summary of this YouTube video transcript",
                 article_type=Category.SUMMARY,
                 tone=Tone.FORMAL,
-                committee=Committee.PLANNING_BOARD,
+                committee=str,
             )
 
             # Combine the data
@@ -76,7 +76,7 @@ class YouTubeCrawler:
         prompt: str,
         article_type: Category,
         tone: Tone,
-        committee: Committee,
+        committee: str,
     ) -> Dict[str, Any] | JSONResponse:
         """Generate an article without transcript processing."""
         return self.article_generator.write_article(
