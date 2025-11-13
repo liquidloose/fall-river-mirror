@@ -12,7 +12,7 @@ from youtube_transcript_api._errors import (
     CouldNotRetrieveTranscript,
 )
 import sqlite3
-from .data_classes import AIAgent, Committee
+from .data_classes import AIAgent
 from ..ai.whisper_processor import WhisperProcessor
 from .youtube_data_api import YouTubeDataAPI
 
@@ -45,8 +45,7 @@ class TranscriptManager:
     >>> print(result['transcript'])
     """
 
-    def __init__(self, committee: str, database=None):
-        self.committee = committee
+    def __init__(self,  database=None):
         self.database = database
         self.category = AIAgent.GROK
 
@@ -56,8 +55,7 @@ class TranscriptManager:
 
     def get_transcript(
         self,
-        committee: Committee,
-        youtube_id: str = "VjaU4DAxP6s",
+        youtube_id: str,
     ) -> Dict[str, Any] | JSONResponse:
         """
         Fetch YouTube video transcript using the YouTube Transcript API.
@@ -91,7 +89,7 @@ class TranscriptManager:
                     f"Caching transcript for video {youtube_id} with category {self.category}"
                 )
                 self._cache_transcript(
-                    youtube_id, transcript, committee, video_metadata
+                    youtube_id, transcript, video_metadata
                 )
 
             return self._formatted_youtube_response(
@@ -147,7 +145,7 @@ class TranscriptManager:
         self,
         youtube_id: str,
         content: str,
-        committee: object = Committee.BOARD_OF_HEALTH,
+        committee: Optional[str] = None,
         video_metadata: Dict[str, Any] = None,
     ) -> int:
         """
@@ -216,9 +214,12 @@ class TranscriptManager:
                 f"Inserting transcript into database: {committee}, {youtube_id}, content_length: {len(content)}, {fetch_date}, {self.category}"
             )
 
+
             if video_metadata:
                 yt_published_date = video_metadata.get("published_at", "")
                 video_title = video_metadata.get("title", "")
+                # Remove date prefix (e.g., "7.21.2025 ") from video title to get committee name
+                committee = re.sub(r'^\d{1,2}\.\d{1,2}\.\d{4}\s+', '', video_title)
                 video_duration_seconds = video_metadata.get("duration_seconds", 0)
                 video_duration_formatted = video_metadata.get("duration_formatted", "")
                 video_channel = video_metadata.get("channel_title", "")
@@ -226,19 +227,22 @@ class TranscriptManager:
                 # Parse date from video title and format as MM-DD-YYYY (e.g., "11.5.2025" -> "11-05-2025")
                 meeting_date = f"{date_match.group(1).zfill(2)}-{date_match.group(2).zfill(2)}-{date_match.group(3)}" if date_match else None
 
-            else:
+
+            if not video_metadata: 
                 # Fallback: fetch metadata if not provided
                 api_key = os.getenv("YOUTUBE_API_KEY")
                 yt_data = YouTubeDataAPI(api_key).get_video_published_date(youtube_id)
                 yt_published_date = yt_data.get("published_at", "")
-                video_title = yt_data.get("title", "") # Video titles have the meeting date data in them
+                video_title = yt_data.get("title", "") # Video titles has both the meeting-date and committee-name data in them
+                # Remove date prefix (e.g., "7.21.2025 ") from video title to get committee name
+                committee = re.sub(r'^\d{1,2}\.\d{1,2}\.\d{4}\s+', '', video_title)
                 video_duration_seconds = yt_data.get("duration_seconds", 0)
                 video_duration_formatted = yt_data.get("duration_formatted", "")
                 video_channel = yt_data.get("channel_title", "")
                 date_match = re.match(r'(\d{1,2})\.(\d{1,2})\.(\d{4})', video_title)
                 # Parse date from video title and format as MM-DD-YYYY (e.g., "11.5.2025" -> "11-05-2025")
                 meeting_date = f"{date_match.group(1).zfill(2)}-{date_match.group(2).zfill(2)}-{date_match.group(3)}" if date_match else None
-
+                
             try:
                 fresh_cursor.execute(
                     """INSERT INTO transcripts 
