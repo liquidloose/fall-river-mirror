@@ -110,7 +110,7 @@ class Database:
             "video_title TEXT, "  # YouTube video title
             "video_duration_seconds INTEGER, "  # Video duration in seconds
             "video_duration_formatted TEXT, "  # Video duration in readable format (e.g., "19:03")
-            "video_channel TEXT"  # YouTube channel name
+            "video_channel TEXT",  # YouTube channel name
         )
 
         # Journalists table - stores reporter information
@@ -141,14 +141,6 @@ class Database:
             "FOREIGN KEY(journalist_id) REFERENCES journalists(id), "
             "FOREIGN KEY(transcript_id) REFERENCES transcripts(id)",
         )
-
-        # Committees table - stores government committees
-        self._create_table(
-            "committees",
-            "id INTEGER PRIMARY KEY AUTOINCREMENT, "
-            "name TEXT NOT NULL, "  # Committee name (required)
-            "created_date TEXT",
-        )  # When committee was established
 
         # Tones table - stores available tones for articles
         self._create_table(
