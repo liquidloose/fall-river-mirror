@@ -23,7 +23,7 @@ from app import TranscriptManager, ArticleGenerator, YouTubeCrawler
 from app.ai_journalists.aurelius_stone import AureliusStone
 from app.ai.xai_processor import XAIProcessor
 from app.data.data_classes import (
-    Category,
+    ArticleType,
     Journalist,
     Tone,
     UpdateArticleRequest,
@@ -118,9 +118,7 @@ def get_transcript_endpoint(
     youtube_id: str = "iGi8ymCBzhw",
 ) -> Dict[str, Any] | JSONResponse:
 
-    logger.info(
-        f"Fetching transcript for YouTube ID {youtube_id}"
-    )
+    logger.info(f"Fetching transcript for YouTube ID {youtube_id}")
     """
     Endpoint to fetch YouTube video transcripts.
     First checks database cache, then fetches from YouTube if not found and
@@ -132,7 +130,7 @@ def get_transcript_endpoint(
     Returns:
         Dict[str, Any] | JSONResponse: YouTube transcript data or error response
     """
-    return transcript_manager.get_transcript( youtube_id)
+    return transcript_manager.get_transcript(youtube_id)
 
 
 @app.delete("/transcript/delete/{transcript_id}")
@@ -226,7 +224,7 @@ async def get_article_count() -> Dict[str, Any]:
 async def get_all_articles(
     skip: int = 0,
     limit: int = 100,
-    article_type: Optional[Category] = None,
+    article_type: Optional[ArticleType] = None,
     tone: Optional[Tone] = None,
     committee: Optional[str] = None,
 ) -> List[Dict[str, Any]]:
@@ -386,9 +384,10 @@ def get_journalist_profile(journalist_name: Journalist):
 
 @app.post("/article/generate/{journalist}/{tone}/{article_type}/{transcript_id}")
 def generate_article_from_strings(
-    journalist: str,
-    tone: str,
-    article_type: str,
+    journalist: Journalist,
+    tone: Tone,
+    ArticleT: ArticleType,
+    article_type: ArticleType,
     transcript_id: str,
 ):
     """
@@ -421,11 +420,11 @@ def generate_article_from_strings(
 
         # Map article_type string to enum
         try:
-            article_type_enum = Category(article_type)
+            article_type_enum = ArticleType(article_type)
         except ValueError:
             raise HTTPException(
                 status_code=400,
-                detail=f"Invalid article_type '{article_type}'. Valid options: {[c.value for c in Category]}",
+                detail=f"Invalid article_type '{article_type}'. Valid options: {[c.value for c in ArticleT]}",
             )
 
         # Fetch transcript content from database
@@ -494,7 +493,7 @@ def generate_article(
     additional_context: str = "",
     journalist: Journalist = Journalist.AURELIUS_STONE,  # This creates the dropdown
     tone: Optional[Tone] = None,
-    article_type: Optional[Category] = None,
+    article_type: Optional[ArticleType] = None,
 ) -> Dict[str, Any]:
     try:
         # Hardcoded article ID of 1
@@ -607,9 +606,8 @@ async def update_article(
                 new_content = article_generator.write_article(
                     context=article["context"],
                     prompt=article["prompt"],
-                    article_type=Category(article["article_type"]),
+                    article_type=ArticleType(article["article_type"]),
                     tone=Tone(article["tone"]),
-                    committee=Committee(article["committee"]),
                 )
                 article["content"] = new_content
             except Exception as e:
@@ -682,9 +680,8 @@ async def partial_update_article(
                 new_content = article_generator.write_article(
                     context=article["context"],
                     prompt=article["prompt"],
-                    article_type=Category(article["article_type"]),
+                    article_type=ArticleType(article["article_type"]),
                     tone=Tone(article["tone"]),
-                    committee=Committee(article["committee"]),
                 )
                 article["content"] = new_content
             except Exception as e:
