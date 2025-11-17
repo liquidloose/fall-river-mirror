@@ -1,6 +1,6 @@
 from typing import Dict, Any, Optional
 import os
-from ..data.data_classes import Tone, Category
+from ..data.data_classes import Tone, ArticleType
 from app.ai_journalists.base_journalist import BaseJournalist
 
 
@@ -10,12 +10,12 @@ class AureliusStone(BaseJournalist):
     FULL_NAME = f"{FIRST_NAME} {LAST_NAME}"
     NAME = FULL_NAME  # Required by BaseJournalist
     DEFAULT_TONE = Tone.ANALYTICAL  # Change from CRITICAL to FORMAL
-    DEFAULT_ARTICLE_TYPE = Category.OP_ED  # Change from OPINION to OP_ED
+    DEFAULT_ARTICLE_TYPE = ArticleType.OP_ED  # Change from OPINION to OP_ED
     SLANT = "unbiased"
     STYLE = "conversational"
 
     def __init__(
-        self, tone: Optional[Tone] = None, article_type: Optional[Category] = None
+        self, tone: Optional[Tone] = None, article_type: Optional[ArticleType] = None
     ):
         """
         Constructor to allow instance-specific mutable attributes.
@@ -29,7 +29,7 @@ class AureliusStone(BaseJournalist):
         self,
         base_path: str = "./app/context_files",
         tone: Optional[Tone] = None,
-        article_type: Optional[Category] = None,
+        article_type: Optional[ArticleType] = None,
     ) -> str:
         """
         Load and concatenate context files for all attributes, using provided or instance values.

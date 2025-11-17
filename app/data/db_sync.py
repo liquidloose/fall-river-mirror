@@ -1,6 +1,6 @@
 import logging
 from enum import Enum
-from .data_classes import Category, Tone
+from .data_classes import ArticleType, Tone
 from .database import Database
 from datetime import datetime
 
@@ -10,12 +10,12 @@ logger = logging.getLogger(__name__)
 class DatabaseSync:
     """
     Synchronizes Python Enum class values with their corresponding database tables.
-    
+
     This class ensures that all enum values defined in code are present in the database
     by comparing enum values against database records and inserting any missing entries.
     This is useful for maintaining consistency between application code and database state,
     especially after adding new enum values.
-    
+
     Architecture:
     -------------
     The sync process follows these steps:
@@ -23,19 +23,19 @@ class DatabaseSync:
     2. Query the database to get existing values
     3. Compare existing values with enum values
     4. Insert any missing values into the database
-    
+
     Database Table Structure:
     -------------------------
     Each synced table must have at minimum:
     - name (TEXT): The enum value string
     - created_date (TEXT): ISO format timestamp of when the record was inserted
-    
+
     Usage Example:
     --------------
     >>> db = Database("path/to/db.db")
     >>> sync = DatabaseSync(db)
     >>> sync.sync_all_enums()  # Syncs all configured enums
-    
+
     Attributes:
     -----------
     database : Database
@@ -47,30 +47,30 @@ class DatabaseSync:
     def __init__(self, database: Database):
         """
         Initialize DatabaseSync with a database connection.
-        
+
         Args:
             database (Database): An active Database instance with an open connection
         """
         self.database = database
-        
+
         # Maps each Enum class to its corresponding database table name
         # Add new mappings here when creating new enum types
         self.enum_table_mapping = {
-            Tone: "tones",             # Article tone options (e.g., formal, casual)
-            Category: "categories",    # Article category types (e.g., news, opinion)
+            Tone: "tones",  # Article tone options (e.g., formal, casual)
+            ArticleType: "categories",  # Article ArticleType types (e.g., news, opinion)
         }
 
     def sync_all_enums(self):
         """
         Synchronize all configured enum classes with their database tables.
-        
+
         Iterates through the enum_table_mapping dictionary and syncs each enum
         class with its corresponding table. Errors in syncing one enum do not
         prevent other enums from being synced.
-        
+
         This method should be called during application startup to ensure
         database consistency with the current codebase.
-        
+
         Raises:
             Logs errors but does not raise exceptions to prevent application
             startup failure due to sync issues.
@@ -89,7 +89,7 @@ class DatabaseSync:
     def _sync_enum_to_table(self, enum_class: Enum, table_name: str):
         """
         Sync a specific enum class to its database table.
-        
+
         This is the core sync logic that:
         1. Retrieves all existing values from the database table
         2. Extracts all values from the enum class
@@ -99,7 +99,7 @@ class DatabaseSync:
         Args:
             enum_class (Enum): The enum class to sync (e.g., Committee, Tone)
             table_name (str): The database table name (e.g., "committees", "tones")
-            
+
         Example:
             If Committee enum has ["City Council", "Planning Board"] but the
             database only has ["City Council"], this will insert "Planning Board"
@@ -123,22 +123,24 @@ class DatabaseSync:
                     f"Inserted {len(missing_values)} missing value(s) into {table_name}: {missing_values}"
                 )
         else:
-            logger.info(f"No missing values found for {table_name} - database is in sync")
+            logger.info(
+                f"No missing values found for {table_name} - database is in sync"
+            )
 
     def _get_existing_values(self, table_name: str) -> set:
         """
         Retrieve all existing values from the 'name' column of a database table.
-        
+
         Queries the specified table and extracts all values from the 'name' column,
         returning them as a set for efficient comparison with enum values.
-        
+
         Args:
             table_name (str): The name of the database table to query
-            
+
         Returns:
             set: A set of strings representing all 'name' values in the table.
                  Returns empty set if an error occurs.
-                 
+
         Example:
             If the committees table has rows with name values:
             ["City Council", "Planning Board"]
@@ -149,7 +151,7 @@ class DatabaseSync:
             query = f"SELECT name FROM {table_name}"
             self.database.cursor.execute(query)
             results = self.database.cursor.fetchall()
-            
+
             # Extract the first column (name) from each row and create a set
             # Each row is a tuple like ("City Council",), so row[0] gets the string
             return {row[0] for row in results}
@@ -161,7 +163,7 @@ class DatabaseSync:
     def _insert_missing_values(self, table_name: str, values: set) -> bool:
         """
         Insert missing enum values into a database table with timestamps.
-        
+
         Inserts each value as a new row with the current timestamp. Uses parameterized
         queries to prevent SQL injection. All inserts are performed in a single
         transaction that is either fully committed or fully rolled back on error.
@@ -169,37 +171,34 @@ class DatabaseSync:
         Args:
             table_name (str): The database table to insert into
             values (set): Set of string values to insert
-            
+
         Returns:
             bool: True if all values were successfully inserted and committed,
                   False if an error occurred (transaction is rolled back)
-                  
+
         Example:
             values = {"City Council", "Planning Board"}
             Inserts two rows into the committees table:
             - ("City Council", "2025-11-07T12:34:56.789")
             - ("Planning Board", "2025-11-07T12:34:56.790")
-            
+
         Notes:
             - Uses parameterized queries (?) to prevent SQL injection
             - All inserts happen in one transaction for atomicity
             - If any insert fails, all inserts are rolled back
         """
         try:
-            
 
             # Insert each missing value with a timestamp
             for value in values:
                 # Use parameterized query to prevent SQL injection
                 query = f"INSERT INTO {table_name} (name, created_date) VALUES (?, ?)"
                 logger.info(f"Inserting value: {value} into {table_name}")
-                
+
                 # Execute with parameters (value, timestamp)
                 # ISO format: "2025-11-07T17:30:45.123456"
-                self.database.cursor.execute(
-                    query, (value, datetime.now().isoformat())
-                )
-            
+                self.database.cursor.execute(query, (value, datetime.now().isoformat()))
+
             # Commit all inserts as a single transaction
             self.database.conn.commit()
             return True

@@ -4,7 +4,7 @@ from typing import Optional
 from pydantic import BaseModel
 
 
-class Category(str, Enum):
+class ArticleType(str, Enum):
     SUMMARY = "summary"
     OP_ED = "op_ed"
     CRITICAL = "critical"
@@ -38,6 +38,7 @@ class Tone(str, Enum):
 class Journalist(str, Enum):
     AURELIUS_STONE = "Aurelius Stone"
 
+
 # Request/Response models
 # Using inheritance to avoid code duplication:
 # - BaseArticleRequest: Contains all common fields as optional
@@ -48,7 +49,7 @@ class BaseArticleRequest(BaseModel):
 
     context: Optional[str] = None
     prompt: Optional[str] = None
-    article_type: Optional[Category] = None
+    article_type: Optional[ArticleType] = None
     tone: Optional[Tone] = None
     committee: Optional[str] = None  # Committee name (required)
 
@@ -58,7 +59,7 @@ class CreateArticleRequest(BaseArticleRequest):
 
     context: str  # Override to make required
     prompt: str  # Override to make required
-    article_type: Category  # Override to make required
+    article_type: ArticleType  # Override to make required
     tone: Tone  # Override to make required
     committee: str  # Override to make required (Committee name)
 

@@ -3,7 +3,7 @@ import logging
 from typing import List, Tuple, Optional, Union
 from datetime import datetime
 
-from .data_classes import AIAgent
+from .data_classes import AIAgent, ArticleType
 
 
 class Database:
@@ -130,14 +130,15 @@ class Database:
         self._create_table(
             "articles",
             "id INTEGER PRIMARY KEY AUTOINCREMENT, "
-            "committee_id INTEGER, "  # Foreign key to committees table
+            "committee TEXT, "  # Foreign key to committees table
             "youtube_id TEXT, "  # YouTube video ID
             "journalist_id INTEGER, "  # Foreign key to journalists table
             "content TEXT, "  # Article content
             "transcript_id INTEGER, "  # Foreign key to transcripts table
             "date TEXT, "  # Article publication date
-            "category TEXT, "  # Article category
-            "FOREIGN KEY(committee_id) REFERENCES committees(id), "
+            "tone TEXT, "  # Article tone
+            "article_type TEXT, "  # Article type
+            "FOREIGN KEY(committee) REFERENCES committees(id), "
             "FOREIGN KEY(journalist_id) REFERENCES journalists(id), "
             "FOREIGN KEY(transcript_id) REFERENCES transcripts(id)",
         )
@@ -419,7 +420,7 @@ class Database:
         title: str,
         content: str,
         date: str,
-        category: str,
+        ArticleType: str,
         video_title: str = None,
         video_duration_seconds: int = None,
         video_duration_formatted: str = None,
@@ -437,7 +438,7 @@ class Database:
             title: Title of the transcript
             content: Full transcript content
             date: Date of the meeting (yt_published_date)
-            category: Category of the transcript
+           ArticleType:ArticleType of the transcript
             video_title: YouTube video title
             video_duration_seconds: Video duration in seconds
             video_duration_formatted: Video duration in readable format
@@ -451,7 +452,7 @@ class Database:
             "committee": committee,
             "title": title,
             "date": date,
-            "category": category,
+            "ArticleType": ArticleType,
             "video_title": video_title,
             "video_duration_seconds": video_duration_seconds,
             "video_duration_formatted": video_duration_formatted,
@@ -531,13 +532,13 @@ class Database:
 
     def add_article(
         self,
-        committee_id: int,
+        committee: str,
         youtube_id: str,
         journalist_id: int,
         content: str,
         transcript_id: int,
         date: str,
-        category: Optional[str],
+        ArticleType: Optional[str],
     ) -> None:
         """
         Add a new article to the database.
@@ -546,44 +547,44 @@ class Database:
         must exist in their respective tables.
 
         Args:
-            committee_id: ID of the committee (from committees table)
+            committee: ID of the committee (from committees table)
             youtube_id: YouTube video ID
             journalist_id: ID of the journalist (from journalists table)
             content: Article content
             transcript_id: ID of the transcript (from transcripts table)
             date: Article publication date
-            category: Article category (optional)
+           ArticleType: ArticleType (optional)
 
         Raises:
             sqlite3.IntegrityError: If any foreign key references don't exist
         """
         operation_details = {
-            "committee_id": committee_id,
+            "committee": committee,
             "youtube_id": youtube_id,
             "journalist_id": journalist_id,
             "transcript_id": transcript_id,
             "date": date,
-            "category": category,
+            "ArticleType": ArticleType,
         }
         self._log_operation("add_article", operation_details)
 
         try:
             self.cursor.execute(
-                "INSERT INTO articles (committee_id, youtube_id, journalist_id, content, transcript_id, date, category) VALUES (?, ?, ?, ?, ?, ?, ?)",
+                "INSERT INTO articles (committee, youtube_id, journalist_id, content, transcript_id, date, ArticleType) VALUES (?, ?, ?, ?, ?, ?, ?)",
                 (
-                    committee_id,
+                    committee,
                     youtube_id,
                     journalist_id,
                     content,
                     transcript_id,
                     date,
-                    category,
+                    ArticleType,
                 ),
             )
             self.conn.commit()
             article_id = self.cursor.lastrowid
             self.logger.info(
-                f"Added article (ID: {article_id}) for committee_id: {committee_id}, journalist_id: {journalist_id}"
+                f"Added article (ID: {article_id}) for committee: {committee}, journalist_id: {journalist_id}"
             )
         except Exception as e:
             self._log_error("add_article", e, operation_details)
@@ -613,8 +614,8 @@ class Database:
                 (name, description, created_date),
             )
             self.conn.commit()
-            committee_id = self.cursor.lastrowid
-            self.logger.info(f"Added committee '{name}' (ID: {committee_id})")
+            committee = self.cursor.lastrowid
+            self.logger.info(f"Added committee '{name}' (ID: {committee})")
         except Exception as e:
             self._log_error("add_committee", e, operation_details)
             raise
@@ -625,7 +626,7 @@ class Database:
 
         Returns:
             List of tuples containing transcript data.
-            Each tuple contains: (id, committee, title, content, date, category)
+            Each tuple contains: (id, committee, title, content, date,ArticleType)
         """
         self._log_operation("get_transcripts")
 
@@ -686,7 +687,7 @@ class Database:
 
         Returns:
             Tuple containing transcript data if found, None otherwise.
-            Each tuple contains: (id, committee, title, content, date, category)
+            Each tuple contains: (id, committee, title, content, date,ArticleType)
         """
         self._log_operation("get_transcript_by_youtube_id", {"youtube_id": youtube_id})
 
@@ -722,7 +723,7 @@ class Database:
 
         Returns:
             Tuple containing transcript data if found, None otherwise.
-            Each tuple contains: (id, committee, title, content, date, category)
+            Each tuple contains: (id, committee, title, content, date,ArticleType)
         """
         self._log_operation("get_transcript_by_id", {"transcript_id": transcript_id})
 
