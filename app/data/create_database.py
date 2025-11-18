@@ -3,8 +3,6 @@ import logging
 from typing import List, Tuple, Optional, Union
 from datetime import datetime
 
-from .data_classes import AIAgent, ArticleType
-
 
 class Database:
     """
