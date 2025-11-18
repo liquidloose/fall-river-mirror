@@ -12,9 +12,9 @@ from youtube_transcript_api._errors import (
     CouldNotRetrieveTranscript,
 )
 import sqlite3
-from .data_classes import AIAgent
-from ..ai.whisper_processor import WhisperProcessor
-from .youtube_data_api import YouTubeDataAPI
+from .enum_classes import AIAgent
+from ..writing_department.writing_tools.whisper_processor import WhisperProcessor
+from .youtube_classes import YouTubeDataAPI
 
 logger = logging.getLogger(__name__)
 
@@ -22,22 +22,22 @@ logger = logging.getLogger(__name__)
 class TranscriptManager:
     """
     Manages YouTube transcript operations including fetching, caching, and database operations.
-    
+
     Public Methods:
     ---------------
     get_transcript(committee: Committee, youtube_id: str) -> Dict[str, Any] | JSONResponse
         Fetches a YouTube video transcript, checking database cache first. If not cached,
         fetches from YouTube Transcript API. Falls back to OpenAI Whisper if transcript
         is unavailable. Automatically caches new transcripts to database.
-        
+
         Args:
             committee: Committee enum value for categorization
             youtube_id: YouTube video ID (e.g., "VjaU4DAxP6s")
-            
+
         Returns:
             Dict containing transcript content, video metadata, and database info
             or JSONResponse with error details if fetch fails
-    
+
     Usage Example:
     --------------
     >>> manager = TranscriptManager(committee="Planning Board", database=db)
@@ -45,7 +45,7 @@ class TranscriptManager:
     >>> print(result['transcript'])
     """
 
-    def __init__(self,  database=None):
+    def __init__(self, database=None):
         self.database = database
         self.category = AIAgent.GROK
 
@@ -88,9 +88,7 @@ class TranscriptManager:
                 logger.info(
                     f"Caching transcript for video {youtube_id} with category {self.category}"
                 )
-                self._cache_transcript(
-                    youtube_id, transcript, video_metadata
-                )
+                self._cache_transcript(youtube_id, transcript, video_metadata)
 
             return self._formatted_youtube_response(
                 youtube_id, transcript, video_metadata
@@ -196,7 +194,7 @@ class TranscriptManager:
 
                 # Create a new Database instance to avoid connection issues
                 if self.database:
-                    from .database import Database
+                    from .create_database import Database
 
                     temp_db = Database(self.database.db_path)
                     temp_db._create_all_tables()
@@ -214,35 +212,43 @@ class TranscriptManager:
                 f"Inserting transcript into database: {committee}, {youtube_id}, content_length: {len(content)}, {fetch_date}, {self.category}"
             )
 
-
             if video_metadata:
                 yt_published_date = video_metadata.get("published_at", "")
                 video_title = video_metadata.get("title", "")
                 # Remove date prefix (e.g., "7.21.2025 ") from video title to get committee name
-                committee = re.sub(r'^\d{1,2}\.\d{1,2}\.\d{4}\s+', '', video_title)
+                committee = re.sub(r"^\d{1,2}\.\d{1,2}\.\d{4}\s+", "", video_title)
                 video_duration_seconds = video_metadata.get("duration_seconds", 0)
                 video_duration_formatted = video_metadata.get("duration_formatted", "")
                 video_channel = video_metadata.get("channel_title", "")
-                date_match = re.match(r'(\d{1,2})\.(\d{1,2})\.(\d{4})', video_title)
+                date_match = re.match(r"(\d{1,2})\.(\d{1,2})\.(\d{4})", video_title)
                 # Parse date from video title and format as MM-DD-YYYY (e.g., "11.5.2025" -> "11-05-2025")
-                meeting_date = f"{date_match.group(1).zfill(2)}-{date_match.group(2).zfill(2)}-{date_match.group(3)}" if date_match else None
+                meeting_date = (
+                    f"{date_match.group(1).zfill(2)}-{date_match.group(2).zfill(2)}-{date_match.group(3)}"
+                    if date_match
+                    else None
+                )
 
-
-            if not video_metadata: 
+            if not video_metadata:
                 # Fallback: fetch metadata if not provided
                 api_key = os.getenv("YOUTUBE_API_KEY")
                 yt_data = YouTubeDataAPI(api_key).get_video_published_date(youtube_id)
                 yt_published_date = yt_data.get("published_at", "")
-                video_title = yt_data.get("title", "") # Video titles has both the meeting-date and committee-name data in them
+                video_title = yt_data.get(
+                    "title", ""
+                )  # Video titles has both the meeting-date and committee-name data in them
                 # Remove date prefix (e.g., "7.21.2025 ") from video title to get committee name
-                committee = re.sub(r'^\d{1,2}\.\d{1,2}\.\d{4}\s+', '', video_title)
+                committee = re.sub(r"^\d{1,2}\.\d{1,2}\.\d{4}\s+", "", video_title)
                 video_duration_seconds = yt_data.get("duration_seconds", 0)
                 video_duration_formatted = yt_data.get("duration_formatted", "")
                 video_channel = yt_data.get("channel_title", "")
-                date_match = re.match(r'(\d{1,2})\.(\d{1,2})\.(\d{4})', video_title)
+                date_match = re.match(r"(\d{1,2})\.(\d{1,2})\.(\d{4})", video_title)
                 # Parse date from video title and format as MM-DD-YYYY (e.g., "11.5.2025" -> "11-05-2025")
-                meeting_date = f"{date_match.group(1).zfill(2)}-{date_match.group(2).zfill(2)}-{date_match.group(3)}" if date_match else None
-                
+                meeting_date = (
+                    f"{date_match.group(1).zfill(2)}-{date_match.group(2).zfill(2)}-{date_match.group(3)}"
+                    if date_match
+                    else None
+                )
+
             try:
                 fresh_cursor.execute(
                     """INSERT INTO transcripts 
@@ -344,7 +350,7 @@ class TranscriptManager:
             try:
                 api_key = os.getenv("YOUTUBE_API_KEY")
                 if api_key:
-                    from .youtube_data_api import YouTubeDataAPI
+                    from .youtube_classes import YouTubeDataAPI
 
                     youtube_api = YouTubeDataAPI(api_key)
                     video_metadata = youtube_api.get_video_published_date(youtube_id)

@@ -1,7 +1,7 @@
 import logging
 from typing import Dict, Any, Optional, List
 from datetime import datetime
-from .database import Database
+from .create_database import Database
 
 logger = logging.getLogger(__name__)
 
@@ -215,16 +215,18 @@ class JournalistManager:
 
             journalists = []
             for result in results:
-                journalists.append({
-                    "id": result[0],
-                    "full_name": result[1],
-                    "first_name": result[2],
-                    "last_name": result[3],
-                    "bio": result[4],
-                    "articles": result[5],
-                    "description": result[6],
-                    "created_date": result[7],
-                })
+                journalists.append(
+                    {
+                        "id": result[0],
+                        "full_name": result[1],
+                        "first_name": result[2],
+                        "last_name": result[3],
+                        "bio": result[4],
+                        "articles": result[5],
+                        "description": result[6],
+                        "created_date": result[7],
+                    }
+                )
 
             return journalists
         except Exception as e:
