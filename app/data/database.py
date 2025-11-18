@@ -538,7 +538,8 @@ class Database:
         content: str,
         transcript_id: int,
         date: str,
-        ArticleType: Optional[str],
+        article_type: Optional[str],
+        tone: Optional[str] = None,
     ) -> None:
         """
         Add a new article to the database.
@@ -564,13 +565,14 @@ class Database:
             "journalist_id": journalist_id,
             "transcript_id": transcript_id,
             "date": date,
-            "ArticleType": ArticleType,
+            "article_type": article_type,
+            "tone": tone,
         }
         self._log_operation("add_article", operation_details)
 
         try:
             self.cursor.execute(
-                "INSERT INTO articles (committee, youtube_id, journalist_id, content, transcript_id, date, ArticleType) VALUES (?, ?, ?, ?, ?, ?, ?)",
+                "INSERT INTO articles (committee, youtube_id, journalist_id, content, transcript_id, date, article_type, tone) VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
                 (
                     committee,
                     youtube_id,
@@ -578,7 +580,8 @@ class Database:
                     content,
                     transcript_id,
                     date,
-                    ArticleType,
+                    article_type,
+                    tone,
                 ),
             )
             self.conn.commit()

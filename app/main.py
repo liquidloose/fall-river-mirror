@@ -386,9 +386,8 @@ def get_journalist_profile(journalist_name: Journalist):
 def generate_article_from_strings(
     journalist: Journalist,
     tone: Tone,
-    ArticleT: ArticleType,
     article_type: ArticleType,
-    transcript_id: str,
+    transcript_id: int,
 ):
     """
     Generate article using string parameters instead of enums.
@@ -424,7 +423,7 @@ def generate_article_from_strings(
         except ValueError:
             raise HTTPException(
                 status_code=400,
-                detail=f"Invalid article_type '{article_type}'. Valid options: {[c.value for c in ArticleT]}",
+                detail=f"Invalid article_type '{article_type}'. Valid options: {[c.value for c in ArticleType]}",
             )
 
         # Fetch transcript content from database
@@ -440,12 +439,7 @@ def generate_article_from_strings(
         # Extract content from transcript data (content is at index 3)
         transcript_content = transcript_data[3]
 
-        # Create journalist instance (currently only Aurelius Stone is implemented)
-        if journalist_enum == Journalist.AURELIUS_STONE:
-            journalist_instance = AureliusStone()
-        else:
-            # Fallback to default
-            journalist_instance = AureliusStone()
+        journalist_instance = AureliusStone()
 
         base_context = journalist_instance.load_context(
             tone=tone_enum, article_type=article_type_enum
@@ -460,7 +454,23 @@ def generate_article_from_strings(
         article_result = journalist_instance.generate_article(full_context, "")
 
         # TODO: Write article_content to database using transcript_id
-        # database.save_article(transcript_id=transcript_id, content=article_content, ...)
+        # Get journalist ID from database
+        journalist_id = journalist_manager.get_journalist(aurelius.FULL_NAME)["id"]
+        # Get metadata from transcript
+        committee = transcript_data[1]  # committee at index 1
+        youtube_id = transcript_data[2]  # youtube_id at index 2
+
+        # Save article to database
+        database.add_article(
+            committee=committee,
+            youtube_id=youtube_id,
+            journalist_id=journalist_id,
+            content=article_result["content"],
+            transcript_id=transcript_id,
+            date=datetime.now().isoformat(),
+            article_type=article_type.value,
+            tone=tone.value,
+        )
 
         logger.info(
             f"Article generated successfully by {journalist_instance.NAME} using transcript ID {transcript_id}"
