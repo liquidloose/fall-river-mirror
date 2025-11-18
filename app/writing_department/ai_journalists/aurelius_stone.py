@@ -1,7 +1,8 @@
 from typing import Dict, Any, Optional
 import os
-from ..data.data_classes import Tone, ArticleType
-from app.ai_journalists.base_journalist import BaseJournalist
+from ...data.enum_classes import Tone, ArticleType
+from app.writing_department.ai_journalists.base_journalist import BaseJournalist
+from ..writing_tools.xai_processor import XAIProcessor
 
 
 class AureliusStone(BaseJournalist):
@@ -145,8 +146,6 @@ class AureliusStone(BaseJournalist):
         """
         Generate the actual article content using XAI/Grok API.
         """
-        from ..ai.xai_processor import XAIProcessor
-
         personality = self.get_personality()
 
         # Create the system prompt with context and personality
