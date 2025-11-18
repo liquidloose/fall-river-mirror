@@ -3,8 +3,8 @@ from datetime import datetime
 from typing import Dict, Any
 from fastapi.responses import JSONResponse
 from app.data.transcript_manager import TranscriptManager
-from app.writing_department.article_generator import ArticleGenerator
-from app.data.data_classes import ArticleType, Tone
+from ..writing_department.writing_tools.article_generator import ArticleGenerator
+from app.data.enum_classes import ArticleType, Tone
 
 logger = logging.getLogger(__name__)
 

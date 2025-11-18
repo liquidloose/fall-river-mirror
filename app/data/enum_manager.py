@@ -1,7 +1,7 @@
 import logging
 from enum import Enum
-from .data_classes import ArticleType, Tone
-from .database import Database
+from .enum_classes import ArticleType, Tone
+from .create_database import Database
 from datetime import datetime
 
 logger = logging.getLogger(__name__)
