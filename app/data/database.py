@@ -133,6 +133,7 @@ class Database:
             "committee TEXT, "  # Foreign key to committees table
             "youtube_id TEXT, "  # YouTube video ID
             "journalist_id INTEGER, "  # Foreign key to journalists table
+            "title TEXT, "  # Article title
             "content TEXT, "  # Article content
             "transcript_id INTEGER, "  # Foreign key to transcripts table
             "date TEXT, "  # Article publication date
@@ -540,6 +541,7 @@ class Database:
         date: str,
         article_type: Optional[str],
         tone: Optional[str] = None,
+        title: Optional[str] = None,
     ) -> None:
         """
         Add a new article to the database.
@@ -567,21 +569,23 @@ class Database:
             "date": date,
             "article_type": article_type,
             "tone": tone,
+            "title": title,
         }
         self._log_operation("add_article", operation_details)
 
         try:
             self.cursor.execute(
-                "INSERT INTO articles (committee, youtube_id, journalist_id, content, transcript_id, date, article_type, tone) VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
+                "INSERT INTO articles (committee, youtube_id, journalist_id, title, content, transcript_id, date, tone, article_type) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)",
                 (
                     committee,
                     youtube_id,
                     journalist_id,
+                    title,
                     content,
                     transcript_id,
                     date,
-                    article_type,
                     tone,
+                    article_type,
                 ),
             )
             self.conn.commit()
