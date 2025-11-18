@@ -1,6 +1,6 @@
 from abc import ABC, abstractmethod
 from typing import Dict, Any, Optional
-from ..data.data_classes import Tone, ArticleType
+from ...data.enum_classes import Tone, ArticleType
 
 
 class BaseJournalist(ABC):

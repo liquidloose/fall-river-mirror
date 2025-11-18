@@ -4,7 +4,7 @@ from enum import Enum
 import logging
 import os
 from typing import Dict, Any, List, Optional
-from app.data.db_sync import DatabaseSync
+from app.data.enum_manager import DatabaseSync
 
 # Load environment variables
 try:
@@ -20,16 +20,16 @@ from fastapi.responses import JSONResponse
 
 # Local imports
 from app import TranscriptManager, ArticleGenerator, YouTubeCrawler
-from app.ai_journalists.aurelius_stone import AureliusStone
-from app.ai.xai_processor import XAIProcessor
-from app.data.data_classes import (
+from app.writing_department.ai_journalists.aurelius_stone import AureliusStone
+from app.writing_department.writing_tools.xai_processor import XAIProcessor
+from app.data.enum_classes import (
     ArticleType,
     Journalist,
     Tone,
     UpdateArticleRequest,
     PartialUpdateRequest,
 )
-from app.data.database import Database
+from app.data.create_database import Database
 from app.data.journalist_manager import JournalistManager
 
 # Configure logging with both console and file output
