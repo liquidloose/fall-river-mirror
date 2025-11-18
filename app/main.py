@@ -470,6 +470,7 @@ def generate_article_from_strings(
             date=datetime.now().isoformat(),
             article_type=article_type.value,
             tone=tone.value,
+            title=article_result.get("title", "Untitled Article"),
         )
 
         logger.info(
