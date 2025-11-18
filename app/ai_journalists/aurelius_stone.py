@@ -212,17 +212,11 @@ Write a full article that would be suitable for publication.
             # Get the generated article content
             article_text = response.get("response", "No article content generated")
 
-            # Extract title from the article (assuming it starts with # Title)
-            lines = article_text.split("\n")
-            title = "Untitled Article"
-            content = article_text
+            # Get the AI-generated title
+            title = response.get("title", "Untitled Article")
 
-            # Look for markdown-style title (# Title) at the beginning
-            if lines and lines[0].startswith("# "):
-                title = lines[0][2:].strip()  # Remove '# ' prefix
-                raw_content = "\n".join(lines[1:]).strip()  # Rest of the content
-            else:
-                raw_content = content
+            # Use the article text as-is for content
+            raw_content = article_text
 
             # Format content with WCAG compliant HTML
             # Split content into paragraphs and wrap each in <p> tags
