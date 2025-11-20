@@ -19,7 +19,7 @@ from fastapi import APIRouter, FastAPI, HTTPException, status
 from fastapi.responses import JSONResponse
 
 # Local imports
-from app import TranscriptManager, ArticleGenerator, YouTubeCrawler
+from app import TranscriptManager, ArticleGenerator
 from app.writing_department.ai_journalists.aurelius_stone import AureliusStone
 from app.writing_department.writing_tools.xai_processor import XAIProcessor
 from app.data.enum_classes import (
@@ -84,7 +84,6 @@ logger.info("FastAPI app initialized!")
 # Create class instances once at startup
 transcript_manager = TranscriptManager(database)
 article_generator = ArticleGenerator()
-youtube_crawler = YouTubeCrawler(database)
 
 # In-memory storage for demo purposes (replace with actual database operations)
 articles_db = {}
@@ -193,7 +192,7 @@ async def yt_crawler_endpoint(video_id: str) -> Dict[str, Any] | JSONResponse:
     Returns:
         Dict[str, Any] | JSONResponse: Combined data from transcript and processing
     """
-    return youtube_crawler.crawl_video(video_id)
+    return "youtube_crawler.crawl_video(video_id)"
 
 
 @app.get("/articles/count")
