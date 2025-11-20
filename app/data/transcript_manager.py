@@ -4,6 +4,7 @@ import re
 import logging
 from typing import Optional, Dict, Any, List
 from fastapi.responses import JSONResponse
+from playwright.sync_api import ViewportSize
 from youtube_transcript_api import YouTubeTranscriptApi
 from youtube_transcript_api._errors import (
     TranscriptsDisabled,
@@ -14,7 +15,7 @@ from youtube_transcript_api._errors import (
 import sqlite3
 from .enum_classes import AIAgent
 from ..writing_department.writing_tools.whisper_processor import WhisperProcessor
-from .youtube_classes import YouTubeDataAPI
+from .youtube_metadata_fetcher import YouTubeMetadataFetcher
 
 logger = logging.getLogger(__name__)
 
@@ -143,8 +144,8 @@ class TranscriptManager:
         self,
         youtube_id: str,
         content: str,
+        video_metadata: Dict[str, Any],
         committee: Optional[str] = None,
-        video_metadata: Dict[str, Any] = None,
     ) -> int:
         """
         Add a YouTube transcript to the database.
@@ -212,50 +213,24 @@ class TranscriptManager:
                 f"Inserting transcript into database: {committee}, {youtube_id}, content_length: {len(content)}, {fetch_date}, {self.category}"
             )
 
-            if video_metadata:
-                yt_published_date = video_metadata.get("published_at", "")
-                video_title = video_metadata.get("title", "")
-                # Remove date prefix (e.g., "7.21.2025 ") from video title to get committee name
-                committee = re.sub(r"^\d{1,2}\.\d{1,2}\.\d{4}\s+", "", video_title)
-                video_duration_seconds = video_metadata.get("duration_seconds", 0)
-                video_duration_formatted = video_metadata.get("duration_formatted", "")
-                video_channel = video_metadata.get("channel_title", "")
-                date_match = re.match(r"(\d{1,2})\.(\d{1,2})\.(\d{4})", video_title)
-                # Parse date from video title and format as MM-DD-YYYY (e.g., "11.5.2025" -> "11-05-2025")
-                meeting_date = (
-                    f"{date_match.group(1).zfill(2)}-{date_match.group(2).zfill(2)}-{date_match.group(3)}"
-                    if date_match
-                    else None
-                )
-
-            if not video_metadata:
-                # Fallback: fetch metadata if not provided
-                api_key = os.getenv("YOUTUBE_API_KEY")
-                yt_data = YouTubeDataAPI(api_key).get_video_published_date(youtube_id)
-                yt_published_date = yt_data.get("published_at", "")
-                video_title = yt_data.get(
-                    "title", ""
-                )  # Video titles has both the meeting-date and committee-name data in them
-                # Remove date prefix (e.g., "7.21.2025 ") from video title to get committee name
-                committee = re.sub(r"^\d{1,2}\.\d{1,2}\.\d{4}\s+", "", video_title)
-                video_duration_seconds = yt_data.get("duration_seconds", 0)
-                video_duration_formatted = yt_data.get("duration_formatted", "")
-                video_channel = yt_data.get("channel_title", "")
-                date_match = re.match(r"(\d{1,2})\.(\d{1,2})\.(\d{4})", video_title)
-                # Parse date from video title and format as MM-DD-YYYY (e.g., "11.5.2025" -> "11-05-2025")
-                meeting_date = (
-                    f"{date_match.group(1).zfill(2)}-{date_match.group(2).zfill(2)}-{date_match.group(3)}"
-                    if date_match
-                    else None
-                )
+            yt_published_date = video_metadata.get("published_at")
+            video_title = video_metadata.get("title")
+            committee = video_metadata.get("committee")
+            video_duration_seconds = video_metadata.get("duration_seconds")
+            video_duration_formatted = video_metadata.get("duration_formatted", "")
+            video_channel = video_metadata.get("channel_title")
+            meeting_date = video_metadata.get("meeting_date")
+            view_count = video_metadata.get("view_count")
+            like_count = video_metadata.get("like_count")
+            comment_count = video_metadata.get("comment_count")
 
             try:
                 fresh_cursor.execute(
                     """INSERT INTO transcripts 
                     (committee, youtube_id, content, meeting_date, yt_published_date, fetch_date, model,
                      video_title, video_duration_seconds, video_duration_formatted, 
-                     video_channel) 
-                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
+                     video_channel, view_count, like_count, comment_count) 
+                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
                     (
                         committee,
                         youtube_id,
@@ -268,6 +243,9 @@ class TranscriptManager:
                         video_duration_seconds,
                         video_duration_formatted,
                         video_channel,
+                        view_count,
+                        like_count,
+                        comment_count,
                     ),
                 )
                 fresh_conn.commit()
@@ -276,7 +254,7 @@ class TranscriptManager:
                 logger.info(
                     f"Successfully inserted transcript with video metadata: "
                     f"title='{video_title}', duration={video_duration_formatted}, "
-                    f"channel='{video_channel}', published={yt_published_date}"
+                    f"channel='{video_channel}', published={yt_published_date}, view_count={view_count}, like_count={like_count}, comment_count={comment_count} for youtube_id={youtube_id}"
                 )
 
                 # Verify the insert worked
@@ -350,9 +328,9 @@ class TranscriptManager:
             try:
                 api_key = os.getenv("YOUTUBE_API_KEY")
                 if api_key:
-                    from .youtube_classes import YouTubeDataAPI
+                    from .youtube_metadata_fetcher import YouTubeMetadataFetcher
 
-                    youtube_api = YouTubeDataAPI(api_key)
+                    youtube_api = YouTubeMetadataFetcher(api_key)
                     video_metadata = youtube_api.get_video_published_date(youtube_id)
                     logger.info(
                         f"Retrieved video metadata for {youtube_id}: {video_metadata['title']}"
@@ -465,7 +443,7 @@ class TranscriptManager:
         all_transcripts = self._get_all_transcripts_info()
 
         response = {
-            "message": ("Youtube Transcript fetched already cached in the database"),
+            "message": "Transcript fetched from YouTube",
             "model": self.category.value,
             "source": "YouTube Data API",
             "youtube_id": youtube_id,
