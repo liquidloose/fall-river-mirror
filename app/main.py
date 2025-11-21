@@ -15,7 +15,7 @@ except ImportError:
     pass
 
 # Third-party imports
-from fastapi import APIRouter, FastAPI, HTTPException, status
+from fastapi import APIRouter, FastAPI, HTTPException, status, Body
 from fastapi.responses import JSONResponse
 
 # Local imports
@@ -31,6 +31,7 @@ from app.data.enum_classes import (
 )
 from app.data.create_database import Database
 from app.data.journalist_manager import JournalistManager
+from app.data.video_queue_manager import VideoQueueManager
 
 # Configure logging with both console and file output
 logging.basicConfig(
@@ -561,6 +562,115 @@ def generate_article(
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Failed to generate article: {str(e)}",
+        )
+
+
+@app.post("/queue/build")
+def build_video_queue(
+    channel_url: str = Body(...),
+    limit: int = Body(100),
+) -> Dict[str, Any]:
+    """
+    Build the video queue by discovering videos from a YouTube channel.
+
+    This endpoint:
+    1. Gets all existing youtube_ids from the transcripts table
+    2. Scrapes the YouTube channel for video IDs (up to limit)
+    3. Compares and adds only new videos to the video_queue
+
+    Args:
+        channel_url: URL of the YouTube channel/playlist to scrape
+        limit: Maximum number of videos to process (default: 100)
+
+    Returns:
+        Dict containing queue building results:
+            - total_discovered: Number of videos found on YouTube
+            - already_exists: Number of videos that already have transcripts
+            - newly_queued: Number of videos added to queue
+            - skipped: Number of videos skipped
+            - failed: Number of videos that failed to process
+            - youtube_ids: List of all discovered video IDs
+
+    Raises:
+        HTTPException: If database not available or scraping fails
+    """
+    try:
+        if not database:
+            raise HTTPException(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail="Database not available",
+            )
+
+        # Initialize VideoQueueManager
+        queue_manager = VideoQueueManager(database)
+
+        try:
+            # Execute queue building
+            logger.info(f"Building queue from {channel_url} with limit {limit}")
+            results = queue_manager.queue_new_videos(channel_url, limit)
+
+            logger.info(f"Queue building complete: {results}")
+            return {
+                "success": True,
+                "message": f"Queue built successfully from {channel_url}",
+                "results": results,
+            }
+
+        finally:
+            # Always close the browser when done
+            queue_manager.close()
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Failed to build video queue: {str(e)}", exc_info=True)
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to build video queue: {str(e)}",
+        )
+
+
+@app.get("/queue/stats")
+def get_queue_stats() -> Dict[str, Any]:
+    """
+    Get statistics about the current video queue.
+
+    Returns:
+        Dict containing queue statistics:
+            - total: Total videos in queue
+            - transcript_available: Videos with transcripts available
+            - pending: Videos without transcripts
+            - errors: Videos with error messages
+
+    Raises:
+        HTTPException: If database not available
+    """
+    try:
+        if not database:
+            raise HTTPException(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail="Database not available",
+            )
+
+        # Initialize VideoQueueManager (no browser needed for stats)
+        queue_manager = VideoQueueManager(database)
+
+        try:
+            stats = queue_manager.get_queue_stats()
+            return {
+                "success": True,
+                "stats": stats,
+            }
+        finally:
+            queue_manager.close()
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Failed to get queue stats: {str(e)}", exc_info=True)
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to get queue stats: {str(e)}",
         )
 
 
