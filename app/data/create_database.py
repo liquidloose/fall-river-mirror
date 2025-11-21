@@ -161,6 +161,15 @@ class Database:
             "created_date TEXT",
         )  # When article type was added
 
+        # Video Queue table - stores discovered YouTube videos
+        self._create_table(
+            "video_queue",
+            "id INTEGER PRIMARY KEY AUTOINCREMENT, "
+            "youtube_id TEXT UNIQUE NOT NULL, "  # YouTube video ID
+            "transcript_available INTEGER DEFAULT 0, "  # Boolean: 0=false, 1=true
+            "error_message TEXT",  # Error message if transcript fetch failed
+        )
+
         self.tables_created = True
         self.logger.info("All tables created/verified successfully")
 
@@ -189,6 +198,7 @@ class Database:
                     "articles",
                     "tones",
                     "article_types",
+                    "video_queue",
                 ]
                 table_counts = {}
 
@@ -320,6 +330,7 @@ class Database:
                     "articles",
                     "tones",
                     "article_types",
+                    "video_queue",
                 ]
 
                 missing_tables = [
