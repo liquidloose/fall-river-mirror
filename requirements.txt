@@ -9,6 +9,7 @@ httpx>=0.24.0
 openai>=1.0.0
 yt-dlp>=2023.1.6
 playwright>=1.44.0
+requests>=2.31.0
 
 # Testing dependencies
 pytest>=7.4.0

@@ -1,8 +1,15 @@
 import logging
 from typing import List, Dict, Any, Optional, Set
 from datetime import datetime
-from playwright.sync_api import sync_playwright, Page, Browser
+import os
 import re
+import requests
+from youtube_transcript_api import YouTubeTranscriptApi
+from youtube_transcript_api._errors import (
+    TranscriptsDisabled,
+    NoTranscriptFound,
+    VideoUnavailable,
+)
 from .create_database import Database
 
 logger = logging.getLogger(__name__)
@@ -14,10 +21,10 @@ class VideoQueueManager:
 
     This class:
     1. Queries existing transcripts to avoid duplicates
-    2. Scrapes YouTube channels to discover video IDs
+    2. Uses YouTube API to discover video IDs from channels
     3. Compares and adds only new videos to the queue
 
-    Uses Playwright for web scraping and SQLite for queue management.
+    Uses YouTube Data API v3 and SQLite for queue management.
     """
 
     def __init__(self, database: Database):
@@ -28,9 +35,22 @@ class VideoQueueManager:
             database: Database instance for managing transcripts and queue (required)
         """
         self.database = database
-        self.playwright = sync_playwright().start()
-        self.browser: Browser = self.playwright.chromium.launch(headless=True)
-        self.page: Page = self.browser.new_page()
+        self.api_key = os.getenv("YOUTUBE_API_KEY")
+        if not self.api_key:
+            logger.warning(
+                "YOUTUBE_API_KEY not found in environment variables. "
+                "API calls will fail. Get a free key at: "
+                "https://console.cloud.google.com/apis/credentials"
+            )
+        self.base_url = "https://www.googleapis.com/youtube/v3"
+
+    async def __aenter__(self):
+        """Async context manager entry."""
+        return self
+
+    async def __aexit__(self, exc_type, exc_val, exc_tb):
+        """Async context manager exit."""
+        pass  # No cleanup needed for API-based approach
 
     def get_existing_youtube_ids(self) -> Set[str]:
         """
@@ -58,67 +78,219 @@ class VideoQueueManager:
             logger.error(f"Failed to query existing youtube_ids: {str(e)}")
             return set()
 
-    def scrape_youtube_ids(self, channel_url: str, max_limit: int = 100) -> List[str]:
+    def _extract_channel_info(self, channel_url: str) -> Optional[Dict[str, str]]:
         """
-        Crawl YouTube channel page and extract all available video IDs up to max limit.
+        Extract channel ID or handle from a YouTube URL.
 
         Args:
-            channel_url: URL of the YouTube channel/playlist/archive page
-            max_limit: Maximum number of video IDs to extract (default: 100)
+            channel_url: YouTube channel URL
 
         Returns:
-            List of YouTube video IDs discovered on the page
+            Dict with 'type' and 'value' or None
         """
-        logger.info(f"Scraping YouTube IDs from: {channel_url} (max: {max_limit})")
+        # Pattern: youtube.com/@handle
+        handle_match = re.search(r"youtube\.com/@([^/\?]+)", channel_url)
+        if handle_match:
+            return {"type": "handle", "value": handle_match.group(1)}
+
+        # Pattern: youtube.com/channel/CHANNEL_ID
+        channel_match = re.search(r"youtube\.com/channel/([^/\?]+)", channel_url)
+        if channel_match:
+            return {"type": "id", "value": channel_match.group(1)}
+
+        # Pattern: youtube.com/c/CustomName
+        custom_match = re.search(r"youtube\.com/c/([^/\?]+)", channel_url)
+        if custom_match:
+            return {"type": "custom", "value": custom_match.group(1)}
+
+        logger.error(f"Could not extract channel info from URL: {channel_url}")
+        return None
+
+    def _get_channel_id(self, channel_info: Dict[str, str]) -> Optional[str]:
+        """
+        Get the channel ID from various channel identifiers.
+
+        Args:
+            channel_info: Dict with 'type' and 'value'
+
+        Returns:
+            Channel ID or None
+        """
+        if not self.api_key:
+            logger.error("Cannot get channel ID without API key")
+            return None
+
+        if channel_info["type"] == "id":
+            return channel_info["value"]
+
+        # For handles and custom URLs, we need to look up the channel ID
+        try:
+            if channel_info["type"] == "handle":
+                response = requests.get(
+                    f"{self.base_url}/channels",
+                    params={
+                        "part": "id",
+                        "forHandle": channel_info["value"],
+                        "key": self.api_key,
+                    },
+                    timeout=10,
+                )
+            else:  # custom name
+                response = requests.get(
+                    f"{self.base_url}/search",
+                    params={
+                        "part": "snippet",
+                        "q": channel_info["value"],
+                        "type": "channel",
+                        "maxResults": 1,
+                        "key": self.api_key,
+                    },
+                    timeout=10,
+                )
+
+            response.raise_for_status()
+            data = response.json()
+
+            if "items" in data and len(data["items"]) > 0:
+                if channel_info["type"] == "handle":
+                    return data["items"][0]["id"]
+                else:
+                    return data["items"][0]["id"]["channelId"]
+
+            logger.error(f"No channel found for {channel_info}")
+            return None
+
+        except Exception as e:
+            logger.error(f"Failed to get channel ID: {str(e)}")
+            return None
+
+    async def scrape_youtube_ids(
+        self, channel_url: str, max_limit: int = 100, scroll_count: int = 5
+    ) -> List[str]:
+        """
+        Get video IDs from a YouTube channel using the YouTube API.
+
+        Args:
+            channel_url: URL of the YouTube channel
+            max_limit: Maximum number of video IDs to extract (0 = all videos)
+            scroll_count: Ignored (kept for API compatibility)
+
+        Returns:
+            List of YouTube video IDs discovered from the channel
+        """
+        logger.info(f"Fetching video IDs from: {channel_url}")
+
+        if not self.api_key:
+            raise Exception(
+                "YOUTUBE_API_KEY not set. Get a free key at: "
+                "https://console.cloud.google.com/apis/credentials"
+            )
 
         video_ids = []
 
         try:
-            logger.info(f"Loading page: {channel_url}")
-            self.page.goto(channel_url, wait_until="networkidle", timeout=30000)
+            # Extract channel info from URL
+            channel_info = self._extract_channel_info(channel_url)
+            if not channel_info:
+                raise Exception(f"Invalid YouTube channel URL: {channel_url}")
 
-            # Wait for video thumbnails to load
-            self.page.wait_for_selector("a#video-title", timeout=10000)
+            # Get channel ID
+            channel_id = self._get_channel_id(channel_info)
+            if not channel_id:
+                raise Exception(f"Could not find channel ID for: {channel_url}")
 
-            # Scroll to load more videos (YouTube uses lazy loading)
-            self._scroll_page_to_load_content(self.page, scroll_count=5)
+            logger.info(f"Found channel ID: {channel_id}")
 
-            # Extract video IDs from href attributes
-            # YouTube video links follow pattern: /watch?v=VIDEO_ID
-            video_links = self.page.query_selector_all("a#video-title")
+            # Get the "uploads" playlist ID for this channel
+            channel_response = requests.get(
+                f"{self.base_url}/channels",
+                params={
+                    "part": "contentDetails",
+                    "id": channel_id,
+                    "key": self.api_key,
+                },
+                timeout=10,
+            )
+            channel_response.raise_for_status()
+            channel_data = channel_response.json()
 
-            logger.info(f"Found {len(video_links)} video links on page")
+            if "items" not in channel_data or len(channel_data["items"]) == 0:
+                raise Exception(f"Channel not found: {channel_id}")
 
-            for link in video_links[:max_limit]:
-                href = link.get_attribute("href")
-                if href:
-                    # Extract video ID from URL
-                    video_id = self._extract_video_id_from_url(href)
-                    if video_id and video_id not in video_ids:
-                        video_ids.append(video_id)
+            uploads_playlist_id = channel_data["items"][0]["contentDetails"][
+                "relatedPlaylists"
+            ]["uploads"]
+            logger.info(f"Uploads playlist ID: {uploads_playlist_id}")
+
+            # Fetch all videos from the uploads playlist
+            next_page_token = None
+
+            while True:
+                playlist_params = {
+                    "part": "contentDetails",
+                    "playlistId": uploads_playlist_id,
+                    "maxResults": 50,  # API max per request
+                    "key": self.api_key,
+                }
+
+                if next_page_token:
+                    playlist_params["pageToken"] = next_page_token
+
+                playlist_response = requests.get(
+                    f"{self.base_url}/playlistItems",
+                    params=playlist_params,
+                    timeout=10,
+                )
+                playlist_response.raise_for_status()
+                playlist_data = playlist_response.json()
+
+                # Extract video IDs
+                for item in playlist_data.get("items", []):
+                    video_id = item["contentDetails"]["videoId"]
+                    video_ids.append(video_id)
+
+                logger.info(
+                    f"Fetched {len(video_ids)} videos so far from {channel_url}"
+                )
+
+                # Check if we've hit the limit (0 means no limit)
+                if max_limit > 0 and len(video_ids) >= max_limit:
+                    video_ids = video_ids[:max_limit]
+                    logger.info(f"Reached max_limit of {max_limit} videos")
+                    break
+
+                # Check for next page
+                next_page_token = playlist_data.get("nextPageToken")
+                if not next_page_token:
+                    logger.info(f"No more pages. Total videos: {len(video_ids)}")
+                    break
 
             logger.info(f"Extracted {len(video_ids)} unique video IDs")
             return video_ids
 
+        except requests.exceptions.RequestException as e:
+            logger.error(f"API request failed: {str(e)}")
+            raise Exception(f"YouTube API request failed: {str(e)}")
         except Exception as e:
-            logger.error(f"Error extracting video IDs: {str(e)}")
+            logger.error(f"Error fetching video IDs: {str(e)}")
             raise
 
-    def queue_new_videos(
-        self, channel_url: str, max_limit: int = 100
+    async def queue_new_videos(
+        self, channel_url: str, max_limit: int = 100, scroll_count: int = 5
     ) -> Dict[str, Any]:
         """
-        Compare scraped IDs with existing transcripts and add new ones to the queue.
+        Compare fetched IDs with existing transcripts and add new ones to the queue.
 
         This method:
         1. Gets all existing youtube_ids from transcripts table
-        2. Scrapes the YouTube channel for video IDs
+        2. Fetches video IDs from YouTube API
         3. Compares the two lists
         4. Adds only new (non-existing) IDs to the video_queue
 
         Args:
             channel_url: URL of the YouTube channel to scrape
-            max_limit: Maximum number of videos to process (default: 100)
+            max_limit: Maximum number of videos to process (0 = all videos)
+            scroll_count: Ignored (kept for API compatibility)
 
         Returns:
             Dict containing results:
@@ -144,8 +316,10 @@ class VideoQueueManager:
             existing_ids = self.get_existing_youtube_ids()
             logger.info(f"Found {len(existing_ids)} existing transcripts")
 
-            # Step 2: Scrape YouTube channel for video IDs
-            scraped_ids = self.scrape_youtube_ids(channel_url, max_limit)
+            # Step 2: Fetch video IDs from YouTube API
+            scraped_ids = await self.scrape_youtube_ids(
+                channel_url, max_limit, scroll_count
+            )
             results["total_discovered"] = len(scraped_ids)
             results["youtube_ids"] = scraped_ids
 
@@ -186,41 +360,50 @@ class VideoQueueManager:
             logger.error(f"Failed to queue new videos: {str(e)}")
             raise
 
-    def _scroll_page_to_load_content(self, page: Page, scroll_count: int = 5):
+    def _check_captions(self, youtube_id: str) -> bool:
         """
-        Scroll the page to trigger lazy loading of more videos.
+        Check if transcripts are available for a video WITHOUT downloading the full transcript.
+
+        This method uses youtube-transcript-api to check if ANY transcript exists for a video,
+        including both manually uploaded closed captions AND auto-generated captions.
+
+        Why this approach:
+        - Lightweight: Only checks availability, doesn't download content
+        - Fast: Single API call to YouTube
+        - Comprehensive: Detects both manual and auto-generated transcripts
+        - Reliable: Uses the same library we'll use for actual transcript fetching
+
+        Use case:
+        This prevents expensive/slow Whisper processing during bulk operations.
+        Videos with transcript_available=1 can be processed fast with YouTube's API.
+        Videos with transcript_available=0 will need Whisper (slow, requires audio download).
 
         Args:
-            page: Playwright page object
-            scroll_count: Number of times to scroll down
-        """
-        for i in range(scroll_count):
-            page.evaluate("window.scrollTo(0, document.body.scrollHeight)")
-            page.wait_for_timeout(1000)  # Wait 1 second between scrolls
-            logger.debug(f"Scroll {i+1}/{scroll_count} completed")
-
-    def _extract_video_id_from_url(self, url: str) -> Optional[str]:
-        """
-        Extract YouTube video ID from a URL.
-
-        Args:
-            url: YouTube URL (e.g., "/watch?v=VIDEO_ID" or full URL)
+            youtube_id: The 11-character YouTube video ID (e.g., 'dQw4w9WgXcQ')
 
         Returns:
-            Video ID string or None if not found
+            bool: True if at least one transcript is available, False otherwise
+
+        Exceptions handled:
+            - TranscriptsDisabled: Video owner disabled transcripts
+            - NoTranscriptFound: No transcripts exist for this video
+            - VideoUnavailable: Video is private, deleted, or doesn't exist
+            - Exception: Catch-all for rate limits, network errors, etc.
         """
-        # Match patterns like: /watch?v=VIDEO_ID or ?v=VIDEO_ID
-        patterns = [
-            r"[?&]v=([a-zA-Z0-9_-]{11})",  # Standard YouTube video ID
-            r"/watch/([a-zA-Z0-9_-]{11})",
-        ]
-
-        for pattern in patterns:
-            match = re.search(pattern, url)
-            if match:
-                return match.group(1)
-
-        return None
+        try:
+            api = YouTubeTranscriptApi()
+            api.list(youtube_id)
+            logger.debug(f"Video {youtube_id}: transcript available")
+            return True
+        except (TranscriptsDisabled, NoTranscriptFound):
+            logger.debug(f"Video {youtube_id}: no transcript available")
+            return False
+        except VideoUnavailable:
+            logger.warning(f"Video {youtube_id}: video unavailable")
+            return False
+        except Exception as e:
+            logger.error(f"Video {youtube_id}: error checking transcript: {str(e)}")
+            return False
 
     def _add_to_queue(self, youtube_id: str) -> bool:
         """
@@ -237,13 +420,24 @@ class VideoQueueManager:
             return False
 
         try:
+            # Check if transcript is actually available (manual or auto-generated)
+            has_transcript = self._check_captions(youtube_id)
+
             self.database.cursor.execute(
                 """INSERT OR IGNORE INTO video_queue 
                    (youtube_id, transcript_available) 
                    VALUES (?, ?)""",
-                (youtube_id, 0),  # transcript_available defaults to 0 (false)
+                (youtube_id, 1 if has_transcript else 0),
             )
             self.database.conn.commit()
+
+            if has_transcript:
+                logger.info(f"Added {youtube_id} to queue (transcript available)")
+            else:
+                logger.info(
+                    f"Added {youtube_id} to queue (no transcript - will require Whisper)"
+                )
+
             return True
 
         except Exception as e:
@@ -279,28 +473,19 @@ class VideoQueueManager:
             )
             pending = cursor.fetchone()[0]
 
-            # With errors
-            cursor.execute(
-                "SELECT COUNT(*) FROM video_queue WHERE error_message IS NOT NULL"
-            )
-            errors = cursor.fetchone()[0]
-
             return {
                 "total": total,
                 "transcript_available": available,
                 "pending": pending,
-                "errors": errors,
             }
 
         except Exception as e:
             logger.error(f"Failed to get queue stats: {str(e)}")
             return {"error": str(e)}
 
-    def close(self):
+    async def close(self):
         """
-        Close the browser and playwright instance.
-        Should be called when done using the queue manager.
+        Close any resources.
+        Kept for API compatibility but not needed for API-based approach.
         """
-        self.browser.close()
-        self.playwright.stop()
-        logger.info("VideoQueueManager browser closed")
+        logger.info("VideoQueueManager closed")
