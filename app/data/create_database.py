@@ -166,8 +166,7 @@ class Database:
             "video_queue",
             "id INTEGER PRIMARY KEY AUTOINCREMENT, "
             "youtube_id TEXT UNIQUE NOT NULL, "  # YouTube video ID
-            "transcript_available INTEGER DEFAULT 0, "  # Boolean: 0=false, 1=true
-            "error_message TEXT",  # Error message if transcript fetch failed
+            "transcript_available INTEGER DEFAULT 0",  # Boolean: 0=false, 1=true
         )
 
         self.tables_created = True
