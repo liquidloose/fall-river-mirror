@@ -79,6 +79,9 @@ services:
     volumes:
       - .:/code
       - ~/.ssh:/root/.ssh:ro
+    environment:
+      - DATABASE_URL
+      - YOUTUBE_COOKIES_PATH
     env_file:
       - .env
     command: >
