@@ -2,7 +2,11 @@ from datetime import datetime
 import os
 import re
 import logging
+import json
+import sqlite3
 from typing import Optional, Dict, Any, List
+from http.cookiejar import MozillaCookieJar
+from requests import Session
 from fastapi.responses import JSONResponse
 from playwright.sync_api import ViewportSize
 from youtube_transcript_api import YouTubeTranscriptApi
@@ -11,11 +15,12 @@ from youtube_transcript_api._errors import (
     NoTranscriptFound,
     VideoUnavailable,
     CouldNotRetrieveTranscript,
+    IpBlocked,
 )
-import sqlite3
 from .enum_classes import AIAgent
-from ..writing_department.writing_tools.whisper_processor import WhisperProcessor
+from .create_database import Database
 from .youtube_metadata_fetcher import YouTubeMetadataFetcher
+from ..writing_department.writing_tools.whisper_processor import WhisperProcessor
 
 logger = logging.getLogger(__name__)
 
@@ -49,6 +54,7 @@ class TranscriptManager:
     def __init__(self, database=None):
         self.database = database
         self.category = AIAgent.GROK
+        self.cookies_path = os.getenv("YOUTUBE_COOKIES_PATH", None)
 
     # =============================================================================
     # PUBLIC API METHODS
@@ -96,11 +102,13 @@ class TranscriptManager:
             )
 
         except Exception as e:
-            logger.error(f"Failed to get transcript from YouTube {youtube_id}")
-            logger.error(f"Failed to get transcript from YouTube: {str(e)}")
+            e_message = (
+                f"Failed to get transcript from YouTube: {youtube_id} and {str(e)}"
+            )
+            logger.error(e_message)
             return JSONResponse(
                 status_code=500,
-                content={"error": f"Failed to get transcript from YouTube: {str(e)}"},
+                content={"error": e_message},
             )
 
     # =============================================================================
@@ -195,8 +203,6 @@ class TranscriptManager:
 
                 # Create a new Database instance to avoid connection issues
                 if self.database:
-                    from .create_database import Database
-
                     temp_db = Database(self.database.db_path)
                     temp_db._create_all_tables()
                     temp_db.close()
@@ -300,27 +306,50 @@ class TranscriptManager:
         """
         # First try YouTube Transcript API
         try:
-            ytt_api = YouTubeTranscriptApi()
-            transcript_data = ytt_api.fetch(youtube_id)
-            logger.info(
-                f"Successfully fetched transcript for video: {youtube_id} data: {transcript_data}"
-            )
-            # Convert FetchedTranscript object to stringified dict
-            import json
+            # Create Session with cookies if available
+            http_client = Session()
 
+            if self.cookies_path and os.path.exists(self.cookies_path):
+                logger.info(
+                    f"Using cookies from {self.cookies_path} to fetch transcript"
+                )
+                cookie_jar = MozillaCookieJar(self.cookies_path)
+                cookie_jar.load(ignore_discard=True, ignore_expires=True)
+                http_client.cookies = cookie_jar
+            else:
+                logger.debug("No cookies configured, attempting without authentication")
+
+            ytt_api = YouTubeTranscriptApi(http_client=http_client)
+            transcript_list_obj = ytt_api.list(youtube_id)
+
+            # Find the first available transcript (prefer manually created, then generated)
+            transcript = None
+            try:
+                # Try to get manually created transcript first
+                transcript = transcript_list_obj.find_manually_created_transcript(
+                    ["en"]
+                )
+            except:
+                # Fall back to any generated transcript
+                transcript = transcript_list_obj.find_generated_transcript(["en"])
+
+            # Fetch the actual transcript data
+            fetched = transcript.fetch()
+            # Convert snippet objects to dicts
+            transcript_list = [
+                {"text": s.text, "start": s.start, "duration": s.duration}
+                for s in fetched.snippets
+            ]
+
+            logger.info(f"Successfully fetched transcript for video: {youtube_id}")
+
+            # get_transcript returns a list of dicts with 'text', 'start', 'duration'
             transcript_dict = {
-                "snippets": [
-                    {
-                        "text": snippet.text,
-                        "start": snippet.start,
-                        "duration": snippet.duration,
-                    }
-                    for snippet in transcript_data.snippets
-                ],
-                "video_id": transcript_data.video_id,
-                "language": transcript_data.language,
-                "language_code": transcript_data.language_code,
-                "is_generated": transcript_data.is_generated,
+                "snippets": transcript_list,
+                "video_id": youtube_id,
+                "language": "en",  # Default, since get_transcript doesn't provide this
+                "language_code": "en",
+                "is_generated": False,  # get_transcript doesn't provide this info
             }
 
             # Fetch video metadata (title, duration, published date, etc.)
@@ -328,8 +357,6 @@ class TranscriptManager:
             try:
                 api_key = os.getenv("YOUTUBE_API_KEY")
                 if api_key:
-                    from .youtube_metadata_fetcher import YouTubeMetadataFetcher
-
                     youtube_api = YouTubeMetadataFetcher(api_key)
                     video_metadata = youtube_api.get_video_published_date(youtube_id)
                     logger.info(
@@ -345,12 +372,20 @@ class TranscriptManager:
                 "video_metadata": video_metadata,
                 "source": "youtube_transcript_api",
             }
+        except IpBlocked as e:
+            # IP blocked should NOT fall back to Whisper - re-raise to show the library's error message
+            logger.error(
+                f"YouTube Transcript API IP blocked for video {youtube_id}: {str(e)}"
+            )
+            raise  # Re-raise the original exception to prevent Whisper fallback
+
         except (
             TranscriptsDisabled,
             NoTranscriptFound,
             VideoUnavailable,
             CouldNotRetrieveTranscript,
         ) as e:
+            # These are legitimate "no transcript available" cases - fall back to Whisper
             logger.warning(
                 f"YouTube Transcript API failed for video {youtube_id}: {str(e)}"
             )

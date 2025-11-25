@@ -1,6 +1,7 @@
 # Standard library imports
 from datetime import datetime
 from enum import Enum
+import json
 import logging
 import os
 from typing import Dict, Any, List, Optional
@@ -176,6 +177,126 @@ def delete_transcript_endpoint(transcript_id: int) -> Dict[str, Any]:
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Failed to delete transcript: {str(e)}",
+        )
+
+
+@app.post("/transcript/fetch/{amount}")
+async def bulk_fetch_transcripts(
+    amount: int,
+) -> Dict[str, Any]:
+    """
+    Bulk fetch transcripts for videos from the video_queue.
+
+    This endpoint:
+    1. Queries the video_queue for videos with transcript_available = 1
+    2. Excludes videos that already have transcripts in the 'transcripts' table
+    3. For each video, fetches the transcript and saves it to the database
+    4. Returns detailed results for each video (success/failure)
+
+    Args:
+        amount: Number of transcripts to fetch from the queue
+
+    Returns:
+        Dict containing:
+            - transcripts_fetched: Number of transcripts successfully fetched
+            - transcripts_failed: Number of transcripts that failed
+            - results: List of results for each video
+    """
+    try:
+        if not database:
+            raise HTTPException(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail="Database not available",
+            )
+
+        logger.info(f"Starting bulk transcript fetch for {amount} videos from queue")
+
+        # Query video_queue for videos with transcripts available and not already in transcripts table
+        cursor = database.cursor
+        cursor.execute(
+            """SELECT T1.youtube_id
+               FROM video_queue AS T1
+               LEFT JOIN transcripts AS T2 ON T1.youtube_id = T2.youtube_id
+               WHERE T1.transcript_available = 1 AND T2.youtube_id IS NULL
+               LIMIT ?""",
+            (amount,),
+        )
+        queue_items = cursor.fetchall()
+
+        if not queue_items:
+            return {
+                "success": False,
+                "message": "No videos with transcripts available in queue or all already fetched",
+                "transcripts_fetched": 0,
+                "transcripts_failed": 0,
+                "results": [],
+            }
+
+        logger.info(f"Found {len(queue_items)} videos in queue to process")
+
+        results = []
+        transcripts_fetched = 0
+        transcripts_failed = 0
+
+        for row in queue_items:
+            youtube_id = row[0]
+
+            try:
+                logger.info(f"Fetching transcript for video {youtube_id}")
+                transcript_result = transcript_manager.get_transcript(youtube_id)
+
+                # Check if transcript_result is a JSONResponse (error) or a Dict (success)
+                if isinstance(transcript_result, JSONResponse):
+                    # Extract error message from JSONResponse content
+                    import json
+
+                    error_content = json.loads(transcript_result.body.decode())
+                    raise Exception(
+                        error_content.get(
+                            "error", "Unknown error during transcript fetch"
+                        )
+                    )
+
+                transcripts_fetched += 1
+                results.append(
+                    {
+                        "youtube_id": youtube_id,
+                        "status": "success",
+                        "transcript_id": transcript_result.get("transcript_id"),
+                        "source": transcript_result.get("source"),
+                    }
+                )
+                logger.info(f"Successfully fetched transcript for {youtube_id}")
+
+            except Exception as e:
+                transcripts_failed += 1
+                error_msg = str(e)
+                results.append(
+                    {"youtube_id": youtube_id, "status": "failed", "error": error_msg}
+                )
+                logger.error(
+                    f"Failed to fetch transcript for {youtube_id}: {error_msg}"
+                )
+
+        logger.info(
+            f"Bulk transcript fetch complete: {transcripts_fetched} succeeded, {transcripts_failed} failed"
+        )
+
+        return {
+            "success": True,
+            "message": f"Processed {len(queue_items)} videos from queue",
+            "transcripts_fetched": transcripts_fetched,
+            "transcripts_failed": transcripts_failed,
+            "results": results,
+        }
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Bulk transcript fetch failed: {str(e)}", exc_info=True)
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Bulk transcript fetch failed: {str(e)}",
         )
 
 
