@@ -4,6 +4,7 @@ from enum import Enum
 import json
 import logging
 import os
+import time
 from typing import Dict, Any, List, Optional
 from app.data.enum_manager import DatabaseSync
 
@@ -238,6 +239,9 @@ async def bulk_fetch_transcripts(
         transcripts_fetched = 0
         transcripts_failed = 0
 
+        # Rate limit in milliseconds (adjust as needed)
+        RATE_LIMIT_MS = 1000  # 1 second between requests
+
         for row in queue_items:
             youtube_id = row[0]
 
@@ -268,6 +272,13 @@ async def bulk_fetch_transcripts(
                 )
                 logger.info(f"Successfully fetched transcript for {youtube_id}")
 
+                # Remove from queue after successful fetch
+                cursor.execute(
+                    "DELETE FROM video_queue WHERE youtube_id = ?", (youtube_id,)
+                )
+                database.conn.commit()
+                logger.debug(f"Removed {youtube_id} from video_queue")
+
             except Exception as e:
                 transcripts_failed += 1
                 error_msg = str(e)
@@ -277,6 +288,9 @@ async def bulk_fetch_transcripts(
                 logger.error(
                     f"Failed to fetch transcript for {youtube_id}: {error_msg}"
                 )
+
+            # Rate limit: sleep between requests
+            time.sleep(RATE_LIMIT_MS / 1000.0)
 
         logger.info(
             f"Bulk transcript fetch complete: {transcripts_fetched} succeeded, {transcripts_failed} failed"
@@ -900,6 +914,58 @@ async def build_video_queue(
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Failed to build video queue: {str(e)}",
+        )
+
+
+@app.post("/queue/cleanup")
+def cleanup_video_queue() -> Dict[str, Any]:
+    """
+    Clean up the video queue by removing videos that already have transcripts.
+
+    This endpoint:
+    1. Finds all youtube_ids that exist in both video_queue and transcripts tables
+    2. Removes those youtube_ids from video_queue
+    3. Returns the count and list of removed IDs
+
+    This is useful for cleaning up duplicates that weren't automatically removed
+    during bulk transcript fetching.
+
+    Returns:
+        Dict containing cleanup results:
+            - success: Whether cleanup succeeded
+            - message: Description of what happened
+            - removed_count: Number of videos removed from queue
+            - removed_ids: List of youtube_ids that were removed
+
+    Raises:
+        HTTPException: If database not available or cleanup fails
+    """
+    try:
+        if not database:
+            raise HTTPException(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail="Database not available",
+            )
+
+        logger.info("Starting video queue cleanup")
+        results = transcript_manager.cleanup_queue()
+
+        if not results.get("success"):
+            raise HTTPException(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail=results.get("error", "Unknown error during cleanup"),
+            )
+
+        logger.info(f"Queue cleanup complete: {results['message']}")
+        return results
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Failed to cleanup video queue: {str(e)}", exc_info=True)
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to cleanup video queue: {str(e)}",
         )
 
 
