@@ -10,6 +10,7 @@ from requests import Session
 from fastapi.responses import JSONResponse
 from playwright.sync_api import ViewportSize
 from youtube_transcript_api import YouTubeTranscriptApi
+from youtube_transcript_api.proxies import WebshareProxyConfig
 from youtube_transcript_api._errors import (
     TranscriptsDisabled,
     NoTranscriptFound,
@@ -55,6 +56,16 @@ class TranscriptManager:
         self.database = database
         self.category = AIAgent.GROK
         self.cookies_path = os.getenv("YOUTUBE_COOKIES_PATH", None)
+        self.proxy_username = os.getenv("WEBSHARE_PROXY_USERNAME", None)
+        self.proxy_password = os.getenv("WEBSHARE_PROXY_PASSWORD", None)
+
+        # Debug: Log what we got from env vars
+        logger.debug(
+            f"Loaded proxy_username from env: {self.proxy_username[:5] + '...' if self.proxy_username else 'None'}"
+        )
+        logger.debug(
+            f"Loaded proxy_password from env: {'***set***' if self.proxy_password else 'None'}"
+        )
 
     # =============================================================================
     # PUBLIC API METHODS
@@ -306,20 +317,41 @@ class TranscriptManager:
         """
         # First try YouTube Transcript API
         try:
-            # Create Session with cookies if available
-            http_client = Session()
+            # Configure YouTubeTranscriptApi with proxy or cookies
+            logger.debug(f"Proxy username configured: {bool(self.proxy_username)}")
+            logger.debug(f"Proxy password configured: {bool(self.proxy_password)}")
 
-            if self.cookies_path and os.path.exists(self.cookies_path):
-                logger.info(
-                    f"Using cookies from {self.cookies_path} to fetch transcript"
+            if self.proxy_username and self.proxy_password:
+                # Use Webshare proxy
+                logger.info("Using Webshare proxy for transcript fetch")
+                proxy_config = WebshareProxyConfig(
+                    proxy_username=self.proxy_username,
+                    proxy_password=self.proxy_password,
                 )
-                cookie_jar = MozillaCookieJar(self.cookies_path)
-                cookie_jar.load(ignore_discard=True, ignore_expires=True)
-                http_client.cookies = cookie_jar
+                ytt_api = YouTubeTranscriptApi(proxy_config=proxy_config)
             else:
-                logger.debug("No cookies configured, attempting without authentication")
+                # Use cookies if available (no proxy)
+                http_client = Session()
 
-            ytt_api = YouTubeTranscriptApi(http_client=http_client)
+                if self.cookies_path and os.path.exists(self.cookies_path):
+                    logger.info(
+                        f"Using cookies from {self.cookies_path} to fetch transcript"
+                    )
+                    try:
+                        cookie_jar = MozillaCookieJar(self.cookies_path)
+                        cookie_jar.load(ignore_discard=True, ignore_expires=True)
+                        http_client.cookies = cookie_jar
+                        logger.info(f"Successfully loaded {len(cookie_jar)} cookies")
+                    except Exception as e:
+                        logger.error(f"Failed to load cookies: {str(e)}")
+                        logger.warning("Continuing without cookies")
+                else:
+                    logger.debug(
+                        "No cookies or proxy configured, attempting without authentication"
+                    )
+
+                ytt_api = YouTubeTranscriptApi(http_client=http_client)
+
             transcript_list_obj = ytt_api.list(youtube_id)
 
             # Find the first available transcript (prefer manually created, then generated)
@@ -422,6 +454,61 @@ class TranscriptManager:
     # UTILITY METHODS
     # =============================================================================
 
+    def cleanup_queue(self) -> Dict[str, Any]:
+        """
+        Remove videos from video_queue if they already have transcripts in the transcripts table.
+
+        Returns:
+            Dict containing cleanup results
+        """
+        if not self.database:
+            logger.error("Cannot cleanup queue - no database connection")
+            return {"success": False, "error": "No database connection"}
+
+        try:
+            cursor = self.database.cursor
+
+            # Find youtube_ids that exist in both tables
+            cursor.execute(
+                """
+                SELECT Q.youtube_id 
+                FROM video_queue Q
+                JOIN transcripts T ON Q.youtube_id = T.youtube_id
+            """
+            )
+            duplicates = cursor.fetchall()
+            duplicate_ids = [row[0] for row in duplicates]
+
+            if not duplicate_ids:
+                logger.info("No duplicates found - queue is clean")
+                return {
+                    "success": True,
+                    "message": "No duplicates found",
+                    "removed_count": 0,
+                    "removed_ids": [],
+                }
+
+            # Delete duplicates from video_queue
+            placeholders = ",".join(["?"] * len(duplicate_ids))
+            cursor.execute(
+                f"DELETE FROM video_queue WHERE youtube_id IN ({placeholders})",
+                duplicate_ids,
+            )
+            self.database.conn.commit()
+
+            logger.info(f"Cleaned up {len(duplicate_ids)} videos from queue")
+
+            return {
+                "success": True,
+                "message": f"Removed {len(duplicate_ids)} videos from queue",
+                "removed_count": len(duplicate_ids),
+                "removed_ids": duplicate_ids,
+            }
+
+        except Exception as e:
+            logger.error(f"Failed to cleanup queue: {str(e)}")
+            return {"success": False, "error": str(e), "removed_count": 0}
+
     def _can_cache(self) -> bool:
         """Check if database is available for caching."""
         if not self.database or not self.database.is_connected:
@@ -486,7 +573,6 @@ class TranscriptManager:
             "database_path": self.database.db_path if self.database else "No database",
             "database_contents": {
                 "total_transcripts": len(all_transcripts),
-                "all_transcripts": all_transcripts,
             },
         }
 
