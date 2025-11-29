@@ -78,6 +78,32 @@ class VideoQueueManager:
             logger.error(f"Failed to query existing youtube_ids: {str(e)}")
             return set()
 
+    def get_queued_youtube_ids(self) -> Set[str]:
+        """
+        Query video_queue table and get all youtube_ids already in the queue.
+
+        Returns:
+            Set of youtube_id strings that are already in the video_queue
+        """
+        if not self.database:
+            logger.error("No database connection available")
+            return set()
+
+        try:
+            cursor = self.database.cursor
+            cursor.execute(
+                "SELECT youtube_id FROM video_queue WHERE youtube_id IS NOT NULL"
+            )
+            results = cursor.fetchall()
+
+            queued_ids = {row[0] for row in results if row[0]}
+            logger.info(f"Found {len(queued_ids)} videos already in queue")
+            return queued_ids
+
+        except Exception as e:
+            logger.error(f"Failed to query queued youtube_ids: {str(e)}")
+            return set()
+
     def _extract_channel_info(self, channel_url: str) -> Optional[Dict[str, str]]:
         """
         Extract channel ID or handle from a YouTube URL.
@@ -279,13 +305,16 @@ class VideoQueueManager:
         self, channel_url: str, max_limit: int = 100, scroll_count: int = 5
     ) -> Dict[str, Any]:
         """
-        Compare fetched IDs with existing transcripts and add new ones to the queue.
+        Compare fetched IDs with existing data and add only new videos to the queue.
 
         This method:
         1. Gets all existing youtube_ids from transcripts table
-        2. Fetches video IDs from YouTube API
-        3. Compares the two lists
-        4. Adds only new (non-existing) IDs to the video_queue
+        2. Gets all youtube_ids already in video_queue table
+        3. Fetches video IDs from YouTube API
+        4. For each discovered video:
+           - Skip if already has transcript
+           - Skip if already in queue
+           - Add to queue only if both checks pass
 
         Args:
             channel_url: URL of the YouTube channel to scrape
@@ -296,8 +325,10 @@ class VideoQueueManager:
             Dict containing results:
                 - total_discovered: Number of videos found on YouTube
                 - already_exists: Number of videos that already have transcripts
-                - newly_queued: Number of videos added to queue
-                - skipped: Number of videos skipped (already exist)
+                - already_in_queue: Number of videos already in the queue
+                - newly_queued: Number of videos actually added to queue (new rows)
+                - skipped: Number of videos skipped (already exist or in queue)
+                - failed: Number of videos that failed to process
                 - youtube_ids: List of all discovered IDs
         """
         logger.info(f"Starting queue_new_videos for: {channel_url}")
@@ -305,6 +336,7 @@ class VideoQueueManager:
         results = {
             "total_discovered": 0,
             "already_exists": 0,
+            "already_in_queue": 0,
             "newly_queued": 0,
             "skipped": 0,
             "failed": 0,
@@ -312,11 +344,15 @@ class VideoQueueManager:
         }
 
         try:
-            # Step 1: Get existing youtube_ids from database
+            # Step 1: Get existing youtube_ids from transcripts table
             existing_ids = self.get_existing_youtube_ids()
             logger.info(f"Found {len(existing_ids)} existing transcripts")
 
-            # Step 2: Fetch video IDs from YouTube API
+            # Step 2: Get youtube_ids already in the queue
+            queued_ids = self.get_queued_youtube_ids()
+            logger.info(f"Found {len(queued_ids)} videos already in queue")
+
+            # Step 3: Fetch video IDs from YouTube API
             scraped_ids = await self.scrape_youtube_ids(
                 channel_url, max_limit, scroll_count
             )
@@ -325,23 +361,31 @@ class VideoQueueManager:
 
             logger.info(f"Discovered {len(scraped_ids)} videos on YouTube")
 
-            # Step 3: Compare and add new videos to queue
+            # Step 4: Compare and add new videos to queue
             for youtube_id in scraped_ids:
                 try:
-                    # If video ID exists in transcripts, skip it
+                    # Check 1: If video ID exists in transcripts, skip it
                     if youtube_id in existing_ids:
                         logger.debug(
                             f"Skipping {youtube_id} - transcript already exists"
                         )
                         results["already_exists"] += 1
                         results["skipped"] += 1
+                    # Check 2: If video ID already in queue, skip it
+                    elif youtube_id in queued_ids:
+                        logger.debug(f"Skipping {youtube_id} - already in queue")
+                        results["already_in_queue"] += 1
+                        results["skipped"] += 1
+                    # Add to queue only if both checks pass
                     else:
-                        # Add to queue if it doesn't exist
                         if self._add_to_queue(youtube_id):
                             logger.info(f"Added {youtube_id} to video queue")
                             results["newly_queued"] += 1
+                            # Update queued_ids set so we don't try to add it again in this run
+                            queued_ids.add(youtube_id)
                         else:
-                            logger.warning(f"Failed to queue {youtube_id}")
+                            # This should rarely happen now since we check before adding
+                            logger.warning(f"Failed to add {youtube_id} to queue")
                             results["failed"] += 1
 
                 except Exception as e:
@@ -350,7 +394,9 @@ class VideoQueueManager:
 
             logger.info(
                 f"Queue processing complete: {results['total_discovered']} discovered, "
-                f"{results['already_exists']} already exist, {results['newly_queued']} newly queued, "
+                f"{results['already_exists']} already have transcripts, "
+                f"{results['already_in_queue']} already in queue, "
+                f"{results['newly_queued']} newly queued, "
                 f"{results['skipped']} skipped, {results['failed']} failed"
             )
 
@@ -413,7 +459,7 @@ class VideoQueueManager:
             youtube_id: YouTube video ID to queue
 
         Returns:
-            True if successfully added, False otherwise
+            True if successfully added (new row created), False if already exists or failed
         """
         if not self.database:
             logger.error("Cannot add to queue - no database connection")
@@ -431,14 +477,21 @@ class VideoQueueManager:
             )
             self.database.conn.commit()
 
-            if has_transcript:
-                logger.info(f"Added {youtube_id} to queue (transcript available)")
-            else:
-                logger.info(
-                    f"Added {youtube_id} to queue (no transcript - will require Whisper)"
-                )
+            # Check if a row was actually inserted
+            # rowcount will be 0 if INSERT OR IGNORE skipped due to existing row
+            was_inserted = self.database.cursor.rowcount > 0
 
-            return True
+            if was_inserted:
+                if has_transcript:
+                    logger.info(f"Added {youtube_id} to queue (transcript available)")
+                else:
+                    logger.info(
+                        f"Added {youtube_id} to queue (no transcript - will require Whisper)"
+                    )
+            else:
+                logger.debug(f"Skipped {youtube_id} - already in queue")
+
+            return was_inserted
 
         except Exception as e:
             logger.error(f"Failed to add {youtube_id} to queue: {str(e)}")

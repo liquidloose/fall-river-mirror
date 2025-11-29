@@ -184,24 +184,169 @@ def delete_transcript_endpoint(transcript_id: int) -> Dict[str, Any]:
 @app.post("/transcript/fetch/{amount}")
 async def bulk_fetch_transcripts(
     amount: int,
+    auto_build: bool = Body(True),
 ) -> Dict[str, Any]:
     """
-    Bulk fetch transcripts for videos from the video_queue.
+    Bulk fetch and store transcripts for queued YouTube videos.
 
-    This endpoint:
-    1. Queries the video_queue for videos with transcript_available = 1
-    2. Excludes videos that already have transcripts in the 'transcripts' table
-    3. For each video, fetches the transcript and saves it to the database
-    4. Returns detailed results for each video (success/failure)
+    ## Purpose
+    This endpoint processes videos from the video_queue table, fetching their transcripts
+    and storing them in the database. It's designed for batch processing of multiple videos
+    with built-in error handling, rate limiting, automatic queue building, and automatic queue cleanup.
+
+    ## Workflow
+    1. Check if queue has enough videos (at least `amount` videos available)
+       - If insufficient and `auto_build=True`: Automatically build queue to meet requested amount
+         * Uses `DEFAULT_YOUTUBE_CHANNEL_URL` environment variable
+       - If insufficient and `auto_build=False`: Proceed with available videos only
+    2. Query video_queue for up to `amount` videos where:
+       - transcript_available = 1 (YouTube has captions available)
+       - youtube_id NOT already in transcripts table (avoid duplicates)
+    3. For each video in the queue:
+       - Fetch transcript using TranscriptManager (tries YouTube Transcript API first, falls back to Whisper)
+       - Fetch video metadata from YouTube Data API (title, duration, statistics)
+       - Store transcript and metadata in transcripts table
+       - On success: Remove video from queue
+       - On failure: Keep video in queue, log error
+    4. Apply rate limiting (1 second between requests) to avoid API throttling
+    5. Return detailed results for monitoring and debugging
+
+    ## Parameters
+    - **amount** (path, required): Maximum number of transcripts to fetch from queue
+      - Type: int
+      - Must be positive integer
+      - Example: `/transcript/fetch/10` fetches up to 10 transcripts
+    
+    - **auto_build** (body, optional): Enable/disable automatic queue building
+      - Type: boolean (default: `True`)
+      - If `True` and queue has fewer than `amount` videos, automatically builds queue from `DEFAULT_YOUTUBE_CHANNEL_URL`
+      - If `False`, proceeds with whatever videos are available in queue
+      - Useful to disable for manual queue control or testing
+
+    ## Response Format
+
+    ### Success Response (200 OK)
+    ```json
+    {
+        "success": true,
+        "message": "Processed 10 videos from queue",
+        "transcripts_fetched": 8,
+        "transcripts_failed": 2,
+        "results": [
+            {
+                "youtube_id": "abc123xyz",
+                "status": "success",
+                "source": "youtube_api"
+            },
+            {
+                "youtube_id": "def456uvw",
+                "status": "failed",
+                "error": "No transcript available"
+            }
+        ],
+        "auto_build": {
+            "triggered": true,
+            "videos_added": 5,
+            "channel_url": "https://www.youtube.com/@FallRiverCityCouncil"
+        }
+    }
+    ```
+
+    **Response Fields:**
+    - `success` (bool): Overall operation success indicator
+    - `message` (str): Human-readable summary
+    - `transcripts_fetched` (int): Count of successfully fetched transcripts
+    - `transcripts_failed` (int): Count of failed transcript fetches
+    - `results` (list): Detailed per-video results
+      - `youtube_id` (str): Video identifier
+      - `status` (str): "success" or "failed"
+      - `source` (str): Transcript source ("youtube_api" or "whisper") [success only]
+      - `error` (str): Error message [failure only]
+    - `auto_build` (object, optional): Auto-build information [only present if triggered]
+      - `triggered` (bool): Whether auto-build was activated
+      - `videos_added` (int): Number of videos added to queue
+      - `channel_url` (str): Channel URL used for building
+
+    ### Empty Queue Response (200 OK)
+    ```json
+    {
+        "success": false,
+        "message": "No videos with transcripts available in queue or all already fetched",
+        "transcripts_fetched": 0,
+        "transcripts_failed": 0,
+        "results": []
+    }
+    ```
+
+    ### Error Response (500 Internal Server Error)
+    ```json
+    {
+        "detail": "Bulk transcript fetch failed: Database connection lost"
+    }
+    ```
+
+    ## Rate Limiting
+    - 1 second delay between consecutive video processing
+    - Prevents YouTube API rate limit errors
+    - Configurable via RATE_LIMIT_MS constant
+
+    ## Queue Management
+    - Successfully processed videos are **automatically removed** from video_queue
+    - Failed videos **remain in queue** for retry in future runs
+    - Videos already in transcripts table are **automatically skipped**
+
+    ## Error Handling
+    - Individual video failures don't stop the batch process
+    - All errors are logged with detailed context
+    - Partial success is possible (some succeed, some fail)
+    - Database transactions are committed after each successful fetch
+
+    ## Use Cases
+    - **Initial bulk import**: Process large backlog of queued videos
+    - **Scheduled batch jobs**: Run periodically (e.g., hourly cron job)
+    - **Manual processing**: Operator-triggered fetch when new videos detected
+    - **Recovery**: Reprocess failed videos after fixing issues
+
+    ## Example Usage
+    ```bash
+    # Simple: Fetch 25 transcripts (uses DEFAULT_YOUTUBE_CHANNEL_URL env var, auto-build enabled)
+    curl -X POST "http://localhost:8001/transcript/fetch/25"
+    
+    # With auto-build disabled (only fetches what's already in queue)
+    curl -X POST "http://localhost:8001/transcript/fetch/25" \
+      -H "Content-Type: application/json" \
+      -d '{"auto_build": false}'
+    
+    # Fetch single transcript (useful for testing)
+    curl -X POST "http://localhost:8001/transcript/fetch/1"
+    ```
+
+    ## Related Endpoints
+    - POST `/queue/build` - Populate video_queue by scraping YouTube channel
+    - GET `/queue/stats` - Check video_queue status before bulk fetch
+    - GET `/transcript/{youtube_id}` - Fetch single transcript by ID
+
+    ## Performance Notes
+    - Processing time: ~1-2 seconds per video (due to rate limiting)
+    - 10 videos ≈ 10-20 seconds total
+    - 100 videos ≈ 100-200 seconds (~1.5-3 minutes)
+    - Whisper fallback adds ~30-60 seconds per video (if needed)
 
     Args:
-        amount: Number of transcripts to fetch from the queue
+        amount (int): Maximum number of transcripts to fetch from queue (must be positive)
+        auto_build (bool): Enable automatic queue building if insufficient videos (default: True)
+            Uses DEFAULT_YOUTUBE_CHANNEL_URL environment variable for building queue.
 
     Returns:
-        Dict containing:
-            - transcripts_fetched: Number of transcripts successfully fetched
-            - transcripts_failed: Number of transcripts that failed
-            - results: List of results for each video
+        Dict[str, Any]: Response dictionary containing:
+            - success (bool): Overall operation status
+            - message (str): Human-readable summary
+            - transcripts_fetched (int): Count of successful fetches
+            - transcripts_failed (int): Count of failed fetches
+            - results (List[Dict]): Per-video detailed results
+
+    Raises:
+        HTTPException (500): Database unavailable or unexpected error during processing
     """
     try:
         if not database:
@@ -212,8 +357,72 @@ async def bulk_fetch_transcripts(
 
         logger.info(f"Starting bulk transcript fetch for {amount} videos from queue")
 
-        # Query video_queue for videos with transcripts available and not already in transcripts table
+        # ========================================
+        # Step 1: Check Queue Size and Auto-Build if Needed
+        # ========================================
+        # Count available videos in queue (transcript_available = 1, not already in transcripts table)
         cursor = database.cursor
+        cursor.execute(
+            """SELECT COUNT(*) 
+               FROM video_queue AS T1
+               LEFT JOIN transcripts AS T2 ON T1.youtube_id = T2.youtube_id
+               WHERE T1.transcript_available = 1 AND T2.youtube_id IS NULL"""
+        )
+        available_count = cursor.fetchone()[0]
+
+        logger.info(
+            f"Found {available_count} videos available in queue, requested {amount}"
+        )
+
+        # Track auto-build info for response
+        auto_build_triggered = False
+        auto_build_added = 0
+
+        # Get default channel URL from environment
+        channel_url = os.getenv("DEFAULT_YOUTUBE_CHANNEL_URL")
+        if channel_url:
+            logger.info(f"Using default channel URL from environment: {channel_url}")
+
+        # If insufficient videos, auto_build enabled, and channel_url available, build more queue entries
+        if available_count < amount and auto_build and channel_url:
+            auto_build_triggered = True
+            shortfall = amount - available_count
+            logger.info(
+                f"Queue has only {available_count}/{amount} videos. "
+                f"Auto-building {shortfall} more from {channel_url}"
+            )
+
+            try:
+                # Use async context manager to build queue
+                async with VideoQueueManager(database) as queue_manager:
+                    build_results = await queue_manager.queue_new_videos(
+                        channel_url,
+                        max_limit=shortfall,
+                    )
+                    auto_build_added = build_results.get("newly_queued", 0)
+                    logger.info(
+                        f"Auto-build complete: {auto_build_added} videos added to queue"
+                    )
+            except Exception as e:
+                logger.warning(
+                    f"Failed to auto-build queue: {str(e)}. Proceeding with available videos."
+                )
+        elif available_count < amount and not auto_build:
+            logger.info(
+                f"Queue has only {available_count}/{amount} videos. "
+                f"Auto-build disabled. Proceeding with available videos."
+            )
+        elif available_count < amount:
+            logger.warning(
+                f"Queue has only {available_count}/{amount} videos. "
+                f"No channel_url available (not provided and DEFAULT_YOUTUBE_CHANNEL_URL not set). "
+                f"Proceeding with available videos."
+            )
+
+        # ========================================
+        # Step 2: Query Available Videos from Queue
+        # ========================================
+        # Query video_queue for videos with transcripts available and not already in transcripts table
         cursor.execute(
             """SELECT T1.youtube_id
                FROM video_queue AS T1
@@ -266,7 +475,6 @@ async def bulk_fetch_transcripts(
                     {
                         "youtube_id": youtube_id,
                         "status": "success",
-                        "transcript_id": transcript_result.get("transcript_id"),
                         "source": transcript_result.get("source"),
                     }
                 )
@@ -296,13 +504,23 @@ async def bulk_fetch_transcripts(
             f"Bulk transcript fetch complete: {transcripts_fetched} succeeded, {transcripts_failed} failed"
         )
 
-        return {
+        response = {
             "success": True,
             "message": f"Processed {len(queue_items)} videos from queue",
             "transcripts_fetched": transcripts_fetched,
             "transcripts_failed": transcripts_failed,
             "results": results,
         }
+
+        # Add auto-build info if it was triggered
+        if auto_build_triggered:
+            response["auto_build"] = {
+                "triggered": True,
+                "videos_added": auto_build_added,
+                "channel_url": channel_url,
+            }
+
+        return response
 
     except HTTPException:
         raise
@@ -854,23 +1072,29 @@ async def bulk_generate_articles(
 
 @app.post("/queue/build")
 async def build_video_queue(
-    channel_url: str = Body(...),
-    limit: int = Body(0),
+    limit: int = 5,
+    channel_url: str = os.environ.get("DEFAULT_YOUTUBE_CHANNEL_URL", ""),
 ) -> Dict[str, Any]:
     """
     Build the video queue by discovering videos from a YouTube channel using YouTube API.
 
+    This endpoint intelligently adjusts the scrape limit to account for already-processed videos.
+    If you request limit=10, it will scrape (current_transcript_count + 10) videos from the channel,
+    ensuring you get approximately 10 NEW videos added to the queue.
+
     This endpoint:
-    1. Gets all existing youtube_ids from the transcripts table
-    2. Fetches video IDs from YouTube channel using YouTube Data API v3
-    3. Compares and adds only new videos to the video_queue
+    1. Counts existing transcripts in the database
+    2. Adjusts limit: adjusted_limit = transcript_count + requested_limit
+    3. Fetches video IDs from YouTube channel using YouTube Data API v3
+    4. Compares and adds only new videos to the video_queue
 
     Requires YOUTUBE_API_KEY environment variable to be set.
     Get a free API key at: https://console.cloud.google.com/apis/credentials
 
     Args:
         channel_url: URL of the YouTube channel (@handle, /channel/ID, or /c/custom)
-        limit: Maximum number of videos to process (default: 0 = all videos)
+        limit: Number of NEW videos you want in the queue (default: 0 = all videos)
+               The actual scrape limit will be automatically increased based on existing transcript count
 
     Returns:
         Dict containing queue building results:
@@ -891,13 +1115,35 @@ async def build_video_queue(
                 detail="Database not available",
             )
 
+        # Get the current count of transcripts in the database
+        cursor = database.cursor
+        cursor.execute("SELECT COUNT(*) FROM transcripts")
+        transcript_count = cursor.fetchone()[0]
+
+        # Get the current count of videos in the queue
+        cursor.execute("SELECT COUNT(*) FROM video_queue")
+        queue_size = cursor.fetchone()[0]
+
+        # Add transcript count AND queue size to the requested limit
+        # This ensures we scrape far enough past all already-processed and already-queued videos
+        adjusted_limit = transcript_count + queue_size + limit
+
+        logger.info(
+            f"Transcripts in database: {transcript_count}, "
+            f"Videos in queue: {queue_size}, "
+            f"Requested limit: {limit}, "
+            f"Adjusted limit: {adjusted_limit}"
+        )
+
         # Use async context manager
         async with VideoQueueManager(database) as queue_manager:
-            # Execute queue building
-            logger.info(f"Building queue from {channel_url} with limit {limit} ")
+            # Execute queue building with adjusted limit
+            logger.info(
+                f"Building queue from {channel_url} with adjusted limit {adjusted_limit}"
+            )
             results = await queue_manager.queue_new_videos(
                 channel_url,
-                limit,
+                adjusted_limit,
             )
 
             logger.info(f"Queue building complete: {results}")

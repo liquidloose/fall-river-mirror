@@ -247,11 +247,12 @@ class YouTubeMetadataFetcher:
             date_match = re.match(r"(\d{1,2})\.(\d{1,2})\.(\d{4})", video_info["title"])
 
             # Convert from "11.5.2025" format to "11-05-2025" format (zero-padded)
-            meeting_date = (
-                f"{date_match.group(1).zfill(2)}-{date_match.group(2).zfill(2)}-{date_match.group(3)}"
-                if date_match
-                else None
-            )
+            # If no date match in title, fall back to YouTube published date
+            if date_match:
+                meeting_date = f"{date_match.group(1).zfill(2)}-{date_match.group(2).zfill(2)}-{date_match.group(3)}"
+            else:
+                # Format published_date to MM-DD-YYYY format
+                meeting_date = published_date.strftime("%m-%d-%Y")
 
             # Remove date prefix from title to get committee name
             # "11.5.2025 City Council Meeting" -> "City Council Meeting"
