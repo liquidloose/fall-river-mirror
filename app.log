@@ -13087,3 +13087,702 @@ Exception: Invalid YouTube channel URL: string
 2025-11-29 03:52:53,943 - app.main - INFO - Successfully fetched transcript for QjWbWSCLwd8
 2025-11-29 03:52:53,948 - app.main - DEBUG - Removed QjWbWSCLwd8 from video_queue
 2025-11-29 03:52:54,949 - app.main - INFO - Bulk transcript fetch complete: 15 succeeded, 0 failed
+2025-11-29 04:06:08,648 - Database_app/data/fr-mirror - INFO - Initializing database: app/data/fr-mirror.db
+2025-11-29 04:06:08,648 - Database_app/data/fr-mirror - INFO - Successfully connected to database: app/data/fr-mirror.db
+2025-11-29 04:06:08,648 - Database_app/data/fr-mirror - INFO - Creating/verifying all database tables...
+2025-11-29 04:06:08,654 - Database_app/data/fr-mirror - INFO - Table 'transcripts' created/verified successfully
+2025-11-29 04:06:08,657 - Database_app/data/fr-mirror - INFO - Table 'journalists' created/verified successfully
+2025-11-29 04:06:08,696 - Database_app/data/fr-mirror - INFO - Table 'articles' created/verified successfully
+2025-11-29 04:06:08,700 - Database_app/data/fr-mirror - INFO - Table 'tones' created/verified successfully
+2025-11-29 04:06:08,719 - Database_app/data/fr-mirror - INFO - Table 'categories' created/verified successfully
+2025-11-29 04:06:08,723 - Database_app/data/fr-mirror - INFO - Table 'video_queue' created/verified successfully
+2025-11-29 04:06:08,723 - Database_app/data/fr-mirror - INFO - All tables created/verified successfully
+2025-11-29 04:06:08,724 - Database_app/data/fr-mirror - INFO - Database initialization completed
+2025-11-29 04:06:08,724 - app.main - INFO - Database initialized successfully in main.py
+2025-11-29 04:06:08,724 - app.data.enum_manager - INFO - Starting database enum synchronization...
+2025-11-29 04:06:08,724 - app.data.enum_manager - INFO - Synchronization query made for Tone
+2025-11-29 04:06:08,724 - app.data.enum_manager - INFO - Inserting value: critical into tones
+2025-11-29 04:06:08,725 - app.data.enum_manager - INFO - Inserting value: urgent into tones
+2025-11-29 04:06:08,725 - app.data.enum_manager - INFO - Inserting value: conversational into tones
+2025-11-29 04:06:08,725 - app.data.enum_manager - INFO - Inserting value: professional into tones
+2025-11-29 04:06:08,725 - app.data.enum_manager - INFO - Inserting value: authoritative into tones
+2025-11-29 04:06:08,725 - app.data.enum_manager - INFO - Inserting value: friendly into tones
+2025-11-29 04:06:08,725 - app.data.enum_manager - INFO - Inserting value: satirical into tones
+2025-11-29 04:06:08,725 - app.data.enum_manager - INFO - Inserting value: formal into tones
+2025-11-29 04:06:08,725 - app.data.enum_manager - INFO - Inserting value: casual into tones
+2025-11-29 04:06:08,726 - app.data.enum_manager - INFO - Inserting value: analytical into tones
+2025-11-29 04:06:08,726 - app.data.enum_manager - INFO - Inserting value: empathetic into tones
+2025-11-29 04:06:08,726 - app.data.enum_manager - INFO - Inserting value: investigative into tones
+2025-11-29 04:06:08,733 - app.data.enum_manager - INFO - Inserted 12 missing value(s) into tones: {'critical', 'urgent', 'conversational', 'professional', 'authoritative', 'friendly', 'satirical', 'formal', 'casual', 'analytical', 'empathetic', 'investigative'}
+2025-11-29 04:06:08,733 - app.data.enum_manager - INFO - Synchronization query made for ArticleType
+2025-11-29 04:06:08,734 - app.data.enum_manager - INFO - Inserting value: critical into categories
+2025-11-29 04:06:08,735 - app.data.enum_manager - INFO - Inserting value: summary into categories
+2025-11-29 04:06:08,735 - app.data.enum_manager - INFO - Inserting value: news into categories
+2025-11-29 04:06:08,735 - app.data.enum_manager - INFO - Inserting value: feature into categories
+2025-11-29 04:06:08,735 - app.data.enum_manager - INFO - Inserting value: op_ed into categories
+2025-11-29 04:06:08,735 - app.data.enum_manager - INFO - Inserting value: profile into categories
+2025-11-29 04:06:08,735 - app.data.enum_manager - INFO - Inserting value: editorial into categories
+2025-11-29 04:06:08,735 - app.data.enum_manager - INFO - Inserting value: investigative into categories
+2025-11-29 04:06:08,738 - app.data.enum_manager - INFO - Inserted 8 missing value(s) into categories: {'critical', 'summary', 'news', 'feature', 'op_ed', 'profile', 'editorial', 'investigative'}
+2025-11-29 04:06:08,738 - app.main - INFO - Database sync completed: <app.data.enum_manager.DatabaseSync object at 0x7fdf44dd4c20>
+2025-11-29 04:06:08,742 - app.data.journalist_manager - INFO - Successfully created journalist: Aurelius Stone
+2025-11-29 04:06:08,742 - app.main - INFO - Journalist initialization completed
+2025-11-29 04:06:08,743 - app.main - INFO - FastAPI app initialized!
+2025-11-29 04:06:08,743 - app.data.transcript_manager - DEBUG - Loaded proxy_username from env: akrds...
+2025-11-29 04:06:08,743 - app.data.transcript_manager - DEBUG - Loaded proxy_password from env: ***set***
+2025-11-29 04:06:31,900 - app.main - INFO - Starting bulk transcript fetch for 15 videos from queue
+2025-11-29 04:06:31,900 - app.main - INFO - Found 0 videos available in queue, requested 15
+2025-11-29 04:06:31,900 - app.main - INFO - Using default channel URL from environment: https://www.youtube.com/@FallRiverGovernmentTV/videos
+2025-11-29 04:06:31,900 - app.main - INFO - Queue has only 0/15 videos. Auto-building 15 more from https://www.youtube.com/@FallRiverGovernmentTV/videos
+2025-11-29 04:06:31,900 - app.data.video_queue_manager - INFO - Starting queue_new_videos for: https://www.youtube.com/@FallRiverGovernmentTV/videos
+2025-11-29 04:06:31,900 - app.data.video_queue_manager - INFO - Found 0 existing transcripts in database
+2025-11-29 04:06:31,900 - app.data.video_queue_manager - INFO - Found 0 existing transcripts
+2025-11-29 04:06:31,901 - app.data.video_queue_manager - INFO - Found 0 videos already in queue
+2025-11-29 04:06:31,901 - app.data.video_queue_manager - INFO - Found 0 videos already in queue
+2025-11-29 04:06:31,901 - app.data.video_queue_manager - INFO - Fetching video IDs from: https://www.youtube.com/@FallRiverGovernmentTV/videos
+2025-11-29 04:06:31,903 - urllib3.connectionpool - DEBUG - Starting new HTTPS connection (1): www.googleapis.com:443
+2025-11-29 04:06:32,849 - urllib3.connectionpool - DEBUG - https://www.googleapis.com:443 "GET /youtube/v3/channels?part=id&forHandle=FallRiverGovernmentTV&key=AIzaSyCI_fKInrrNdqG53mg8oweLyyoiHzo2eGE HTTP/1.1" 200 None
+2025-11-29 04:06:32,851 - app.data.video_queue_manager - INFO - Found channel ID: UCl5hiccLAnRfSZHVug8R-_A
+2025-11-29 04:06:32,852 - urllib3.connectionpool - DEBUG - Starting new HTTPS connection (1): www.googleapis.com:443
+2025-11-29 04:06:33,171 - urllib3.connectionpool - DEBUG - https://www.googleapis.com:443 "GET /youtube/v3/channels?part=contentDetails&id=UCl5hiccLAnRfSZHVug8R-_A&key=AIzaSyCI_fKInrrNdqG53mg8oweLyyoiHzo2eGE HTTP/1.1" 200 None
+2025-11-29 04:06:33,172 - app.data.video_queue_manager - INFO - Uploads playlist ID: UUl5hiccLAnRfSZHVug8R-_A
+2025-11-29 04:06:33,173 - urllib3.connectionpool - DEBUG - Starting new HTTPS connection (1): www.googleapis.com:443
+2025-11-29 04:06:34,456 - urllib3.connectionpool - DEBUG - https://www.googleapis.com:443 "GET /youtube/v3/playlistItems?part=contentDetails&playlistId=UUl5hiccLAnRfSZHVug8R-_A&maxResults=50&key=AIzaSyCI_fKInrrNdqG53mg8oweLyyoiHzo2eGE HTTP/1.1" 200 None
+2025-11-29 04:06:34,456 - app.data.video_queue_manager - INFO - Fetched 50 videos so far from https://www.youtube.com/@FallRiverGovernmentTV/videos
+2025-11-29 04:06:34,457 - app.data.video_queue_manager - INFO - Reached max_limit of 15 videos
+2025-11-29 04:06:34,457 - app.data.video_queue_manager - INFO - Extracted 15 unique video IDs
+2025-11-29 04:06:34,459 - app.data.video_queue_manager - INFO - Discovered 15 videos on YouTube
+2025-11-29 04:06:34,460 - urllib3.connectionpool - DEBUG - Starting new HTTPS connection (1): www.youtube.com:443
+2025-11-29 04:06:35,518 - urllib3.connectionpool - DEBUG - https://www.youtube.com:443 "GET /watch?v=eFVR13ZlWEI HTTP/1.1" 200 None
+2025-11-29 04:06:36,371 - urllib3.connectionpool - DEBUG - https://www.youtube.com:443 "POST /youtubei/v1/player?key=AIzaSyAO_FJ2SlqU8Q4STEHLGCilw_Y9_11qcW8 HTTP/1.1" 200 None
+2025-11-29 04:06:36,373 - app.data.video_queue_manager - DEBUG - Video eFVR13ZlWEI: transcript available
+2025-11-29 04:06:36,377 - app.data.video_queue_manager - INFO - Added eFVR13ZlWEI to queue (transcript available)
+2025-11-29 04:06:36,377 - app.data.video_queue_manager - INFO - Added eFVR13ZlWEI to video queue
+2025-11-29 04:06:36,378 - urllib3.connectionpool - DEBUG - Starting new HTTPS connection (1): www.youtube.com:443
+2025-11-29 04:06:37,094 - urllib3.connectionpool - DEBUG - https://www.youtube.com:443 "GET /watch?v=lzYq_7tvt3w HTTP/1.1" 200 None
+2025-11-29 04:06:37,857 - urllib3.connectionpool - DEBUG - https://www.youtube.com:443 "POST /youtubei/v1/player?key=AIzaSyAO_FJ2SlqU8Q4STEHLGCilw_Y9_11qcW8 HTTP/1.1" 200 None
+2025-11-29 04:06:37,860 - app.data.video_queue_manager - DEBUG - Video lzYq_7tvt3w: transcript available
+2025-11-29 04:06:37,865 - app.data.video_queue_manager - INFO - Added lzYq_7tvt3w to queue (transcript available)
+2025-11-29 04:06:37,865 - app.data.video_queue_manager - INFO - Added lzYq_7tvt3w to video queue
+2025-11-29 04:06:37,866 - urllib3.connectionpool - DEBUG - Starting new HTTPS connection (1): www.youtube.com:443
+2025-11-29 04:06:38,259 - urllib3.connectionpool - DEBUG - https://www.youtube.com:443 "GET /watch?v=N2vGeqFZ3OE HTTP/1.1" 200 None
+2025-11-29 04:06:38,891 - urllib3.connectionpool - DEBUG - https://www.youtube.com:443 "POST /youtubei/v1/player?key=AIzaSyAO_FJ2SlqU8Q4STEHLGCilw_Y9_11qcW8 HTTP/1.1" 200 None
+2025-11-29 04:06:38,893 - app.data.video_queue_manager - DEBUG - Video N2vGeqFZ3OE: transcript available
+2025-11-29 04:06:38,898 - app.data.video_queue_manager - INFO - Added N2vGeqFZ3OE to queue (transcript available)
+2025-11-29 04:06:38,898 - app.data.video_queue_manager - INFO - Added N2vGeqFZ3OE to video queue
+2025-11-29 04:06:38,899 - urllib3.connectionpool - DEBUG - Starting new HTTPS connection (1): www.youtube.com:443
+2025-11-29 04:06:39,127 - urllib3.connectionpool - DEBUG - https://www.youtube.com:443 "GET /watch?v=ZbKySDNnObc HTTP/1.1" 200 None
+2025-11-29 04:06:39,820 - urllib3.connectionpool - DEBUG - https://www.youtube.com:443 "POST /youtubei/v1/player?key=AIzaSyAO_FJ2SlqU8Q4STEHLGCilw_Y9_11qcW8 HTTP/1.1" 200 None
+2025-11-29 04:06:39,822 - app.data.video_queue_manager - DEBUG - Video ZbKySDNnObc: transcript available
+2025-11-29 04:06:39,842 - app.data.video_queue_manager - INFO - Added ZbKySDNnObc to queue (transcript available)
+2025-11-29 04:06:39,842 - app.data.video_queue_manager - INFO - Added ZbKySDNnObc to video queue
+2025-11-29 04:06:39,843 - urllib3.connectionpool - DEBUG - Starting new HTTPS connection (1): www.youtube.com:443
+2025-11-29 04:06:40,305 - urllib3.connectionpool - DEBUG - https://www.youtube.com:443 "GET /watch?v=iJdgxGTd5fk HTTP/1.1" 200 None
+2025-11-29 04:06:40,929 - urllib3.connectionpool - DEBUG - https://www.youtube.com:443 "POST /youtubei/v1/player?key=AIzaSyAO_FJ2SlqU8Q4STEHLGCilw_Y9_11qcW8 HTTP/1.1" 200 None
+2025-11-29 04:06:40,932 - app.data.video_queue_manager - DEBUG - Video iJdgxGTd5fk: transcript available
+2025-11-29 04:06:40,936 - app.data.video_queue_manager - INFO - Added iJdgxGTd5fk to queue (transcript available)
+2025-11-29 04:06:40,937 - app.data.video_queue_manager - INFO - Added iJdgxGTd5fk to video queue
+2025-11-29 04:06:40,938 - urllib3.connectionpool - DEBUG - Starting new HTTPS connection (1): www.youtube.com:443
+2025-11-29 04:06:41,280 - urllib3.connectionpool - DEBUG - https://www.youtube.com:443 "GET /watch?v=idqZ-oJB92s HTTP/1.1" 200 None
+2025-11-29 04:06:41,820 - urllib3.connectionpool - DEBUG - https://www.youtube.com:443 "POST /youtubei/v1/player?key=AIzaSyAO_FJ2SlqU8Q4STEHLGCilw_Y9_11qcW8 HTTP/1.1" 200 None
+2025-11-29 04:06:41,822 - app.data.video_queue_manager - DEBUG - Video idqZ-oJB92s: transcript available
+2025-11-29 04:06:41,826 - app.data.video_queue_manager - INFO - Added idqZ-oJB92s to queue (transcript available)
+2025-11-29 04:06:41,826 - app.data.video_queue_manager - INFO - Added idqZ-oJB92s to video queue
+2025-11-29 04:06:41,827 - urllib3.connectionpool - DEBUG - Starting new HTTPS connection (1): www.youtube.com:443
+2025-11-29 04:06:42,327 - urllib3.connectionpool - DEBUG - https://www.youtube.com:443 "GET /watch?v=0IaKkQENgKU HTTP/1.1" 200 None
+2025-11-29 04:06:42,900 - urllib3.connectionpool - DEBUG - https://www.youtube.com:443 "POST /youtubei/v1/player?key=AIzaSyAO_FJ2SlqU8Q4STEHLGCilw_Y9_11qcW8 HTTP/1.1" 200 None
+2025-11-29 04:06:42,901 - app.data.video_queue_manager - DEBUG - Video 0IaKkQENgKU: transcript available
+2025-11-29 04:06:42,906 - app.data.video_queue_manager - INFO - Added 0IaKkQENgKU to queue (transcript available)
+2025-11-29 04:06:42,906 - app.data.video_queue_manager - INFO - Added 0IaKkQENgKU to video queue
+2025-11-29 04:06:42,907 - urllib3.connectionpool - DEBUG - Starting new HTTPS connection (1): www.youtube.com:443
+2025-11-29 04:06:43,210 - urllib3.connectionpool - DEBUG - https://www.youtube.com:443 "GET /watch?v=ZvGlIH_YzoM HTTP/1.1" 200 None
+2025-11-29 04:06:43,855 - urllib3.connectionpool - DEBUG - https://www.youtube.com:443 "POST /youtubei/v1/player?key=AIzaSyAO_FJ2SlqU8Q4STEHLGCilw_Y9_11qcW8 HTTP/1.1" 200 None
+2025-11-29 04:06:43,857 - app.data.video_queue_manager - DEBUG - Video ZvGlIH_YzoM: transcript available
+2025-11-29 04:06:43,862 - app.data.video_queue_manager - INFO - Added ZvGlIH_YzoM to queue (transcript available)
+2025-11-29 04:06:43,862 - app.data.video_queue_manager - INFO - Added ZvGlIH_YzoM to video queue
+2025-11-29 04:06:43,863 - urllib3.connectionpool - DEBUG - Starting new HTTPS connection (1): www.youtube.com:443
+2025-11-29 04:06:44,104 - urllib3.connectionpool - DEBUG - https://www.youtube.com:443 "GET /watch?v=ESM3f3f-pWQ HTTP/1.1" 200 None
+2025-11-29 04:06:44,662 - urllib3.connectionpool - DEBUG - https://www.youtube.com:443 "POST /youtubei/v1/player?key=AIzaSyAO_FJ2SlqU8Q4STEHLGCilw_Y9_11qcW8 HTTP/1.1" 200 None
+2025-11-29 04:06:44,664 - app.data.video_queue_manager - DEBUG - Video ESM3f3f-pWQ: transcript available
+2025-11-29 04:06:44,669 - app.data.video_queue_manager - INFO - Added ESM3f3f-pWQ to queue (transcript available)
+2025-11-29 04:06:44,669 - app.data.video_queue_manager - INFO - Added ESM3f3f-pWQ to video queue
+2025-11-29 04:06:44,670 - urllib3.connectionpool - DEBUG - Starting new HTTPS connection (1): www.youtube.com:443
+2025-11-29 04:06:44,849 - urllib3.connectionpool - DEBUG - https://www.youtube.com:443 "GET /watch?v=dHp63wKetnM HTTP/1.1" 200 None
+2025-11-29 04:06:45,392 - urllib3.connectionpool - DEBUG - https://www.youtube.com:443 "POST /youtubei/v1/player?key=AIzaSyAO_FJ2SlqU8Q4STEHLGCilw_Y9_11qcW8 HTTP/1.1" 200 None
+2025-11-29 04:06:45,394 - app.data.video_queue_manager - DEBUG - Video dHp63wKetnM: transcript available
+2025-11-29 04:06:45,399 - app.data.video_queue_manager - INFO - Added dHp63wKetnM to queue (transcript available)
+2025-11-29 04:06:45,399 - app.data.video_queue_manager - INFO - Added dHp63wKetnM to video queue
+2025-11-29 04:06:45,400 - urllib3.connectionpool - DEBUG - Starting new HTTPS connection (1): www.youtube.com:443
+2025-11-29 04:06:45,624 - urllib3.connectionpool - DEBUG - https://www.youtube.com:443 "GET /watch?v=EQxH-w0TyjQ HTTP/1.1" 200 None
+2025-11-29 04:06:46,121 - urllib3.connectionpool - DEBUG - https://www.youtube.com:443 "POST /youtubei/v1/player?key=AIzaSyAO_FJ2SlqU8Q4STEHLGCilw_Y9_11qcW8 HTTP/1.1" 200 None
+2025-11-29 04:06:46,123 - app.data.video_queue_manager - DEBUG - Video EQxH-w0TyjQ: transcript available
+2025-11-29 04:06:46,128 - app.data.video_queue_manager - INFO - Added EQxH-w0TyjQ to queue (transcript available)
+2025-11-29 04:06:46,128 - app.data.video_queue_manager - INFO - Added EQxH-w0TyjQ to video queue
+2025-11-29 04:06:46,130 - urllib3.connectionpool - DEBUG - Starting new HTTPS connection (1): www.youtube.com:443
+2025-11-29 04:06:46,376 - urllib3.connectionpool - DEBUG - https://www.youtube.com:443 "GET /watch?v=eHJqipK431Q HTTP/1.1" 200 None
+2025-11-29 04:06:47,556 - urllib3.connectionpool - DEBUG - https://www.youtube.com:443 "POST /youtubei/v1/player?key=AIzaSyAO_FJ2SlqU8Q4STEHLGCilw_Y9_11qcW8 HTTP/1.1" 200 None
+2025-11-29 04:06:47,559 - app.data.video_queue_manager - DEBUG - Video eHJqipK431Q: transcript available
+2025-11-29 04:06:47,563 - app.data.video_queue_manager - INFO - Added eHJqipK431Q to queue (transcript available)
+2025-11-29 04:06:47,564 - app.data.video_queue_manager - INFO - Added eHJqipK431Q to video queue
+2025-11-29 04:06:47,565 - urllib3.connectionpool - DEBUG - Starting new HTTPS connection (1): www.youtube.com:443
+2025-11-29 04:06:47,847 - urllib3.connectionpool - DEBUG - https://www.youtube.com:443 "GET /watch?v=Hbvi-3vnOKQ HTTP/1.1" 200 None
+2025-11-29 04:06:48,498 - urllib3.connectionpool - DEBUG - https://www.youtube.com:443 "POST /youtubei/v1/player?key=AIzaSyAO_FJ2SlqU8Q4STEHLGCilw_Y9_11qcW8 HTTP/1.1" 200 None
+2025-11-29 04:06:48,499 - app.data.video_queue_manager - DEBUG - Video Hbvi-3vnOKQ: transcript available
+2025-11-29 04:06:48,504 - app.data.video_queue_manager - INFO - Added Hbvi-3vnOKQ to queue (transcript available)
+2025-11-29 04:06:48,504 - app.data.video_queue_manager - INFO - Added Hbvi-3vnOKQ to video queue
+2025-11-29 04:06:48,505 - urllib3.connectionpool - DEBUG - Starting new HTTPS connection (1): www.youtube.com:443
+2025-11-29 04:06:48,925 - urllib3.connectionpool - DEBUG - https://www.youtube.com:443 "GET /watch?v=88GT-aB9cr8 HTTP/1.1" 200 None
+2025-11-29 04:06:49,645 - urllib3.connectionpool - DEBUG - https://www.youtube.com:443 "POST /youtubei/v1/player?key=AIzaSyAO_FJ2SlqU8Q4STEHLGCilw_Y9_11qcW8 HTTP/1.1" 200 None
+2025-11-29 04:06:49,647 - app.data.video_queue_manager - DEBUG - Video 88GT-aB9cr8: transcript available
+2025-11-29 04:06:49,660 - app.data.video_queue_manager - INFO - Added 88GT-aB9cr8 to queue (transcript available)
+2025-11-29 04:06:49,661 - app.data.video_queue_manager - INFO - Added 88GT-aB9cr8 to video queue
+2025-11-29 04:06:49,662 - urllib3.connectionpool - DEBUG - Starting new HTTPS connection (1): www.youtube.com:443
+2025-11-29 04:06:50,080 - urllib3.connectionpool - DEBUG - https://www.youtube.com:443 "GET /watch?v=Q_ymaALD-pM HTTP/1.1" 200 None
+2025-11-29 04:06:50,756 - urllib3.connectionpool - DEBUG - https://www.youtube.com:443 "POST /youtubei/v1/player?key=AIzaSyAO_FJ2SlqU8Q4STEHLGCilw_Y9_11qcW8 HTTP/1.1" 200 None
+2025-11-29 04:06:50,758 - app.data.video_queue_manager - DEBUG - Video Q_ymaALD-pM: transcript available
+2025-11-29 04:06:50,763 - app.data.video_queue_manager - INFO - Added Q_ymaALD-pM to queue (transcript available)
+2025-11-29 04:06:50,763 - app.data.video_queue_manager - INFO - Added Q_ymaALD-pM to video queue
+2025-11-29 04:06:50,764 - app.data.video_queue_manager - INFO - Queue processing complete: 15 discovered, 0 already have transcripts, 0 already in queue, 15 newly queued, 0 skipped, 0 failed
+2025-11-29 04:06:50,764 - app.main - INFO - Auto-build complete: 15 videos added to queue
+2025-11-29 04:06:50,765 - app.main - INFO - Found 15 videos in queue to process
+2025-11-29 04:06:50,765 - app.main - INFO - Fetching transcript for video eFVR13ZlWEI
+2025-11-29 04:06:50,771 - Database_app/data/fr-mirror - INFO - Database write permissions test passed
+2025-11-29 04:06:50,771 - Database_app/data/fr-mirror - INFO - Database operation: transcript_exists_by_youtube_id - Details: {'youtube_id': 'eFVR13ZlWEI'}
+2025-11-29 04:06:50,771 - Database_app/data/fr-mirror - INFO - Transcript for YouTube ID 'eFVR13ZlWEI' exists: False
+2025-11-29 04:06:50,771 - app.data.transcript_manager - INFO - Transcript for video eFVR13ZlWEI not found in database, fetching from YouTube...
+2025-11-29 04:06:50,771 - app.data.transcript_manager - DEBUG - Proxy username configured: True
+2025-11-29 04:06:50,771 - app.data.transcript_manager - DEBUG - Proxy password configured: True
+2025-11-29 04:06:50,771 - app.data.transcript_manager - INFO - Using Webshare proxy for transcript fetch
+2025-11-29 04:06:50,773 - urllib3.connectionpool - DEBUG - Starting new HTTPS connection (1): www.youtube.com:443
+2025-11-29 04:06:56,079 - urllib3.connectionpool - DEBUG - https://www.youtube.com:443 "GET /watch?v=eFVR13ZlWEI HTTP/1.1" 200 None
+2025-11-29 04:06:56,487 - urllib3.connectionpool - DEBUG - Resetting dropped connection: www.youtube.com
+2025-11-29 04:07:02,355 - urllib3.connectionpool - DEBUG - https://www.youtube.com:443 "POST /youtubei/v1/player?key=AIzaSyAO_FJ2SlqU8Q4STEHLGCilw_Y9_11qcW8 HTTP/1.1" 200 None
+2025-11-29 04:07:02,390 - urllib3.connectionpool - DEBUG - Resetting dropped connection: www.youtube.com
+2025-11-29 04:07:04,961 - urllib3.connectionpool - DEBUG - https://www.youtube.com:443 "GET /api/timedtext?v=eFVR13ZlWEI&ei=ZnEqaYOVBN36xN8P5-q4mAY&caps=asr&opi=112496729&xoaf=5&xowf=1&xospf=1&hl=en&ip=0.0.0.0&ipbits=0&expire=1764414422&sparams=ip,ipbits,expire,v,ei,caps,opi,xoaf&signature=ACBA444324A14C71B90A38867743BB5DC005F9CE.DD733FF022076B9CAF8C6AAFA252ED86A38B429A&key=yt8&kind=asr&lang=en&variant=ec HTTP/1.1" 200 None
+2025-11-29 04:07:04,971 - app.data.transcript_manager - INFO - Successfully fetched transcript for video: eFVR13ZlWEI
+2025-11-29 04:07:04,971 - app.data.youtube_metadata_fetcher - INFO - YouTubeMetadataFetcher initialized successfully
+2025-11-29 04:07:04,971 - app.data.youtube_metadata_fetcher - INFO - Making YouTube Data API request for video: eFVR13ZlWEI
+2025-11-29 04:07:04,972 - urllib3.connectionpool - DEBUG - Starting new HTTPS connection (1): www.googleapis.com:443
+2025-11-29 04:07:05,283 - urllib3.connectionpool - DEBUG - https://www.googleapis.com:443 "GET /youtube/v3/videos?part=snippet%2CcontentDetails%2Cstatistics&id=eFVR13ZlWEI&key=AIzaSyCI_fKInrrNdqG53mg8oweLyyoiHzo2eGE HTTP/1.1" 200 None
+2025-11-29 04:07:05,293 - app.data.youtube_metadata_fetcher - INFO - Successfully retrieved video info for eFVR13ZlWEI | Title: '11.14.2025 Transgender Day of Remembrance' | Published: 2025-11-26T18:32:36Z | Duration: 19:40 | Views: 21 | Likes: 0 | Comments: 0
+2025-11-29 04:07:05,294 - app.data.transcript_manager - INFO - Retrieved video metadata for eFVR13ZlWEI: 11.14.2025 Transgender Day of Remembrance
+2025-11-29 04:07:05,313 - Database_app/data/fr-mirror - INFO - Database write permissions test passed
+2025-11-29 04:07:05,313 - app.data.transcript_manager - INFO - Caching transcript for video eFVR13ZlWEI with category AIAgent.GROK
+2025-11-29 04:07:05,314 - app.data.transcript_manager - INFO - add_youtube_transcript: {'youtube_id': 'eFVR13ZlWEI', 'committee': None, 'category': 'Grok Transcript', 'content_length': 37570}
+2025-11-29 04:07:05,314 - app.data.transcript_manager - INFO - Adding transcript to database: app/data/fr-mirror.db
+2025-11-29 04:07:05,314 - app.data.transcript_manager - INFO - youtube_id: eFVR13ZlWEI
+2025-11-29 04:07:05,314 - app.data.transcript_manager - INFO - Content length: 37570
+2025-11-29 04:07:05,314 - app.data.transcript_manager - INFO - fetch_Date: 2025-11-29T04:07:05.314113
+2025-11-29 04:07:05,314 - app.data.transcript_manager - INFO - Transcripts table exists: True
+2025-11-29 04:07:05,314 - app.data.transcript_manager - INFO - NewCategory: AIAgent.GROK
+2025-11-29 04:07:05,314 - app.data.transcript_manager - INFO - Inserting transcript into database: None, eFVR13ZlWEI, content_length: 37570, 2025-11-29T04:07:05.314113, AIAgent.GROK
+2025-11-29 04:07:05,330 - app.data.transcript_manager - INFO - Successfully inserted transcript with video metadata: title='11.14.2025 Transgender Day of Remembrance', duration=19:40, channel='Fall River Government TV', published=2025-11-26T18:32:36Z, view_count=21, like_count=0, comment_count=0 for youtube_id=eFVR13ZlWEI
+2025-11-29 04:07:05,330 - app.data.transcript_manager - INFO - Transcripts in database after insert: 1
+2025-11-29 04:07:05,330 - app.data.transcript_manager - INFO - Added YouTube transcript for video 'eFVR13ZlWEI' (ID: 1)
+2025-11-29 04:07:05,331 - app.main - INFO - Successfully fetched transcript for eFVR13ZlWEI
+2025-11-29 04:07:05,338 - app.main - DEBUG - Removed eFVR13ZlWEI from video_queue
+2025-11-29 04:07:06,338 - app.main - INFO - Fetching transcript for video lzYq_7tvt3w
+2025-11-29 04:07:06,379 - Database_app/data/fr-mirror - INFO - Database write permissions test passed
+2025-11-29 04:07:06,380 - Database_app/data/fr-mirror - INFO - Database operation: transcript_exists_by_youtube_id - Details: {'youtube_id': 'lzYq_7tvt3w'}
+2025-11-29 04:07:06,380 - Database_app/data/fr-mirror - INFO - Transcript for YouTube ID 'lzYq_7tvt3w' exists: False
+2025-11-29 04:07:06,381 - app.data.transcript_manager - INFO - Transcript for video lzYq_7tvt3w not found in database, fetching from YouTube...
+2025-11-29 04:07:06,381 - app.data.transcript_manager - DEBUG - Proxy username configured: True
+2025-11-29 04:07:06,381 - app.data.transcript_manager - DEBUG - Proxy password configured: True
+2025-11-29 04:07:06,381 - app.data.transcript_manager - INFO - Using Webshare proxy for transcript fetch
+2025-11-29 04:07:06,382 - urllib3.connectionpool - DEBUG - Starting new HTTPS connection (1): www.youtube.com:443
+2025-11-29 04:07:09,196 - urllib3.connectionpool - DEBUG - https://www.youtube.com:443 "GET /watch?v=lzYq_7tvt3w HTTP/1.1" 200 None
+2025-11-29 04:07:10,093 - urllib3.connectionpool - DEBUG - Resetting dropped connection: www.youtube.com
+2025-11-29 04:07:13,165 - urllib3.connectionpool - DEBUG - https://www.youtube.com:443 "POST /youtubei/v1/player?key=AIzaSyAO_FJ2SlqU8Q4STEHLGCilw_Y9_11qcW8 HTTP/1.1" 200 None
+2025-11-29 04:07:13,227 - urllib3.connectionpool - DEBUG - Resetting dropped connection: www.youtube.com
+2025-11-29 04:07:14,194 - urllib3.connectionpool - DEBUG - https://www.youtube.com:443 "GET /api/timedtext?v=lzYq_7tvt3w&ei=cHEqadrdMpyT1d8PxqPimQo&caps=asr&opi=112496729&xoaf=5&xowf=1&xospf=1&hl=en&ip=0.0.0.0&ipbits=0&expire=1764414432&sparams=ip,ipbits,expire,v,ei,caps,opi,xoaf&signature=B4B0895B995ACA1A4C7467F9DDD742919EE7575B.80540D34AD11FFA6266BB1F72A4C4E1B7F747B01&key=yt8&kind=asr&lang=en&variant=ec HTTP/1.1" 200 None
+2025-11-29 04:07:14,198 - app.data.transcript_manager - INFO - Successfully fetched transcript for video: lzYq_7tvt3w
+2025-11-29 04:07:14,199 - app.data.youtube_metadata_fetcher - INFO - YouTubeMetadataFetcher initialized successfully
+2025-11-29 04:07:14,199 - app.data.youtube_metadata_fetcher - INFO - Making YouTube Data API request for video: lzYq_7tvt3w
+2025-11-29 04:07:14,200 - urllib3.connectionpool - DEBUG - Starting new HTTPS connection (1): www.googleapis.com:443
+2025-11-29 04:07:14,458 - urllib3.connectionpool - DEBUG - https://www.googleapis.com:443 "GET /youtube/v3/videos?part=snippet%2CcontentDetails%2Cstatistics&id=lzYq_7tvt3w&key=AIzaSyCI_fKInrrNdqG53mg8oweLyyoiHzo2eGE HTTP/1.1" 200 None
+2025-11-29 04:07:14,459 - app.data.youtube_metadata_fetcher - INFO - Successfully retrieved video info for lzYq_7tvt3w | Title: '11.26.2025 - A Fall River Icon Recognition - John Ciullo' | Published: 2025-11-26T17:52:18Z | Duration: 12:27 | Views: 617 | Likes: 10 | Comments: 0
+2025-11-29 04:07:14,460 - app.data.transcript_manager - INFO - Retrieved video metadata for lzYq_7tvt3w: 11.26.2025 - A Fall River Icon Recognition - John Ciullo
+2025-11-29 04:07:14,466 - Database_app/data/fr-mirror - INFO - Database write permissions test passed
+2025-11-29 04:07:14,467 - app.data.transcript_manager - INFO - Caching transcript for video lzYq_7tvt3w with category AIAgent.GROK
+2025-11-29 04:07:14,467 - app.data.transcript_manager - INFO - add_youtube_transcript: {'youtube_id': 'lzYq_7tvt3w', 'committee': None, 'category': 'Grok Transcript', 'content_length': 20579}
+2025-11-29 04:07:14,467 - app.data.transcript_manager - INFO - Adding transcript to database: app/data/fr-mirror.db
+2025-11-29 04:07:14,467 - app.data.transcript_manager - INFO - youtube_id: lzYq_7tvt3w
+2025-11-29 04:07:14,467 - app.data.transcript_manager - INFO - Content length: 20579
+2025-11-29 04:07:14,467 - app.data.transcript_manager - INFO - fetch_Date: 2025-11-29T04:07:14.467393
+2025-11-29 04:07:14,467 - app.data.transcript_manager - INFO - Transcripts table exists: True
+2025-11-29 04:07:14,468 - app.data.transcript_manager - INFO - NewCategory: AIAgent.GROK
+2025-11-29 04:07:14,468 - app.data.transcript_manager - INFO - Inserting transcript into database: None, lzYq_7tvt3w, content_length: 20579, 2025-11-29T04:07:14.467393, AIAgent.GROK
+2025-11-29 04:07:14,471 - app.data.transcript_manager - INFO - Successfully inserted transcript with video metadata: title='11.26.2025 - A Fall River Icon Recognition - John Ciullo', duration=12:27, channel='Fall River Government TV', published=2025-11-26T17:52:18Z, view_count=617, like_count=10, comment_count=0 for youtube_id=lzYq_7tvt3w
+2025-11-29 04:07:14,471 - app.data.transcript_manager - INFO - Transcripts in database after insert: 1
+2025-11-29 04:07:14,472 - app.data.transcript_manager - INFO - Added YouTube transcript for video 'lzYq_7tvt3w' (ID: 2)
+2025-11-29 04:07:14,472 - app.main - INFO - Successfully fetched transcript for lzYq_7tvt3w
+2025-11-29 04:07:14,475 - app.main - DEBUG - Removed lzYq_7tvt3w from video_queue
+2025-11-29 04:07:15,475 - app.main - INFO - Fetching transcript for video N2vGeqFZ3OE
+2025-11-29 04:07:15,483 - Database_app/data/fr-mirror - INFO - Database write permissions test passed
+2025-11-29 04:07:15,483 - Database_app/data/fr-mirror - INFO - Database operation: transcript_exists_by_youtube_id - Details: {'youtube_id': 'N2vGeqFZ3OE'}
+2025-11-29 04:07:15,483 - Database_app/data/fr-mirror - INFO - Transcript for YouTube ID 'N2vGeqFZ3OE' exists: False
+2025-11-29 04:07:15,483 - app.data.transcript_manager - INFO - Transcript for video N2vGeqFZ3OE not found in database, fetching from YouTube...
+2025-11-29 04:07:15,483 - app.data.transcript_manager - DEBUG - Proxy username configured: True
+2025-11-29 04:07:15,483 - app.data.transcript_manager - DEBUG - Proxy password configured: True
+2025-11-29 04:07:15,484 - app.data.transcript_manager - INFO - Using Webshare proxy for transcript fetch
+2025-11-29 04:07:15,484 - urllib3.connectionpool - DEBUG - Starting new HTTPS connection (1): www.youtube.com:443
+2025-11-29 04:07:17,288 - urllib3.connectionpool - DEBUG - https://www.youtube.com:443 "GET /watch?v=N2vGeqFZ3OE HTTP/1.1" 200 None
+2025-11-29 04:07:18,130 - urllib3.connectionpool - DEBUG - Resetting dropped connection: www.youtube.com
+2025-11-29 04:07:19,615 - urllib3.connectionpool - DEBUG - https://www.youtube.com:443 "POST /youtubei/v1/player?key=AIzaSyAO_FJ2SlqU8Q4STEHLGCilw_Y9_11qcW8 HTTP/1.1" 200 None
+2025-11-29 04:07:19,630 - urllib3.connectionpool - DEBUG - Resetting dropped connection: www.youtube.com
+2025-11-29 04:07:20,741 - urllib3.connectionpool - DEBUG - https://www.youtube.com:443 "GET /api/timedtext?v=N2vGeqFZ3OE&ei=d3EqaeLjGY7DmLAPr7_DoQ4&caps=asr&opi=112496729&xoaf=5&xowf=1&xospf=1&hl=en&ip=0.0.0.0&ipbits=0&expire=1764414439&sparams=ip,ipbits,expire,v,ei,caps,opi,xoaf&signature=EA8B3655E5EE45CBA3FC0A773472A5C9A71E9D99.202CBD3F6CF635AE2DACFD5D8D8E802909DE3297&key=yt8&kind=asr&lang=en&variant=ec HTTP/1.1" 200 None
+2025-11-29 04:07:20,873 - app.data.transcript_manager - INFO - Successfully fetched transcript for video: N2vGeqFZ3OE
+2025-11-29 04:07:20,874 - app.data.youtube_metadata_fetcher - INFO - YouTubeMetadataFetcher initialized successfully
+2025-11-29 04:07:20,874 - app.data.youtube_metadata_fetcher - INFO - Making YouTube Data API request for video: N2vGeqFZ3OE
+2025-11-29 04:07:20,875 - urllib3.connectionpool - DEBUG - Starting new HTTPS connection (1): www.googleapis.com:443
+2025-11-29 04:07:21,399 - urllib3.connectionpool - DEBUG - https://www.googleapis.com:443 "GET /youtube/v3/videos?part=snippet%2CcontentDetails%2Cstatistics&id=N2vGeqFZ3OE&key=AIzaSyCI_fKInrrNdqG53mg8oweLyyoiHzo2eGE HTTP/1.1" 200 None
+2025-11-29 04:07:21,400 - app.data.youtube_metadata_fetcher - INFO - Successfully retrieved video info for N2vGeqFZ3OE | Title: '11.25.2025 Licensing Board' | Published: 2025-11-26T16:53:53Z | Duration: 34:31 | Views: 37 | Likes: 0 | Comments: 0
+2025-11-29 04:07:21,402 - app.data.transcript_manager - INFO - Retrieved video metadata for N2vGeqFZ3OE: 11.25.2025 Licensing Board
+2025-11-29 04:07:21,409 - Database_app/data/fr-mirror - INFO - Database write permissions test passed
+2025-11-29 04:07:21,410 - app.data.transcript_manager - INFO - Caching transcript for video N2vGeqFZ3OE with category AIAgent.GROK
+2025-11-29 04:07:21,410 - app.data.transcript_manager - INFO - add_youtube_transcript: {'youtube_id': 'N2vGeqFZ3OE', 'committee': None, 'category': 'Grok Transcript', 'content_length': 72135}
+2025-11-29 04:07:21,410 - app.data.transcript_manager - INFO - Adding transcript to database: app/data/fr-mirror.db
+2025-11-29 04:07:21,410 - app.data.transcript_manager - INFO - youtube_id: N2vGeqFZ3OE
+2025-11-29 04:07:21,410 - app.data.transcript_manager - INFO - Content length: 72135
+2025-11-29 04:07:21,410 - app.data.transcript_manager - INFO - fetch_Date: 2025-11-29T04:07:21.410251
+2025-11-29 04:07:21,410 - app.data.transcript_manager - INFO - Transcripts table exists: True
+2025-11-29 04:07:21,410 - app.data.transcript_manager - INFO - NewCategory: AIAgent.GROK
+2025-11-29 04:07:21,410 - app.data.transcript_manager - INFO - Inserting transcript into database: None, N2vGeqFZ3OE, content_length: 72135, 2025-11-29T04:07:21.410251, AIAgent.GROK
+2025-11-29 04:07:21,453 - app.data.transcript_manager - INFO - Successfully inserted transcript with video metadata: title='11.25.2025 Licensing Board', duration=34:31, channel='Fall River Government TV', published=2025-11-26T16:53:53Z, view_count=37, like_count=0, comment_count=0 for youtube_id=N2vGeqFZ3OE
+2025-11-29 04:07:21,454 - app.data.transcript_manager - INFO - Transcripts in database after insert: 1
+2025-11-29 04:07:21,454 - app.data.transcript_manager - INFO - Added YouTube transcript for video 'N2vGeqFZ3OE' (ID: 3)
+2025-11-29 04:07:21,454 - app.main - INFO - Successfully fetched transcript for N2vGeqFZ3OE
+2025-11-29 04:07:21,457 - app.main - DEBUG - Removed N2vGeqFZ3OE from video_queue
+2025-11-29 04:07:22,458 - app.main - INFO - Fetching transcript for video ZbKySDNnObc
+2025-11-29 04:07:22,465 - Database_app/data/fr-mirror - INFO - Database write permissions test passed
+2025-11-29 04:07:22,465 - Database_app/data/fr-mirror - INFO - Database operation: transcript_exists_by_youtube_id - Details: {'youtube_id': 'ZbKySDNnObc'}
+2025-11-29 04:07:22,465 - Database_app/data/fr-mirror - INFO - Transcript for YouTube ID 'ZbKySDNnObc' exists: False
+2025-11-29 04:07:22,465 - app.data.transcript_manager - INFO - Transcript for video ZbKySDNnObc not found in database, fetching from YouTube...
+2025-11-29 04:07:22,465 - app.data.transcript_manager - DEBUG - Proxy username configured: True
+2025-11-29 04:07:22,465 - app.data.transcript_manager - DEBUG - Proxy password configured: True
+2025-11-29 04:07:22,465 - app.data.transcript_manager - INFO - Using Webshare proxy for transcript fetch
+2025-11-29 04:07:22,467 - urllib3.connectionpool - DEBUG - Starting new HTTPS connection (1): www.youtube.com:443
+2025-11-29 04:07:25,851 - urllib3.connectionpool - DEBUG - https://www.youtube.com:443 "GET /watch?v=ZbKySDNnObc HTTP/1.1" 200 None
+2025-11-29 04:07:26,350 - urllib3.connectionpool - DEBUG - Resetting dropped connection: www.youtube.com
+2025-11-29 04:07:29,223 - urllib3.connectionpool - DEBUG - https://www.youtube.com:443 "POST /youtubei/v1/player?key=AIzaSyAO_FJ2SlqU8Q4STEHLGCilw_Y9_11qcW8 HTTP/1.1" 200 None
+2025-11-29 04:07:29,271 - urllib3.connectionpool - DEBUG - Resetting dropped connection: www.youtube.com
+2025-11-29 04:07:33,089 - urllib3.connectionpool - DEBUG - https://www.youtube.com:443 "GET /api/timedtext?v=ZbKySDNnObc&ei=gHEqaervMZ6op-oPrfiM6Qw&caps=asr&opi=112496729&xoaf=5&xowf=1&xospf=1&hl=en&ip=0.0.0.0&ipbits=0&expire=1764414448&sparams=ip,ipbits,expire,v,ei,caps,opi,xoaf&signature=BD1E29AA9ADE7210C4C372A5B383B0184DC40F26.2F05E09634959D4A2EB990CDA1823E96B061FFD9&key=yt8&kind=asr&lang=en HTTP/1.1" 200 None
+2025-11-29 04:07:33,373 - app.data.transcript_manager - INFO - Successfully fetched transcript for video: ZbKySDNnObc
+2025-11-29 04:07:33,373 - app.data.youtube_metadata_fetcher - INFO - YouTubeMetadataFetcher initialized successfully
+2025-11-29 04:07:33,374 - app.data.youtube_metadata_fetcher - INFO - Making YouTube Data API request for video: ZbKySDNnObc
+2025-11-29 04:07:33,375 - urllib3.connectionpool - DEBUG - Starting new HTTPS connection (1): www.googleapis.com:443
+2025-11-29 04:07:33,693 - urllib3.connectionpool - DEBUG - https://www.googleapis.com:443 "GET /youtube/v3/videos?part=snippet%2CcontentDetails%2Cstatistics&id=ZbKySDNnObc&key=AIzaSyCI_fKInrrNdqG53mg8oweLyyoiHzo2eGE HTTP/1.1" 200 None
+2025-11-29 04:07:33,694 - app.data.youtube_metadata_fetcher - INFO - Successfully retrieved video info for ZbKySDNnObc | Title: '11.25.2025 Fall River City Council' | Published: 2025-11-26T02:57:33Z | Duration: 2:50:30 | Views: 349 | Likes: 0 | Comments: 0
+2025-11-29 04:07:33,695 - app.data.transcript_manager - INFO - Retrieved video metadata for ZbKySDNnObc: 11.25.2025 Fall River City Council
+2025-11-29 04:07:33,708 - Database_app/data/fr-mirror - INFO - Database write permissions test passed
+2025-11-29 04:07:33,708 - app.data.transcript_manager - INFO - Caching transcript for video ZbKySDNnObc with category AIAgent.GROK
+2025-11-29 04:07:33,709 - app.data.transcript_manager - INFO - add_youtube_transcript: {'youtube_id': 'ZbKySDNnObc', 'committee': None, 'category': 'Grok Transcript', 'content_length': 381371}
+2025-11-29 04:07:33,709 - app.data.transcript_manager - INFO - Adding transcript to database: app/data/fr-mirror.db
+2025-11-29 04:07:33,709 - app.data.transcript_manager - INFO - youtube_id: ZbKySDNnObc
+2025-11-29 04:07:33,709 - app.data.transcript_manager - INFO - Content length: 381371
+2025-11-29 04:07:33,709 - app.data.transcript_manager - INFO - fetch_Date: 2025-11-29T04:07:33.709296
+2025-11-29 04:07:33,713 - app.data.transcript_manager - INFO - Transcripts table exists: True
+2025-11-29 04:07:33,713 - app.data.transcript_manager - INFO - NewCategory: AIAgent.GROK
+2025-11-29 04:07:33,713 - app.data.transcript_manager - INFO - Inserting transcript into database: None, ZbKySDNnObc, content_length: 381371, 2025-11-29T04:07:33.709296, AIAgent.GROK
+2025-11-29 04:07:33,721 - app.data.transcript_manager - INFO - Successfully inserted transcript with video metadata: title='11.25.2025 Fall River City Council', duration=2:50:30, channel='Fall River Government TV', published=2025-11-26T02:57:33Z, view_count=349, like_count=0, comment_count=0 for youtube_id=ZbKySDNnObc
+2025-11-29 04:07:33,721 - app.data.transcript_manager - INFO - Transcripts in database after insert: 1
+2025-11-29 04:07:33,721 - app.data.transcript_manager - INFO - Added YouTube transcript for video 'ZbKySDNnObc' (ID: 4)
+2025-11-29 04:07:33,722 - app.main - INFO - Successfully fetched transcript for ZbKySDNnObc
+2025-11-29 04:07:33,744 - app.main - DEBUG - Removed ZbKySDNnObc from video_queue
+2025-11-29 04:07:34,745 - app.main - INFO - Fetching transcript for video iJdgxGTd5fk
+2025-11-29 04:07:34,752 - Database_app/data/fr-mirror - INFO - Database write permissions test passed
+2025-11-29 04:07:34,752 - Database_app/data/fr-mirror - INFO - Database operation: transcript_exists_by_youtube_id - Details: {'youtube_id': 'iJdgxGTd5fk'}
+2025-11-29 04:07:34,753 - Database_app/data/fr-mirror - INFO - Transcript for YouTube ID 'iJdgxGTd5fk' exists: False
+2025-11-29 04:07:34,753 - app.data.transcript_manager - INFO - Transcript for video iJdgxGTd5fk not found in database, fetching from YouTube...
+2025-11-29 04:07:34,753 - app.data.transcript_manager - DEBUG - Proxy username configured: True
+2025-11-29 04:07:34,753 - app.data.transcript_manager - DEBUG - Proxy password configured: True
+2025-11-29 04:07:34,753 - app.data.transcript_manager - INFO - Using Webshare proxy for transcript fetch
+2025-11-29 04:07:34,754 - urllib3.connectionpool - DEBUG - Starting new HTTPS connection (1): www.youtube.com:443
+2025-11-29 04:07:37,608 - urllib3.connectionpool - DEBUG - https://www.youtube.com:443 "GET /watch?v=iJdgxGTd5fk HTTP/1.1" 200 None
+2025-11-29 04:07:39,418 - urllib3.connectionpool - DEBUG - Resetting dropped connection: www.youtube.com
+2025-11-29 04:07:41,257 - urllib3.connectionpool - DEBUG - https://www.youtube.com:443 "POST /youtubei/v1/player?key=AIzaSyAO_FJ2SlqU8Q4STEHLGCilw_Y9_11qcW8 HTTP/1.1" 200 None
+2025-11-29 04:07:41,266 - urllib3.connectionpool - DEBUG - Resetting dropped connection: www.youtube.com
+2025-11-29 04:07:43,631 - urllib3.connectionpool - DEBUG - https://www.youtube.com:443 "GET /api/timedtext?v=iJdgxGTd5fk&ei=jXEqabGPBtG_mLAPh62q0AE&caps=asr&opi=112496729&xoaf=5&xowf=1&xospf=1&hl=en&ip=0.0.0.0&ipbits=0&expire=1764414461&sparams=ip,ipbits,expire,v,ei,caps,opi,xoaf&signature=A8B936CD72EEF1AE8A6A2103D89FA5AE9393B5A9.E0271E4DA18B263459B4B3C93E6085970C02934E&key=yt8&kind=asr&lang=en&variant=ec HTTP/1.1" 200 None
+2025-11-29 04:07:43,720 - app.data.transcript_manager - INFO - Successfully fetched transcript for video: iJdgxGTd5fk
+2025-11-29 04:07:43,720 - app.data.youtube_metadata_fetcher - INFO - YouTubeMetadataFetcher initialized successfully
+2025-11-29 04:07:43,721 - app.data.youtube_metadata_fetcher - INFO - Making YouTube Data API request for video: iJdgxGTd5fk
+2025-11-29 04:07:43,722 - urllib3.connectionpool - DEBUG - Starting new HTTPS connection (1): www.googleapis.com:443
+2025-11-29 04:07:44,021 - urllib3.connectionpool - DEBUG - https://www.googleapis.com:443 "GET /youtube/v3/videos?part=snippet%2CcontentDetails%2Cstatistics&id=iJdgxGTd5fk&key=AIzaSyCI_fKInrrNdqG53mg8oweLyyoiHzo2eGE HTTP/1.1" 200 None
+2025-11-29 04:07:44,022 - app.data.youtube_metadata_fetcher - INFO - Successfully retrieved video info for iJdgxGTd5fk | Title: '11.24.2025 Park Board' | Published: 2025-11-25T18:58:01Z | Duration: 34:12 | Views: 84 | Likes: 1 | Comments: 0
+2025-11-29 04:07:44,023 - app.data.transcript_manager - INFO - Retrieved video metadata for iJdgxGTd5fk: 11.24.2025 Park Board
+2025-11-29 04:07:44,032 - Database_app/data/fr-mirror - INFO - Database write permissions test passed
+2025-11-29 04:07:44,032 - app.data.transcript_manager - INFO - Caching transcript for video iJdgxGTd5fk with category AIAgent.GROK
+2025-11-29 04:07:44,032 - app.data.transcript_manager - INFO - add_youtube_transcript: {'youtube_id': 'iJdgxGTd5fk', 'committee': None, 'category': 'Grok Transcript', 'content_length': 88516}
+2025-11-29 04:07:44,032 - app.data.transcript_manager - INFO - Adding transcript to database: app/data/fr-mirror.db
+2025-11-29 04:07:44,032 - app.data.transcript_manager - INFO - youtube_id: iJdgxGTd5fk
+2025-11-29 04:07:44,032 - app.data.transcript_manager - INFO - Content length: 88516
+2025-11-29 04:07:44,033 - app.data.transcript_manager - INFO - fetch_Date: 2025-11-29T04:07:44.032671
+2025-11-29 04:07:44,033 - app.data.transcript_manager - INFO - Transcripts table exists: True
+2025-11-29 04:07:44,033 - app.data.transcript_manager - INFO - NewCategory: AIAgent.GROK
+2025-11-29 04:07:44,033 - app.data.transcript_manager - INFO - Inserting transcript into database: None, iJdgxGTd5fk, content_length: 88516, 2025-11-29T04:07:44.032671, AIAgent.GROK
+2025-11-29 04:07:44,041 - app.data.transcript_manager - INFO - Successfully inserted transcript with video metadata: title='11.24.2025 Park Board', duration=34:12, channel='Fall River Government TV', published=2025-11-25T18:58:01Z, view_count=84, like_count=1, comment_count=0 for youtube_id=iJdgxGTd5fk
+2025-11-29 04:07:44,041 - app.data.transcript_manager - INFO - Transcripts in database after insert: 1
+2025-11-29 04:07:44,041 - app.data.transcript_manager - INFO - Added YouTube transcript for video 'iJdgxGTd5fk' (ID: 5)
+2025-11-29 04:07:44,042 - app.main - INFO - Successfully fetched transcript for iJdgxGTd5fk
+2025-11-29 04:07:44,045 - app.main - DEBUG - Removed iJdgxGTd5fk from video_queue
+2025-11-29 04:07:45,045 - app.main - INFO - Fetching transcript for video idqZ-oJB92s
+2025-11-29 04:07:45,072 - Database_app/data/fr-mirror - INFO - Database write permissions test passed
+2025-11-29 04:07:45,072 - Database_app/data/fr-mirror - INFO - Database operation: transcript_exists_by_youtube_id - Details: {'youtube_id': 'idqZ-oJB92s'}
+2025-11-29 04:07:45,072 - Database_app/data/fr-mirror - INFO - Transcript for YouTube ID 'idqZ-oJB92s' exists: False
+2025-11-29 04:07:45,072 - app.data.transcript_manager - INFO - Transcript for video idqZ-oJB92s not found in database, fetching from YouTube...
+2025-11-29 04:07:45,073 - app.data.transcript_manager - DEBUG - Proxy username configured: True
+2025-11-29 04:07:45,073 - app.data.transcript_manager - DEBUG - Proxy password configured: True
+2025-11-29 04:07:45,073 - app.data.transcript_manager - INFO - Using Webshare proxy for transcript fetch
+2025-11-29 04:07:45,074 - urllib3.connectionpool - DEBUG - Starting new HTTPS connection (1): www.youtube.com:443
+2025-11-29 04:07:47,461 - urllib3.connectionpool - DEBUG - https://www.youtube.com:443 "GET /watch?v=idqZ-oJB92s HTTP/1.1" 200 None
+2025-11-29 04:08:02,287 - urllib3.connectionpool - DEBUG - Resetting dropped connection: www.youtube.com
+2025-11-29 04:08:04,262 - urllib3.connectionpool - DEBUG - https://www.youtube.com:443 "POST /youtubei/v1/player?key=AIzaSyAO_FJ2SlqU8Q4STEHLGCilw_Y9_11qcW8 HTTP/1.1" 200 None
+2025-11-29 04:08:04,283 - urllib3.connectionpool - DEBUG - Resetting dropped connection: www.youtube.com
+2025-11-29 04:08:07,491 - urllib3.connectionpool - DEBUG - https://www.youtube.com:443 "GET /api/timedtext?v=idqZ-oJB92s&ei=o3EqabuJOYKM1d8Pg-2kkAQ&caps=asr&opi=112496729&xoaf=5&xowf=1&xospf=1&hl=en&ip=0.0.0.0&ipbits=0&expire=1764414484&sparams=ip,ipbits,expire,v,ei,caps,opi,xoaf&signature=0427B4A488027E7AAF1508F9D94B750F70B7547A.7ADDFA636AE4105238F7011325BEA8A92FA1BAEA&key=yt8&kind=asr&lang=en HTTP/1.1" 200 None
+2025-11-29 04:08:07,493 - app.data.transcript_manager - INFO - Successfully fetched transcript for video: idqZ-oJB92s
+2025-11-29 04:08:07,493 - app.data.youtube_metadata_fetcher - INFO - YouTubeMetadataFetcher initialized successfully
+2025-11-29 04:08:07,493 - app.data.youtube_metadata_fetcher - INFO - Making YouTube Data API request for video: idqZ-oJB92s
+2025-11-29 04:08:07,494 - urllib3.connectionpool - DEBUG - Starting new HTTPS connection (1): www.googleapis.com:443
+2025-11-29 04:08:07,861 - urllib3.connectionpool - DEBUG - https://www.googleapis.com:443 "GET /youtube/v3/videos?part=snippet%2CcontentDetails%2Cstatistics&id=idqZ-oJB92s&key=AIzaSyCI_fKInrrNdqG53mg8oweLyyoiHzo2eGE HTTP/1.1" 200 None
+2025-11-29 04:08:07,862 - app.data.youtube_metadata_fetcher - INFO - Successfully retrieved video info for idqZ-oJB92s | Title: '11.24.25 Planning Board' | Published: 2025-11-25T13:47:51Z | Duration: 3:07 | Views: 23 | Likes: 0 | Comments: 0
+2025-11-29 04:08:07,863 - app.data.transcript_manager - INFO - Retrieved video metadata for idqZ-oJB92s: 11.24.25 Planning Board
+2025-11-29 04:08:07,869 - Database_app/data/fr-mirror - INFO - Database write permissions test passed
+2025-11-29 04:08:07,869 - app.data.transcript_manager - INFO - Caching transcript for video idqZ-oJB92s with category AIAgent.GROK
+2025-11-29 04:08:07,869 - app.data.transcript_manager - INFO - add_youtube_transcript: {'youtube_id': 'idqZ-oJB92s', 'committee': None, 'category': 'Grok Transcript', 'content_length': 6716}
+2025-11-29 04:08:07,870 - app.data.transcript_manager - INFO - Adding transcript to database: app/data/fr-mirror.db
+2025-11-29 04:08:07,870 - app.data.transcript_manager - INFO - youtube_id: idqZ-oJB92s
+2025-11-29 04:08:07,870 - app.data.transcript_manager - INFO - Content length: 6716
+2025-11-29 04:08:07,870 - app.data.transcript_manager - INFO - fetch_Date: 2025-11-29T04:08:07.870009
+2025-11-29 04:08:07,870 - app.data.transcript_manager - INFO - Transcripts table exists: True
+2025-11-29 04:08:07,870 - app.data.transcript_manager - INFO - NewCategory: AIAgent.GROK
+2025-11-29 04:08:07,871 - app.data.transcript_manager - INFO - Inserting transcript into database: None, idqZ-oJB92s, content_length: 6716, 2025-11-29T04:08:07.870009, AIAgent.GROK
+2025-11-29 04:08:07,874 - app.data.transcript_manager - INFO - Successfully inserted transcript with video metadata: title='11.24.25 Planning Board', duration=3:07, channel='Fall River Government TV', published=2025-11-25T13:47:51Z, view_count=23, like_count=0, comment_count=0 for youtube_id=idqZ-oJB92s
+2025-11-29 04:08:07,875 - app.data.transcript_manager - INFO - Transcripts in database after insert: 1
+2025-11-29 04:08:07,875 - app.data.transcript_manager - INFO - Added YouTube transcript for video 'idqZ-oJB92s' (ID: 6)
+2025-11-29 04:08:07,876 - app.main - INFO - Successfully fetched transcript for idqZ-oJB92s
+2025-11-29 04:08:07,878 - app.main - DEBUG - Removed idqZ-oJB92s from video_queue
+2025-11-29 04:08:08,879 - app.main - INFO - Fetching transcript for video 0IaKkQENgKU
+2025-11-29 04:08:08,886 - Database_app/data/fr-mirror - INFO - Database write permissions test passed
+2025-11-29 04:08:08,886 - Database_app/data/fr-mirror - INFO - Database operation: transcript_exists_by_youtube_id - Details: {'youtube_id': '0IaKkQENgKU'}
+2025-11-29 04:08:08,887 - Database_app/data/fr-mirror - INFO - Transcript for YouTube ID '0IaKkQENgKU' exists: False
+2025-11-29 04:08:08,887 - app.data.transcript_manager - INFO - Transcript for video 0IaKkQENgKU not found in database, fetching from YouTube...
+2025-11-29 04:08:08,888 - app.data.transcript_manager - DEBUG - Proxy username configured: True
+2025-11-29 04:08:08,888 - app.data.transcript_manager - DEBUG - Proxy password configured: True
+2025-11-29 04:08:08,888 - app.data.transcript_manager - INFO - Using Webshare proxy for transcript fetch
+2025-11-29 04:08:08,889 - urllib3.connectionpool - DEBUG - Starting new HTTPS connection (1): www.youtube.com:443
+2025-11-29 04:08:11,239 - urllib3.connectionpool - DEBUG - https://www.youtube.com:443 "GET /watch?v=0IaKkQENgKU HTTP/1.1" 200 None
+2025-11-29 04:08:11,639 - urllib3.connectionpool - DEBUG - Resetting dropped connection: www.youtube.com
+2025-11-29 04:08:17,472 - urllib3.connectionpool - DEBUG - https://www.youtube.com:443 "POST /youtubei/v1/player?key=AIzaSyAO_FJ2SlqU8Q4STEHLGCilw_Y9_11qcW8 HTTP/1.1" 200 None
+2025-11-29 04:08:17,499 - urllib3.connectionpool - DEBUG - Resetting dropped connection: www.youtube.com
+2025-11-29 04:08:21,484 - urllib3.connectionpool - DEBUG - https://www.youtube.com:443 "GET /api/timedtext?v=0IaKkQENgKU&ei=sXEqaamrCPqhvdIP64bhyQI&caps=asr&opi=112496729&xoaf=5&xowf=1&xospf=1&hl=en&ip=0.0.0.0&ipbits=0&expire=1764414497&sparams=ip,ipbits,expire,v,ei,caps,opi,xoaf&signature=72D487ECB1A13E1C5CB58A8D88E83E6B8307B58F.23DACB2158F9776DB8AB7C1A9510B8617CAE26B5&key=yt8&kind=asr&lang=en HTTP/1.1" 200 None
+2025-11-29 04:08:21,541 - app.data.transcript_manager - INFO - Successfully fetched transcript for video: 0IaKkQENgKU
+2025-11-29 04:08:21,541 - app.data.youtube_metadata_fetcher - INFO - YouTubeMetadataFetcher initialized successfully
+2025-11-29 04:08:21,541 - app.data.youtube_metadata_fetcher - INFO - Making YouTube Data API request for video: 0IaKkQENgKU
+2025-11-29 04:08:21,542 - urllib3.connectionpool - DEBUG - Starting new HTTPS connection (1): www.googleapis.com:443
+2025-11-29 04:08:21,754 - urllib3.connectionpool - DEBUG - https://www.googleapis.com:443 "GET /youtube/v3/videos?part=snippet%2CcontentDetails%2Cstatistics&id=0IaKkQENgKU&key=AIzaSyCI_fKInrrNdqG53mg8oweLyyoiHzo2eGE HTTP/1.1" 200 None
+2025-11-29 04:08:21,755 - app.data.youtube_metadata_fetcher - INFO - Successfully retrieved video info for 0IaKkQENgKU | Title: '11.20.2025 Redevelopment Authority' | Published: 2025-11-21T15:44:48Z | Duration: 39:44 | Views: 45 | Likes: 0 | Comments: 0
+2025-11-29 04:08:21,756 - app.data.transcript_manager - INFO - Retrieved video metadata for 0IaKkQENgKU: 11.20.2025 Redevelopment Authority
+2025-11-29 04:08:21,765 - Database_app/data/fr-mirror - INFO - Database write permissions test passed
+2025-11-29 04:08:21,765 - app.data.transcript_manager - INFO - Caching transcript for video 0IaKkQENgKU with category AIAgent.GROK
+2025-11-29 04:08:21,765 - app.data.transcript_manager - INFO - add_youtube_transcript: {'youtube_id': '0IaKkQENgKU', 'committee': None, 'category': 'Grok Transcript', 'content_length': 85345}
+2025-11-29 04:08:21,765 - app.data.transcript_manager - INFO - Adding transcript to database: app/data/fr-mirror.db
+2025-11-29 04:08:21,765 - app.data.transcript_manager - INFO - youtube_id: 0IaKkQENgKU
+2025-11-29 04:08:21,766 - app.data.transcript_manager - INFO - Content length: 85345
+2025-11-29 04:08:21,766 - app.data.transcript_manager - INFO - fetch_Date: 2025-11-29T04:08:21.765633
+2025-11-29 04:08:21,766 - app.data.transcript_manager - INFO - Transcripts table exists: True
+2025-11-29 04:08:21,766 - app.data.transcript_manager - INFO - NewCategory: AIAgent.GROK
+2025-11-29 04:08:21,766 - app.data.transcript_manager - INFO - Inserting transcript into database: None, 0IaKkQENgKU, content_length: 85345, 2025-11-29T04:08:21.765633, AIAgent.GROK
+2025-11-29 04:08:21,770 - app.data.transcript_manager - INFO - Successfully inserted transcript with video metadata: title='11.20.2025 Redevelopment Authority', duration=39:44, channel='Fall River Government TV', published=2025-11-21T15:44:48Z, view_count=45, like_count=0, comment_count=0 for youtube_id=0IaKkQENgKU
+2025-11-29 04:08:21,770 - app.data.transcript_manager - INFO - Transcripts in database after insert: 1
+2025-11-29 04:08:21,770 - app.data.transcript_manager - INFO - Added YouTube transcript for video '0IaKkQENgKU' (ID: 7)
+2025-11-29 04:08:21,771 - app.main - INFO - Successfully fetched transcript for 0IaKkQENgKU
+2025-11-29 04:08:21,795 - app.main - DEBUG - Removed 0IaKkQENgKU from video_queue
+2025-11-29 04:08:22,796 - app.main - INFO - Fetching transcript for video ZvGlIH_YzoM
+2025-11-29 04:08:22,803 - Database_app/data/fr-mirror - INFO - Database write permissions test passed
+2025-11-29 04:08:22,803 - Database_app/data/fr-mirror - INFO - Database operation: transcript_exists_by_youtube_id - Details: {'youtube_id': 'ZvGlIH_YzoM'}
+2025-11-29 04:08:22,803 - Database_app/data/fr-mirror - INFO - Transcript for YouTube ID 'ZvGlIH_YzoM' exists: False
+2025-11-29 04:08:22,803 - app.data.transcript_manager - INFO - Transcript for video ZvGlIH_YzoM not found in database, fetching from YouTube...
+2025-11-29 04:08:22,803 - app.data.transcript_manager - DEBUG - Proxy username configured: True
+2025-11-29 04:08:22,804 - app.data.transcript_manager - DEBUG - Proxy password configured: True
+2025-11-29 04:08:22,804 - app.data.transcript_manager - INFO - Using Webshare proxy for transcript fetch
+2025-11-29 04:08:22,805 - urllib3.connectionpool - DEBUG - Starting new HTTPS connection (1): www.youtube.com:443
+2025-11-29 04:08:24,971 - urllib3.connectionpool - DEBUG - https://www.youtube.com:443 "GET /watch?v=ZvGlIH_YzoM HTTP/1.1" 200 None
+2025-11-29 04:08:25,344 - urllib3.connectionpool - DEBUG - Resetting dropped connection: www.youtube.com
+2025-11-29 04:08:27,369 - urllib3.connectionpool - DEBUG - https://www.youtube.com:443 "POST /youtubei/v1/player?key=AIzaSyAO_FJ2SlqU8Q4STEHLGCilw_Y9_11qcW8 HTTP/1.1" 200 None
+2025-11-29 04:08:27,380 - urllib3.connectionpool - DEBUG - Resetting dropped connection: www.youtube.com
+2025-11-29 04:08:29,420 - urllib3.connectionpool - DEBUG - https://www.youtube.com:443 "GET /api/timedtext?v=ZvGlIH_YzoM&ei=u3EqaYTgA7mgrfcP9OityQ4&caps=asr&opi=112496729&xoaf=5&xowf=1&xospf=1&hl=en&ip=0.0.0.0&ipbits=0&expire=1764414507&sparams=ip,ipbits,expire,v,ei,caps,opi,xoaf&signature=3DD1690D5191A4E74E65B7F4E45F42212B8F8F01.39FCB4B99ADFA7B0BEA8E2B841E75B81A3CED16B&key=yt8&kind=asr&lang=en&variant=ec HTTP/1.1" 200 None
+2025-11-29 04:08:29,547 - app.data.transcript_manager - INFO - Successfully fetched transcript for video: ZvGlIH_YzoM
+2025-11-29 04:08:29,547 - app.data.youtube_metadata_fetcher - INFO - YouTubeMetadataFetcher initialized successfully
+2025-11-29 04:08:29,547 - app.data.youtube_metadata_fetcher - INFO - Making YouTube Data API request for video: ZvGlIH_YzoM
+2025-11-29 04:08:29,549 - urllib3.connectionpool - DEBUG - Starting new HTTPS connection (1): www.googleapis.com:443
+2025-11-29 04:08:30,089 - urllib3.connectionpool - DEBUG - https://www.googleapis.com:443 "GET /youtube/v3/videos?part=snippet%2CcontentDetails%2Cstatistics&id=ZvGlIH_YzoM&key=AIzaSyCI_fKInrrNdqG53mg8oweLyyoiHzo2eGE HTTP/1.1" 200 None
+2025-11-29 04:08:30,089 - app.data.youtube_metadata_fetcher - INFO - Successfully retrieved video info for ZvGlIH_YzoM | Title: '11.20.2025 Zoning Board of Appeals' | Published: 2025-11-21T15:43:19Z | Duration: 1:30:07 | Views: 108 | Likes: 1 | Comments: 0
+2025-11-29 04:08:30,091 - app.data.transcript_manager - INFO - Retrieved video metadata for ZvGlIH_YzoM: 11.20.2025 Zoning Board of Appeals
+2025-11-29 04:08:30,101 - Database_app/data/fr-mirror - INFO - Database write permissions test passed
+2025-11-29 04:08:30,101 - app.data.transcript_manager - INFO - Caching transcript for video ZvGlIH_YzoM with category AIAgent.GROK
+2025-11-29 04:08:30,101 - app.data.transcript_manager - INFO - add_youtube_transcript: {'youtube_id': 'ZvGlIH_YzoM', 'committee': None, 'category': 'Grok Transcript', 'content_length': 205362}
+2025-11-29 04:08:30,101 - app.data.transcript_manager - INFO - Adding transcript to database: app/data/fr-mirror.db
+2025-11-29 04:08:30,102 - app.data.transcript_manager - INFO - youtube_id: ZvGlIH_YzoM
+2025-11-29 04:08:30,102 - app.data.transcript_manager - INFO - Content length: 205362
+2025-11-29 04:08:30,102 - app.data.transcript_manager - INFO - fetch_Date: 2025-11-29T04:08:30.101895
+2025-11-29 04:08:30,102 - app.data.transcript_manager - INFO - Transcripts table exists: True
+2025-11-29 04:08:30,103 - app.data.transcript_manager - INFO - NewCategory: AIAgent.GROK
+2025-11-29 04:08:30,103 - app.data.transcript_manager - INFO - Inserting transcript into database: None, ZvGlIH_YzoM, content_length: 205362, 2025-11-29T04:08:30.101895, AIAgent.GROK
+2025-11-29 04:08:30,128 - app.data.transcript_manager - INFO - Successfully inserted transcript with video metadata: title='11.20.2025 Zoning Board of Appeals', duration=1:30:07, channel='Fall River Government TV', published=2025-11-21T15:43:19Z, view_count=108, like_count=1, comment_count=0 for youtube_id=ZvGlIH_YzoM
+2025-11-29 04:08:30,129 - app.data.transcript_manager - INFO - Transcripts in database after insert: 1
+2025-11-29 04:08:30,129 - app.data.transcript_manager - INFO - Added YouTube transcript for video 'ZvGlIH_YzoM' (ID: 8)
+2025-11-29 04:08:30,130 - app.main - INFO - Successfully fetched transcript for ZvGlIH_YzoM
+2025-11-29 04:08:30,133 - app.main - DEBUG - Removed ZvGlIH_YzoM from video_queue
+2025-11-29 04:08:31,133 - app.main - INFO - Fetching transcript for video ESM3f3f-pWQ
+2025-11-29 04:08:31,140 - Database_app/data/fr-mirror - INFO - Database write permissions test passed
+2025-11-29 04:08:31,140 - Database_app/data/fr-mirror - INFO - Database operation: transcript_exists_by_youtube_id - Details: {'youtube_id': 'ESM3f3f-pWQ'}
+2025-11-29 04:08:31,141 - Database_app/data/fr-mirror - INFO - Transcript for YouTube ID 'ESM3f3f-pWQ' exists: False
+2025-11-29 04:08:31,141 - app.data.transcript_manager - INFO - Transcript for video ESM3f3f-pWQ not found in database, fetching from YouTube...
+2025-11-29 04:08:31,141 - app.data.transcript_manager - DEBUG - Proxy username configured: True
+2025-11-29 04:08:31,141 - app.data.transcript_manager - DEBUG - Proxy password configured: True
+2025-11-29 04:08:31,141 - app.data.transcript_manager - INFO - Using Webshare proxy for transcript fetch
+2025-11-29 04:08:31,143 - urllib3.connectionpool - DEBUG - Starting new HTTPS connection (1): www.youtube.com:443
+2025-11-29 04:08:34,011 - urllib3.connectionpool - DEBUG - https://www.youtube.com:443 "GET /watch?v=ESM3f3f-pWQ HTTP/1.1" 200 None
+2025-11-29 04:08:34,535 - urllib3.connectionpool - DEBUG - Resetting dropped connection: www.youtube.com
+2025-11-29 04:08:37,446 - urllib3.connectionpool - DEBUG - https://www.youtube.com:443 "POST /youtubei/v1/player?key=AIzaSyAO_FJ2SlqU8Q4STEHLGCilw_Y9_11qcW8 HTTP/1.1" 200 None
+2025-11-29 04:08:37,530 - urllib3.connectionpool - DEBUG - Resetting dropped connection: www.youtube.com
+2025-11-29 04:08:39,706 - urllib3.connectionpool - DEBUG - https://www.youtube.com:443 "GET /api/timedtext?v=ESM3f3f-pWQ&ei=xXEqacTfB-L4vdIP57a3wQg&caps=asr&opi=112496729&xoaf=5&xowf=1&xospf=1&hl=en&ip=0.0.0.0&ipbits=0&expire=1764414517&sparams=ip,ipbits,expire,v,ei,caps,opi,xoaf&signature=96E08DD65171274DD4A6CB7C08337CFBEEDAE383.59E1D3E55B63EF4CAD20DA5ADDDC14BD83A379D3&key=yt8&kind=asr&lang=en&variant=ec HTTP/1.1" 200 None
+2025-11-29 04:08:39,721 - app.data.transcript_manager - INFO - Successfully fetched transcript for video: ESM3f3f-pWQ
+2025-11-29 04:08:39,722 - app.data.youtube_metadata_fetcher - INFO - YouTubeMetadataFetcher initialized successfully
+2025-11-29 04:08:39,722 - app.data.youtube_metadata_fetcher - INFO - Making YouTube Data API request for video: ESM3f3f-pWQ
+2025-11-29 04:08:39,722 - urllib3.connectionpool - DEBUG - Starting new HTTPS connection (1): www.googleapis.com:443
+2025-11-29 04:08:40,429 - urllib3.connectionpool - DEBUG - https://www.googleapis.com:443 "GET /youtube/v3/videos?part=snippet%2CcontentDetails%2Cstatistics&id=ESM3f3f-pWQ&key=AIzaSyCI_fKInrrNdqG53mg8oweLyyoiHzo2eGE HTTP/1.1" 200 None
+2025-11-29 04:08:40,430 - app.data.youtube_metadata_fetcher - INFO - Successfully retrieved video info for ESM3f3f-pWQ | Title: '11.19.2025 Traffic Board' | Published: 2025-11-19T21:54:51Z | Duration: 21:02 | Views: 54 | Likes: 0 | Comments: 0
+2025-11-29 04:08:40,431 - app.data.transcript_manager - INFO - Retrieved video metadata for ESM3f3f-pWQ: 11.19.2025 Traffic Board
+2025-11-29 04:08:40,438 - Database_app/data/fr-mirror - INFO - Database write permissions test passed
+2025-11-29 04:08:40,438 - app.data.transcript_manager - INFO - Caching transcript for video ESM3f3f-pWQ with category AIAgent.GROK
+2025-11-29 04:08:40,439 - app.data.transcript_manager - INFO - add_youtube_transcript: {'youtube_id': 'ESM3f3f-pWQ', 'committee': None, 'category': 'Grok Transcript', 'content_length': 44251}
+2025-11-29 04:08:40,439 - app.data.transcript_manager - INFO - Adding transcript to database: app/data/fr-mirror.db
+2025-11-29 04:08:40,439 - app.data.transcript_manager - INFO - youtube_id: ESM3f3f-pWQ
+2025-11-29 04:08:40,439 - app.data.transcript_manager - INFO - Content length: 44251
+2025-11-29 04:08:40,439 - app.data.transcript_manager - INFO - fetch_Date: 2025-11-29T04:08:40.439283
+2025-11-29 04:08:40,440 - app.data.transcript_manager - INFO - Transcripts table exists: True
+2025-11-29 04:08:40,440 - app.data.transcript_manager - INFO - NewCategory: AIAgent.GROK
+2025-11-29 04:08:40,440 - app.data.transcript_manager - INFO - Inserting transcript into database: None, ESM3f3f-pWQ, content_length: 44251, 2025-11-29T04:08:40.439283, AIAgent.GROK
+2025-11-29 04:08:40,444 - app.data.transcript_manager - INFO - Successfully inserted transcript with video metadata: title='11.19.2025 Traffic Board', duration=21:02, channel='Fall River Government TV', published=2025-11-19T21:54:51Z, view_count=54, like_count=0, comment_count=0 for youtube_id=ESM3f3f-pWQ
+2025-11-29 04:08:40,444 - app.data.transcript_manager - INFO - Transcripts in database after insert: 1
+2025-11-29 04:08:40,444 - app.data.transcript_manager - INFO - Added YouTube transcript for video 'ESM3f3f-pWQ' (ID: 9)
+2025-11-29 04:08:40,445 - app.main - INFO - Successfully fetched transcript for ESM3f3f-pWQ
+2025-11-29 04:08:40,448 - app.main - DEBUG - Removed ESM3f3f-pWQ from video_queue
+2025-11-29 04:08:41,448 - app.main - INFO - Fetching transcript for video dHp63wKetnM
+2025-11-29 04:08:41,488 - Database_app/data/fr-mirror - INFO - Database write permissions test passed
+2025-11-29 04:08:41,489 - Database_app/data/fr-mirror - INFO - Database operation: transcript_exists_by_youtube_id - Details: {'youtube_id': 'dHp63wKetnM'}
+2025-11-29 04:08:41,489 - Database_app/data/fr-mirror - INFO - Transcript for YouTube ID 'dHp63wKetnM' exists: False
+2025-11-29 04:08:41,489 - app.data.transcript_manager - INFO - Transcript for video dHp63wKetnM not found in database, fetching from YouTube...
+2025-11-29 04:08:41,490 - app.data.transcript_manager - DEBUG - Proxy username configured: True
+2025-11-29 04:08:41,490 - app.data.transcript_manager - DEBUG - Proxy password configured: True
+2025-11-29 04:08:41,490 - app.data.transcript_manager - INFO - Using Webshare proxy for transcript fetch
+2025-11-29 04:08:41,492 - urllib3.connectionpool - DEBUG - Starting new HTTPS connection (1): www.youtube.com:443
+2025-11-29 04:08:43,623 - urllib3.connectionpool - DEBUG - https://www.youtube.com:443 "GET /watch?v=dHp63wKetnM HTTP/1.1" 200 None
+2025-11-29 04:08:44,209 - urllib3.connectionpool - DEBUG - Resetting dropped connection: www.youtube.com
+2025-11-29 04:08:46,825 - urllib3.connectionpool - DEBUG - https://www.youtube.com:443 "POST /youtubei/v1/player?key=AIzaSyAO_FJ2SlqU8Q4STEHLGCilw_Y9_11qcW8 HTTP/1.1" 200 None
+2025-11-29 04:08:46,856 - urllib3.connectionpool - DEBUG - Resetting dropped connection: www.youtube.com
+2025-11-29 04:08:49,519 - urllib3.connectionpool - DEBUG - https://www.youtube.com:443 "GET /api/timedtext?v=dHp63wKetnM&ei=znEqaZGsHoaQhcIPqLLtwQc&caps=asr&opi=112496729&xoaf=5&xowf=1&xospf=1&hl=en&ip=0.0.0.0&ipbits=0&expire=1764414526&sparams=ip,ipbits,expire,v,ei,caps,opi,xoaf&signature=772A2C26882AA644A3D1F50898D9C29367AEDE5E.CFE64D2314B6AD04E5D42ECF9E24B7FC9EDCC3A2&key=yt8&kind=asr&lang=en HTTP/1.1" 200 None
+2025-11-29 04:08:49,619 - app.data.transcript_manager - INFO - Successfully fetched transcript for video: dHp63wKetnM
+2025-11-29 04:08:49,619 - app.data.youtube_metadata_fetcher - INFO - YouTubeMetadataFetcher initialized successfully
+2025-11-29 04:08:49,619 - app.data.youtube_metadata_fetcher - INFO - Making YouTube Data API request for video: dHp63wKetnM
+2025-11-29 04:08:49,620 - urllib3.connectionpool - DEBUG - Starting new HTTPS connection (1): www.googleapis.com:443
+2025-11-29 04:08:50,159 - urllib3.connectionpool - DEBUG - https://www.googleapis.com:443 "GET /youtube/v3/videos?part=snippet%2CcontentDetails%2Cstatistics&id=dHp63wKetnM&key=AIzaSyCI_fKInrrNdqG53mg8oweLyyoiHzo2eGE HTTP/1.1" 200 None
+2025-11-29 04:08:50,160 - app.data.youtube_metadata_fetcher - INFO - Successfully retrieved video info for dHp63wKetnM | Title: '11.18.2025 Historical Commission' | Published: 2025-11-19T16:52:17Z | Duration: 1:51:07 | Views: 69 | Likes: 1 | Comments: 0
+2025-11-29 04:08:50,161 - app.data.transcript_manager - INFO - Retrieved video metadata for dHp63wKetnM: 11.18.2025 Historical Commission
+2025-11-29 04:08:50,172 - Database_app/data/fr-mirror - INFO - Database write permissions test passed
+2025-11-29 04:08:50,172 - app.data.transcript_manager - INFO - Caching transcript for video dHp63wKetnM with category AIAgent.GROK
+2025-11-29 04:08:50,172 - app.data.transcript_manager - INFO - add_youtube_transcript: {'youtube_id': 'dHp63wKetnM', 'committee': None, 'category': 'Grok Transcript', 'content_length': 235020}
+2025-11-29 04:08:50,172 - app.data.transcript_manager - INFO - Adding transcript to database: app/data/fr-mirror.db
+2025-11-29 04:08:50,172 - app.data.transcript_manager - INFO - youtube_id: dHp63wKetnM
+2025-11-29 04:08:50,172 - app.data.transcript_manager - INFO - Content length: 235020
+2025-11-29 04:08:50,172 - app.data.transcript_manager - INFO - fetch_Date: 2025-11-29T04:08:50.172480
+2025-11-29 04:08:50,173 - app.data.transcript_manager - INFO - Transcripts table exists: True
+2025-11-29 04:08:50,173 - app.data.transcript_manager - INFO - NewCategory: AIAgent.GROK
+2025-11-29 04:08:50,173 - app.data.transcript_manager - INFO - Inserting transcript into database: None, dHp63wKetnM, content_length: 235020, 2025-11-29T04:08:50.172480, AIAgent.GROK
+2025-11-29 04:08:50,178 - app.data.transcript_manager - INFO - Successfully inserted transcript with video metadata: title='11.18.2025 Historical Commission', duration=1:51:07, channel='Fall River Government TV', published=2025-11-19T16:52:17Z, view_count=69, like_count=1, comment_count=0 for youtube_id=dHp63wKetnM
+2025-11-29 04:08:50,179 - app.data.transcript_manager - INFO - Transcripts in database after insert: 1
+2025-11-29 04:08:50,179 - app.data.transcript_manager - INFO - Added YouTube transcript for video 'dHp63wKetnM' (ID: 10)
+2025-11-29 04:08:50,181 - app.main - INFO - Successfully fetched transcript for dHp63wKetnM
+2025-11-29 04:08:50,183 - app.main - DEBUG - Removed dHp63wKetnM from video_queue
+2025-11-29 04:08:51,184 - app.main - INFO - Fetching transcript for video EQxH-w0TyjQ
+2025-11-29 04:08:51,206 - Database_app/data/fr-mirror - INFO - Database write permissions test passed
+2025-11-29 04:08:51,207 - Database_app/data/fr-mirror - INFO - Database operation: transcript_exists_by_youtube_id - Details: {'youtube_id': 'EQxH-w0TyjQ'}
+2025-11-29 04:08:51,207 - Database_app/data/fr-mirror - INFO - Transcript for YouTube ID 'EQxH-w0TyjQ' exists: False
+2025-11-29 04:08:51,207 - app.data.transcript_manager - INFO - Transcript for video EQxH-w0TyjQ not found in database, fetching from YouTube...
+2025-11-29 04:08:51,207 - app.data.transcript_manager - DEBUG - Proxy username configured: True
+2025-11-29 04:08:51,207 - app.data.transcript_manager - DEBUG - Proxy password configured: True
+2025-11-29 04:08:51,207 - app.data.transcript_manager - INFO - Using Webshare proxy for transcript fetch
+2025-11-29 04:08:51,209 - urllib3.connectionpool - DEBUG - Starting new HTTPS connection (1): www.youtube.com:443
+2025-11-29 04:08:55,366 - urllib3.connectionpool - DEBUG - https://www.youtube.com:443 "GET /watch?v=EQxH-w0TyjQ HTTP/1.1" 200 None
+2025-11-29 04:08:55,713 - urllib3.connectionpool - DEBUG - Resetting dropped connection: www.youtube.com
+2025-11-29 04:08:59,292 - urllib3.connectionpool - DEBUG - https://www.youtube.com:443 "POST /youtubei/v1/player?key=AIzaSyAO_FJ2SlqU8Q4STEHLGCilw_Y9_11qcW8 HTTP/1.1" 200 None
+2025-11-29 04:08:59,435 - urllib3.connectionpool - DEBUG - Resetting dropped connection: www.youtube.com
+2025-11-29 04:09:00,914 - urllib3.connectionpool - DEBUG - https://www.youtube.com:443 "GET /api/timedtext?v=EQxH-w0TyjQ&ei=2nEqadS9Jd209fwP0LX_2AI&caps=asr&opi=112496729&xoaf=5&xowf=1&xospf=1&hl=en&ip=0.0.0.0&ipbits=0&expire=1764414538&sparams=ip,ipbits,expire,v,ei,caps,opi,xoaf&signature=77008381526C8B38607BB2CABA38BB10736A0BB3.B3330C4AE0FFF7F8B2B900680F2341EBADCAFDF5&key=yt8&kind=asr&lang=en HTTP/1.1" 200 None
+2025-11-29 04:09:00,942 - app.data.transcript_manager - INFO - Successfully fetched transcript for video: EQxH-w0TyjQ
+2025-11-29 04:09:00,942 - app.data.youtube_metadata_fetcher - INFO - YouTubeMetadataFetcher initialized successfully
+2025-11-29 04:09:00,942 - app.data.youtube_metadata_fetcher - INFO - Making YouTube Data API request for video: EQxH-w0TyjQ
+2025-11-29 04:09:00,943 - urllib3.connectionpool - DEBUG - Starting new HTTPS connection (1): www.googleapis.com:443
+2025-11-29 04:09:01,412 - urllib3.connectionpool - DEBUG - https://www.googleapis.com:443 "GET /youtube/v3/videos?part=snippet%2CcontentDetails%2Cstatistics&id=EQxH-w0TyjQ&key=AIzaSyCI_fKInrrNdqG53mg8oweLyyoiHzo2eGE HTTP/1.1" 200 None
+2025-11-29 04:09:01,413 - app.data.youtube_metadata_fetcher - INFO - Successfully retrieved video info for EQxH-w0TyjQ | Title: '11.19.2025 Board of Assessors' | Published: 2025-11-19T16:34:36Z | Duration: 6:24 | Views: 15 | Likes: 0 | Comments: 0
+2025-11-29 04:09:01,414 - app.data.transcript_manager - INFO - Retrieved video metadata for EQxH-w0TyjQ: 11.19.2025 Board of Assessors
+2025-11-29 04:09:01,443 - Database_app/data/fr-mirror - INFO - Database write permissions test passed
+2025-11-29 04:09:01,443 - app.data.transcript_manager - INFO - Caching transcript for video EQxH-w0TyjQ with category AIAgent.GROK
+2025-11-29 04:09:01,443 - app.data.transcript_manager - INFO - add_youtube_transcript: {'youtube_id': 'EQxH-w0TyjQ', 'committee': None, 'category': 'Grok Transcript', 'content_length': 8551}
+2025-11-29 04:09:01,443 - app.data.transcript_manager - INFO - Adding transcript to database: app/data/fr-mirror.db
+2025-11-29 04:09:01,443 - app.data.transcript_manager - INFO - youtube_id: EQxH-w0TyjQ
+2025-11-29 04:09:01,444 - app.data.transcript_manager - INFO - Content length: 8551
+2025-11-29 04:09:01,444 - app.data.transcript_manager - INFO - fetch_Date: 2025-11-29T04:09:01.443720
+2025-11-29 04:09:01,444 - app.data.transcript_manager - INFO - Transcripts table exists: True
+2025-11-29 04:09:01,444 - app.data.transcript_manager - INFO - NewCategory: AIAgent.GROK
+2025-11-29 04:09:01,444 - app.data.transcript_manager - INFO - Inserting transcript into database: None, EQxH-w0TyjQ, content_length: 8551, 2025-11-29T04:09:01.443720, AIAgent.GROK
+2025-11-29 04:09:01,457 - app.data.transcript_manager - INFO - Successfully inserted transcript with video metadata: title='11.19.2025 Board of Assessors', duration=6:24, channel='Fall River Government TV', published=2025-11-19T16:34:36Z, view_count=15, like_count=0, comment_count=0 for youtube_id=EQxH-w0TyjQ
+2025-11-29 04:09:01,458 - app.data.transcript_manager - INFO - Transcripts in database after insert: 1
+2025-11-29 04:09:01,458 - app.data.transcript_manager - INFO - Added YouTube transcript for video 'EQxH-w0TyjQ' (ID: 11)
+2025-11-29 04:09:01,460 - app.main - INFO - Successfully fetched transcript for EQxH-w0TyjQ
+2025-11-29 04:09:01,462 - app.main - DEBUG - Removed EQxH-w0TyjQ from video_queue
+2025-11-29 04:09:02,463 - app.main - INFO - Fetching transcript for video eHJqipK431Q
+2025-11-29 04:09:02,488 - Database_app/data/fr-mirror - INFO - Database write permissions test passed
+2025-11-29 04:09:02,488 - Database_app/data/fr-mirror - INFO - Database operation: transcript_exists_by_youtube_id - Details: {'youtube_id': 'eHJqipK431Q'}
+2025-11-29 04:09:02,488 - Database_app/data/fr-mirror - INFO - Transcript for YouTube ID 'eHJqipK431Q' exists: False
+2025-11-29 04:09:02,488 - app.data.transcript_manager - INFO - Transcript for video eHJqipK431Q not found in database, fetching from YouTube...
+2025-11-29 04:09:02,488 - app.data.transcript_manager - DEBUG - Proxy username configured: True
+2025-11-29 04:09:02,488 - app.data.transcript_manager - DEBUG - Proxy password configured: True
+2025-11-29 04:09:02,489 - app.data.transcript_manager - INFO - Using Webshare proxy for transcript fetch
+2025-11-29 04:09:02,489 - urllib3.connectionpool - DEBUG - Starting new HTTPS connection (1): www.youtube.com:443
+2025-11-29 04:09:04,874 - urllib3.connectionpool - DEBUG - https://www.youtube.com:443 "GET /watch?v=eHJqipK431Q HTTP/1.1" 200 None
+2025-11-29 04:09:05,688 - urllib3.connectionpool - DEBUG - Resetting dropped connection: www.youtube.com
+2025-11-29 04:09:07,306 - urllib3.connectionpool - DEBUG - https://www.youtube.com:443 "POST /youtubei/v1/player?key=AIzaSyAO_FJ2SlqU8Q4STEHLGCilw_Y9_11qcW8 HTTP/1.1" 200 None
+2025-11-29 04:09:07,329 - urllib3.connectionpool - DEBUG - Resetting dropped connection: www.youtube.com
+2025-11-29 04:09:10,518 - urllib3.connectionpool - DEBUG - https://www.youtube.com:443 "GET /api/timedtext?v=eHJqipK431Q&ei=43EqafvLBN2np-oPsfrm2Qs&caps=asr&opi=112496729&xoaf=5&xowf=1&xospf=1&hl=en&ip=0.0.0.0&ipbits=0&expire=1764414547&sparams=ip,ipbits,expire,v,ei,caps,opi,xoaf&signature=C84F1721BF97390DC24BFE085AEEAC4186E80F49.3839B3DF5319341C09DDDB58DAFCE8F66538B298&key=yt8&kind=asr&lang=en&variant=ec HTTP/1.1" 200 None
+2025-11-29 04:09:10,555 - app.data.transcript_manager - INFO - Successfully fetched transcript for video: eHJqipK431Q
+2025-11-29 04:09:10,555 - app.data.youtube_metadata_fetcher - INFO - YouTubeMetadataFetcher initialized successfully
+2025-11-29 04:09:10,556 - app.data.youtube_metadata_fetcher - INFO - Making YouTube Data API request for video: eHJqipK431Q
+2025-11-29 04:09:10,557 - urllib3.connectionpool - DEBUG - Starting new HTTPS connection (1): www.googleapis.com:443
+2025-11-29 04:09:10,940 - urllib3.connectionpool - DEBUG - https://www.googleapis.com:443 "GET /youtube/v3/videos?part=snippet%2CcontentDetails%2Cstatistics&id=eHJqipK431Q&key=AIzaSyCI_fKInrrNdqG53mg8oweLyyoiHzo2eGE HTTP/1.1" 200 None
+2025-11-29 04:09:10,940 - app.data.youtube_metadata_fetcher - INFO - Successfully retrieved video info for eHJqipK431Q | Title: '11.18.2025 Fall River School Committee -  Special Meeting' | Published: 2025-11-19T01:09:58Z | Duration: 7:55 | Views: 190 | Likes: 0 | Comments: 0
+2025-11-29 04:09:10,941 - app.data.transcript_manager - INFO - Retrieved video metadata for eHJqipK431Q: 11.18.2025 Fall River School Committee -  Special Meeting
+2025-11-29 04:09:10,976 - Database_app/data/fr-mirror - INFO - Database write permissions test passed
+2025-11-29 04:09:10,976 - app.data.transcript_manager - INFO - Caching transcript for video eHJqipK431Q with category AIAgent.GROK
+2025-11-29 04:09:10,976 - app.data.transcript_manager - INFO - add_youtube_transcript: {'youtube_id': 'eHJqipK431Q', 'committee': None, 'category': 'Grok Transcript', 'content_length': 20469}
+2025-11-29 04:09:10,976 - app.data.transcript_manager - INFO - Adding transcript to database: app/data/fr-mirror.db
+2025-11-29 04:09:10,976 - app.data.transcript_manager - INFO - youtube_id: eHJqipK431Q
+2025-11-29 04:09:10,977 - app.data.transcript_manager - INFO - Content length: 20469
+2025-11-29 04:09:10,977 - app.data.transcript_manager - INFO - fetch_Date: 2025-11-29T04:09:10.976709
+2025-11-29 04:09:10,977 - app.data.transcript_manager - INFO - Transcripts table exists: True
+2025-11-29 04:09:10,977 - app.data.transcript_manager - INFO - NewCategory: AIAgent.GROK
+2025-11-29 04:09:10,977 - app.data.transcript_manager - INFO - Inserting transcript into database: None, eHJqipK431Q, content_length: 20469, 2025-11-29T04:09:10.976709, AIAgent.GROK
+2025-11-29 04:09:10,982 - app.data.transcript_manager - INFO - Successfully inserted transcript with video metadata: title='11.18.2025 Fall River School Committee -  Special Meeting', duration=7:55, channel='Fall River Government TV', published=2025-11-19T01:09:58Z, view_count=190, like_count=0, comment_count=0 for youtube_id=eHJqipK431Q
+2025-11-29 04:09:10,982 - app.data.transcript_manager - INFO - Transcripts in database after insert: 1
+2025-11-29 04:09:10,982 - app.data.transcript_manager - INFO - Added YouTube transcript for video 'eHJqipK431Q' (ID: 12)
+2025-11-29 04:09:10,984 - app.main - INFO - Successfully fetched transcript for eHJqipK431Q
+2025-11-29 04:09:10,987 - app.main - DEBUG - Removed eHJqipK431Q from video_queue
+2025-11-29 04:09:11,987 - app.main - INFO - Fetching transcript for video Hbvi-3vnOKQ
+2025-11-29 04:09:11,994 - Database_app/data/fr-mirror - INFO - Database write permissions test passed
+2025-11-29 04:09:11,994 - Database_app/data/fr-mirror - INFO - Database operation: transcript_exists_by_youtube_id - Details: {'youtube_id': 'Hbvi-3vnOKQ'}
+2025-11-29 04:09:11,994 - Database_app/data/fr-mirror - INFO - Transcript for YouTube ID 'Hbvi-3vnOKQ' exists: False
+2025-11-29 04:09:11,995 - app.data.transcript_manager - INFO - Transcript for video Hbvi-3vnOKQ not found in database, fetching from YouTube...
+2025-11-29 04:09:11,995 - app.data.transcript_manager - DEBUG - Proxy username configured: True
+2025-11-29 04:09:11,995 - app.data.transcript_manager - DEBUG - Proxy password configured: True
+2025-11-29 04:09:11,995 - app.data.transcript_manager - INFO - Using Webshare proxy for transcript fetch
+2025-11-29 04:09:11,996 - urllib3.connectionpool - DEBUG - Starting new HTTPS connection (1): www.youtube.com:443
+2025-11-29 04:09:13,274 - urllib3.connectionpool - DEBUG - https://www.youtube.com:443 "GET /watch?v=Hbvi-3vnOKQ HTTP/1.1" 200 None
+2025-11-29 04:09:13,724 - urllib3.connectionpool - DEBUG - Resetting dropped connection: www.youtube.com
+2025-11-29 04:09:16,693 - urllib3.connectionpool - DEBUG - https://www.youtube.com:443 "POST /youtubei/v1/player?key=AIzaSyAO_FJ2SlqU8Q4STEHLGCilw_Y9_11qcW8 HTTP/1.1" 200 None
+2025-11-29 04:09:16,793 - urllib3.connectionpool - DEBUG - Resetting dropped connection: www.youtube.com
+2025-11-29 04:09:21,285 - urllib3.connectionpool - DEBUG - https://www.youtube.com:443 "GET /api/timedtext?v=Hbvi-3vnOKQ&ei=7HEqadTQCu-X4t4Pg-6ogAs&caps=asr&opi=112496729&xoaf=5&xowf=1&xospf=1&hl=en&ip=0.0.0.0&ipbits=0&expire=1764414556&sparams=ip,ipbits,expire,v,ei,caps,opi,xoaf&signature=739EB11EDC8D6018FE0EAFC803D0409D8FD4C3A8.E5AD1D0F1ED527C1606CD4B20937622AE6F5C302&key=yt8&kind=asr&lang=en&variant=ec HTTP/1.1" 200 None
+2025-11-29 04:09:21,382 - app.data.transcript_manager - INFO - Successfully fetched transcript for video: Hbvi-3vnOKQ
+2025-11-29 04:09:21,382 - app.data.youtube_metadata_fetcher - INFO - YouTubeMetadataFetcher initialized successfully
+2025-11-29 04:09:21,383 - app.data.youtube_metadata_fetcher - INFO - Making YouTube Data API request for video: Hbvi-3vnOKQ
+2025-11-29 04:09:21,384 - urllib3.connectionpool - DEBUG - Starting new HTTPS connection (1): www.googleapis.com:443
+2025-11-29 04:09:21,883 - urllib3.connectionpool - DEBUG - https://www.googleapis.com:443 "GET /youtube/v3/videos?part=snippet%2CcontentDetails%2Cstatistics&id=Hbvi-3vnOKQ&key=AIzaSyCI_fKInrrNdqG53mg8oweLyyoiHzo2eGE HTTP/1.1" 200 None
+2025-11-29 04:09:21,884 - app.data.youtube_metadata_fetcher - INFO - Successfully retrieved video info for Hbvi-3vnOKQ | Title: '11.18.2025 School Committee - Special Ed, Alternative Ed & Early Childhood' | Published: 2025-11-19T01:09:25Z | Duration: 34:32 | Views: 104 | Likes: 0 | Comments: 0
+2025-11-29 04:09:21,886 - app.data.transcript_manager - INFO - Retrieved video metadata for Hbvi-3vnOKQ: 11.18.2025 School Committee - Special Ed, Alternative Ed & Early Childhood
+2025-11-29 04:09:21,906 - Database_app/data/fr-mirror - INFO - Database write permissions test passed
+2025-11-29 04:09:21,906 - app.data.transcript_manager - INFO - Caching transcript for video Hbvi-3vnOKQ with category AIAgent.GROK
+2025-11-29 04:09:21,906 - app.data.transcript_manager - INFO - add_youtube_transcript: {'youtube_id': 'Hbvi-3vnOKQ', 'committee': None, 'category': 'Grok Transcript', 'content_length': 74574}
+2025-11-29 04:09:21,906 - app.data.transcript_manager - INFO - Adding transcript to database: app/data/fr-mirror.db
+2025-11-29 04:09:21,907 - app.data.transcript_manager - INFO - youtube_id: Hbvi-3vnOKQ
+2025-11-29 04:09:21,907 - app.data.transcript_manager - INFO - Content length: 74574
+2025-11-29 04:09:21,907 - app.data.transcript_manager - INFO - fetch_Date: 2025-11-29T04:09:21.906917
+2025-11-29 04:09:21,907 - app.data.transcript_manager - INFO - Transcripts table exists: True
+2025-11-29 04:09:21,907 - app.data.transcript_manager - INFO - NewCategory: AIAgent.GROK
+2025-11-29 04:09:21,907 - app.data.transcript_manager - INFO - Inserting transcript into database: None, Hbvi-3vnOKQ, content_length: 74574, 2025-11-29T04:09:21.906917, AIAgent.GROK
+2025-11-29 04:09:21,926 - app.data.transcript_manager - INFO - Successfully inserted transcript with video metadata: title='11.18.2025 School Committee - Special Ed, Alternative Ed & Early Childhood', duration=34:32, channel='Fall River Government TV', published=2025-11-19T01:09:25Z, view_count=104, like_count=0, comment_count=0 for youtube_id=Hbvi-3vnOKQ
+2025-11-29 04:09:21,926 - app.data.transcript_manager - INFO - Transcripts in database after insert: 1
+2025-11-29 04:09:21,927 - app.data.transcript_manager - INFO - Added YouTube transcript for video 'Hbvi-3vnOKQ' (ID: 13)
+2025-11-29 04:09:21,928 - app.main - INFO - Successfully fetched transcript for Hbvi-3vnOKQ
+2025-11-29 04:09:21,931 - app.main - DEBUG - Removed Hbvi-3vnOKQ from video_queue
+2025-11-29 04:09:22,931 - app.main - INFO - Fetching transcript for video 88GT-aB9cr8
+2025-11-29 04:09:22,938 - Database_app/data/fr-mirror - INFO - Database write permissions test passed
+2025-11-29 04:09:22,939 - Database_app/data/fr-mirror - INFO - Database operation: transcript_exists_by_youtube_id - Details: {'youtube_id': '88GT-aB9cr8'}
+2025-11-29 04:09:22,939 - Database_app/data/fr-mirror - INFO - Transcript for YouTube ID '88GT-aB9cr8' exists: False
+2025-11-29 04:09:22,939 - app.data.transcript_manager - INFO - Transcript for video 88GT-aB9cr8 not found in database, fetching from YouTube...
+2025-11-29 04:09:22,939 - app.data.transcript_manager - DEBUG - Proxy username configured: True
+2025-11-29 04:09:22,939 - app.data.transcript_manager - DEBUG - Proxy password configured: True
+2025-11-29 04:09:22,939 - app.data.transcript_manager - INFO - Using Webshare proxy for transcript fetch
+2025-11-29 04:09:22,940 - urllib3.connectionpool - DEBUG - Starting new HTTPS connection (1): www.youtube.com:443
+2025-11-29 04:09:31,717 - urllib3.connectionpool - DEBUG - https://www.youtube.com:443 "GET /watch?v=88GT-aB9cr8 HTTP/1.1" 200 None
+2025-11-29 04:09:32,377 - urllib3.connectionpool - DEBUG - Resetting dropped connection: www.youtube.com
+2025-11-29 04:09:35,558 - urllib3.connectionpool - DEBUG - https://www.youtube.com:443 "POST /youtubei/v1/player?key=AIzaSyAO_FJ2SlqU8Q4STEHLGCilw_Y9_11qcW8 HTTP/1.1" 200 None
+2025-11-29 04:09:35,578 - urllib3.connectionpool - DEBUG - Resetting dropped connection: www.youtube.com
+2025-11-29 04:09:37,086 - urllib3.connectionpool - DEBUG - https://www.youtube.com:443 "GET /api/timedtext?v=88GT-aB9cr8&ei=_3EqadyHB5KCjuMPieivyQE&caps=asr&opi=112496729&xoaf=5&xowf=1&xospf=1&hl=en&ip=0.0.0.0&ipbits=0&expire=1764414575&sparams=ip,ipbits,expire,v,ei,caps,opi,xoaf&signature=296C20F91DA4B42C208ABFAE7D8BD2D36492874E.9ECFC2CCA011C25B2742B522F3178AE776470D7F&key=yt8&kind=asr&lang=en&variant=ec HTTP/1.1" 200 None
+2025-11-29 04:09:37,093 - app.data.transcript_manager - INFO - Successfully fetched transcript for video: 88GT-aB9cr8
+2025-11-29 04:09:37,093 - app.data.youtube_metadata_fetcher - INFO - YouTubeMetadataFetcher initialized successfully
+2025-11-29 04:09:37,093 - app.data.youtube_metadata_fetcher - INFO - Making YouTube Data API request for video: 88GT-aB9cr8
+2025-11-29 04:09:37,094 - urllib3.connectionpool - DEBUG - Starting new HTTPS connection (1): www.googleapis.com:443
+2025-11-29 04:09:37,500 - urllib3.connectionpool - DEBUG - https://www.googleapis.com:443 "GET /youtube/v3/videos?part=snippet%2CcontentDetails%2Cstatistics&id=88GT-aB9cr8&key=AIzaSyCI_fKInrrNdqG53mg8oweLyyoiHzo2eGE HTTP/1.1" 200 None
+2025-11-29 04:09:37,500 - app.data.youtube_metadata_fetcher - INFO - Successfully retrieved video info for 88GT-aB9cr8 | Title: '11.14.2025 - Herman Bomback Bench Dedication' | Published: 2025-11-18T17:44:58Z | Duration: 21:50 | Views: 38 | Likes: 2 | Comments: 0
+2025-11-29 04:09:37,502 - app.data.transcript_manager - INFO - Retrieved video metadata for 88GT-aB9cr8: 11.14.2025 - Herman Bomback Bench Dedication
+2025-11-29 04:09:37,509 - Database_app/data/fr-mirror - INFO - Database write permissions test passed
+2025-11-29 04:09:37,509 - app.data.transcript_manager - INFO - Caching transcript for video 88GT-aB9cr8 with category AIAgent.GROK
+2025-11-29 04:09:37,509 - app.data.transcript_manager - INFO - add_youtube_transcript: {'youtube_id': '88GT-aB9cr8', 'committee': None, 'category': 'Grok Transcript', 'content_length': 33320}
+2025-11-29 04:09:37,509 - app.data.transcript_manager - INFO - Adding transcript to database: app/data/fr-mirror.db
+2025-11-29 04:09:37,509 - app.data.transcript_manager - INFO - youtube_id: 88GT-aB9cr8
+2025-11-29 04:09:37,509 - app.data.transcript_manager - INFO - Content length: 33320
+2025-11-29 04:09:37,509 - app.data.transcript_manager - INFO - fetch_Date: 2025-11-29T04:09:37.509453
+2025-11-29 04:09:37,510 - app.data.transcript_manager - INFO - Transcripts table exists: True
+2025-11-29 04:09:37,510 - app.data.transcript_manager - INFO - NewCategory: AIAgent.GROK
+2025-11-29 04:09:37,510 - app.data.transcript_manager - INFO - Inserting transcript into database: None, 88GT-aB9cr8, content_length: 33320, 2025-11-29T04:09:37.509453, AIAgent.GROK
+2025-11-29 04:09:37,513 - app.data.transcript_manager - INFO - Successfully inserted transcript with video metadata: title='11.14.2025 - Herman Bomback Bench Dedication', duration=21:50, channel='Fall River Government TV', published=2025-11-18T17:44:58Z, view_count=38, like_count=2, comment_count=0 for youtube_id=88GT-aB9cr8
+2025-11-29 04:09:37,514 - app.data.transcript_manager - INFO - Transcripts in database after insert: 1
+2025-11-29 04:09:37,514 - app.data.transcript_manager - INFO - Added YouTube transcript for video '88GT-aB9cr8' (ID: 14)
+2025-11-29 04:09:37,515 - app.main - INFO - Successfully fetched transcript for 88GT-aB9cr8
+2025-11-29 04:09:37,518 - app.main - DEBUG - Removed 88GT-aB9cr8 from video_queue
+2025-11-29 04:09:38,518 - app.main - INFO - Fetching transcript for video Q_ymaALD-pM
+2025-11-29 04:09:38,535 - Database_app/data/fr-mirror - INFO - Database write permissions test passed
+2025-11-29 04:09:38,536 - Database_app/data/fr-mirror - INFO - Database operation: transcript_exists_by_youtube_id - Details: {'youtube_id': 'Q_ymaALD-pM'}
+2025-11-29 04:09:38,536 - Database_app/data/fr-mirror - INFO - Transcript for YouTube ID 'Q_ymaALD-pM' exists: False
+2025-11-29 04:09:38,536 - app.data.transcript_manager - INFO - Transcript for video Q_ymaALD-pM not found in database, fetching from YouTube...
+2025-11-29 04:09:38,536 - app.data.transcript_manager - DEBUG - Proxy username configured: True
+2025-11-29 04:09:38,536 - app.data.transcript_manager - DEBUG - Proxy password configured: True
+2025-11-29 04:09:38,536 - app.data.transcript_manager - INFO - Using Webshare proxy for transcript fetch
+2025-11-29 04:09:38,537 - urllib3.connectionpool - DEBUG - Starting new HTTPS connection (1): www.youtube.com:443
+2025-11-29 04:09:40,704 - urllib3.connectionpool - DEBUG - https://www.youtube.com:443 "GET /watch?v=Q_ymaALD-pM HTTP/1.1" 200 None
+2025-11-29 04:09:41,466 - urllib3.connectionpool - DEBUG - Resetting dropped connection: www.youtube.com
+2025-11-29 04:09:42,790 - urllib3.connectionpool - DEBUG - https://www.youtube.com:443 "POST /youtubei/v1/player?key=AIzaSyAO_FJ2SlqU8Q4STEHLGCilw_Y9_11qcW8 HTTP/1.1" 200 None
+2025-11-29 04:09:42,812 - urllib3.connectionpool - DEBUG - Resetting dropped connection: www.youtube.com
+2025-11-29 04:09:44,349 - urllib3.connectionpool - DEBUG - https://www.youtube.com:443 "GET /api/timedtext?v=Q_ymaALD-pM&ei=BnIqaf_GH4Kl-coPkZqsKQ&caps=asr&opi=112496729&xoaf=5&xowf=1&xospf=1&hl=en&ip=0.0.0.0&ipbits=0&expire=1764414582&sparams=ip,ipbits,expire,v,ei,caps,opi,xoaf&signature=0D8C10BDD20FF22AEB5A649182EA3B23A0204F56.D74DD852F1143CFC1013A6EECB726C13F86DFE46&key=yt8&kind=asr&lang=en HTTP/1.1" 200 None
+2025-11-29 04:09:44,552 - app.data.transcript_manager - INFO - Successfully fetched transcript for video: Q_ymaALD-pM
+2025-11-29 04:09:44,552 - app.data.youtube_metadata_fetcher - INFO - YouTubeMetadataFetcher initialized successfully
+2025-11-29 04:09:44,552 - app.data.youtube_metadata_fetcher - INFO - Making YouTube Data API request for video: Q_ymaALD-pM
+2025-11-29 04:09:44,554 - urllib3.connectionpool - DEBUG - Starting new HTTPS connection (1): www.googleapis.com:443
+2025-11-29 04:09:45,230 - urllib3.connectionpool - DEBUG - https://www.googleapis.com:443 "GET /youtube/v3/videos?part=snippet%2CcontentDetails%2Cstatistics&id=Q_ymaALD-pM&key=AIzaSyCI_fKInrrNdqG53mg8oweLyyoiHzo2eGE HTTP/1.1" 200 None
+2025-11-29 04:09:45,230 - app.data.youtube_metadata_fetcher - INFO - Successfully retrieved video info for Q_ymaALD-pM | Title: '11.17.2025 Community Preservation Committee' | Published: 2025-11-18T16:29:55Z | Duration: 1:24:05 | Views: 49 | Likes: 0 | Comments: 0
+2025-11-29 04:09:45,231 - app.data.transcript_manager - INFO - Retrieved video metadata for Q_ymaALD-pM: 11.17.2025 Community Preservation Committee
+2025-11-29 04:09:45,241 - Database_app/data/fr-mirror - INFO - Database write permissions test passed
+2025-11-29 04:09:45,241 - app.data.transcript_manager - INFO - Caching transcript for video Q_ymaALD-pM with category AIAgent.GROK
+2025-11-29 04:09:45,242 - app.data.transcript_manager - INFO - add_youtube_transcript: {'youtube_id': 'Q_ymaALD-pM', 'committee': None, 'category': 'Grok Transcript', 'content_length': 185416}
+2025-11-29 04:09:45,242 - app.data.transcript_manager - INFO - Adding transcript to database: app/data/fr-mirror.db
+2025-11-29 04:09:45,242 - app.data.transcript_manager - INFO - youtube_id: Q_ymaALD-pM
+2025-11-29 04:09:45,242 - app.data.transcript_manager - INFO - Content length: 185416
+2025-11-29 04:09:45,242 - app.data.transcript_manager - INFO - fetch_Date: 2025-11-29T04:09:45.242174
+2025-11-29 04:09:45,242 - app.data.transcript_manager - INFO - Transcripts table exists: True
+2025-11-29 04:09:45,242 - app.data.transcript_manager - INFO - NewCategory: AIAgent.GROK
+2025-11-29 04:09:45,243 - app.data.transcript_manager - INFO - Inserting transcript into database: None, Q_ymaALD-pM, content_length: 185416, 2025-11-29T04:09:45.242174, AIAgent.GROK
+2025-11-29 04:09:45,267 - app.data.transcript_manager - INFO - Successfully inserted transcript with video metadata: title='11.17.2025 Community Preservation Committee', duration=1:24:05, channel='Fall River Government TV', published=2025-11-18T16:29:55Z, view_count=49, like_count=0, comment_count=0 for youtube_id=Q_ymaALD-pM
+2025-11-29 04:09:45,267 - app.data.transcript_manager - INFO - Transcripts in database after insert: 1
+2025-11-29 04:09:45,267 - app.data.transcript_manager - INFO - Added YouTube transcript for video 'Q_ymaALD-pM' (ID: 15)
+2025-11-29 04:09:45,269 - app.main - INFO - Successfully fetched transcript for Q_ymaALD-pM
+2025-11-29 04:09:45,272 - app.main - DEBUG - Removed Q_ymaALD-pM from video_queue
+2025-11-29 04:09:46,273 - app.main - INFO - Bulk transcript fetch complete: 15 succeeded, 0 failed
