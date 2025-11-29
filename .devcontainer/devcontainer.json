@@ -6,9 +6,11 @@
     "customizations": {
         "vscode": {
             "extensions": [
+                "anysphere.cursorpyright",
+                "ms-python.black-formatter",
+                "ms-python.debugpy",
                 "ms-python.python",
-                "ms-python.vscode-pylance",
-                "ms-python.black-formatter"
+                "ms-python.vscode-pylance"
             ],
             "settings": {
                 "python.formatting.provider": "black",

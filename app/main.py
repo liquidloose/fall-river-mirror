@@ -1,8 +1,10 @@
 # Standard library imports
 from datetime import datetime
 from enum import Enum
+import json
 import logging
 import os
+import time
 from typing import Dict, Any, List, Optional
 from app.data.enum_manager import DatabaseSync
 
@@ -15,11 +17,11 @@ except ImportError:
     pass
 
 # Third-party imports
-from fastapi import APIRouter, FastAPI, HTTPException, status
+from fastapi import APIRouter, FastAPI, HTTPException, status, Body
 from fastapi.responses import JSONResponse
 
 # Local imports
-from app import TranscriptManager, ArticleGenerator, YouTubeCrawler
+from app import TranscriptManager, ArticleGenerator
 from app.writing_department.ai_journalists.aurelius_stone import AureliusStone
 from app.writing_department.writing_tools.xai_processor import XAIProcessor
 from app.data.enum_classes import (
@@ -31,6 +33,7 @@ from app.data.enum_classes import (
 )
 from app.data.create_database import Database
 from app.data.journalist_manager import JournalistManager
+from app.data.video_queue_manager import VideoQueueManager
 
 # Configure logging with both console and file output
 logging.basicConfig(
@@ -84,7 +87,6 @@ logger.info("FastAPI app initialized!")
 # Create class instances once at startup
 transcript_manager = TranscriptManager(database)
 article_generator = ArticleGenerator()
-youtube_crawler = YouTubeCrawler(database)
 
 # In-memory storage for demo purposes (replace with actual database operations)
 articles_db = {}
@@ -179,6 +181,357 @@ def delete_transcript_endpoint(transcript_id: int) -> Dict[str, Any]:
         )
 
 
+@app.post("/transcript/fetch/{amount}")
+async def bulk_fetch_transcripts(
+    amount: int,
+    auto_build: bool = Body(True),
+) -> Dict[str, Any]:
+    """
+    Bulk fetch and store transcripts for queued YouTube videos.
+
+    ## Purpose
+    This endpoint processes videos from the video_queue table, fetching their transcripts
+    and storing them in the database. It's designed for batch processing of multiple videos
+    with built-in error handling, rate limiting, automatic queue building, and automatic queue cleanup.
+
+    ## Workflow
+    1. Check if queue has enough videos (at least `amount` videos available)
+       - If insufficient and `auto_build=True`: Automatically build queue to meet requested amount
+         * Uses `DEFAULT_YOUTUBE_CHANNEL_URL` environment variable
+       - If insufficient and `auto_build=False`: Proceed with available videos only
+    2. Query video_queue for up to `amount` videos where:
+       - transcript_available = 1 (YouTube has captions available)
+       - youtube_id NOT already in transcripts table (avoid duplicates)
+    3. For each video in the queue:
+       - Fetch transcript using TranscriptManager (tries YouTube Transcript API first, falls back to Whisper)
+       - Fetch video metadata from YouTube Data API (title, duration, statistics)
+       - Store transcript and metadata in transcripts table
+       - On success: Remove video from queue
+       - On failure: Keep video in queue, log error
+    4. Apply rate limiting (1 second between requests) to avoid API throttling
+    5. Return detailed results for monitoring and debugging
+
+    ## Parameters
+    - **amount** (path, required): Maximum number of transcripts to fetch from queue
+      - Type: int
+      - Must be positive integer
+      - Example: `/transcript/fetch/10` fetches up to 10 transcripts
+    
+    - **auto_build** (body, optional): Enable/disable automatic queue building
+      - Type: boolean (default: `True`)
+      - If `True` and queue has fewer than `amount` videos, automatically builds queue from `DEFAULT_YOUTUBE_CHANNEL_URL`
+      - If `False`, proceeds with whatever videos are available in queue
+      - Useful to disable for manual queue control or testing
+
+    ## Response Format
+
+    ### Success Response (200 OK)
+    ```json
+    {
+        "success": true,
+        "message": "Processed 10 videos from queue",
+        "transcripts_fetched": 8,
+        "transcripts_failed": 2,
+        "results": [
+            {
+                "youtube_id": "abc123xyz",
+                "status": "success",
+                "source": "youtube_api"
+            },
+            {
+                "youtube_id": "def456uvw",
+                "status": "failed",
+                "error": "No transcript available"
+            }
+        ],
+        "auto_build": {
+            "triggered": true,
+            "videos_added": 5,
+            "channel_url": "https://www.youtube.com/@FallRiverCityCouncil"
+        }
+    }
+    ```
+
+    **Response Fields:**
+    - `success` (bool): Overall operation success indicator
+    - `message` (str): Human-readable summary
+    - `transcripts_fetched` (int): Count of successfully fetched transcripts
+    - `transcripts_failed` (int): Count of failed transcript fetches
+    - `results` (list): Detailed per-video results
+      - `youtube_id` (str): Video identifier
+      - `status` (str): "success" or "failed"
+      - `source` (str): Transcript source ("youtube_api" or "whisper") [success only]
+      - `error` (str): Error message [failure only]
+    - `auto_build` (object, optional): Auto-build information [only present if triggered]
+      - `triggered` (bool): Whether auto-build was activated
+      - `videos_added` (int): Number of videos added to queue
+      - `channel_url` (str): Channel URL used for building
+
+    ### Empty Queue Response (200 OK)
+    ```json
+    {
+        "success": false,
+        "message": "No videos with transcripts available in queue or all already fetched",
+        "transcripts_fetched": 0,
+        "transcripts_failed": 0,
+        "results": []
+    }
+    ```
+
+    ### Error Response (500 Internal Server Error)
+    ```json
+    {
+        "detail": "Bulk transcript fetch failed: Database connection lost"
+    }
+    ```
+
+    ## Rate Limiting
+    - 1 second delay between consecutive video processing
+    - Prevents YouTube API rate limit errors
+    - Configurable via RATE_LIMIT_MS constant
+
+    ## Queue Management
+    - Successfully processed videos are **automatically removed** from video_queue
+    - Failed videos **remain in queue** for retry in future runs
+    - Videos already in transcripts table are **automatically skipped**
+
+    ## Error Handling
+    - Individual video failures don't stop the batch process
+    - All errors are logged with detailed context
+    - Partial success is possible (some succeed, some fail)
+    - Database transactions are committed after each successful fetch
+
+    ## Use Cases
+    - **Initial bulk import**: Process large backlog of queued videos
+    - **Scheduled batch jobs**: Run periodically (e.g., hourly cron job)
+    - **Manual processing**: Operator-triggered fetch when new videos detected
+    - **Recovery**: Reprocess failed videos after fixing issues
+
+    ## Example Usage
+    ```bash
+    # Simple: Fetch 25 transcripts (uses DEFAULT_YOUTUBE_CHANNEL_URL env var, auto-build enabled)
+    curl -X POST "http://localhost:8001/transcript/fetch/25"
+    
+    # With auto-build disabled (only fetches what's already in queue)
+    curl -X POST "http://localhost:8001/transcript/fetch/25" \
+      -H "Content-Type: application/json" \
+      -d '{"auto_build": false}'
+    
+    # Fetch single transcript (useful for testing)
+    curl -X POST "http://localhost:8001/transcript/fetch/1"
+    ```
+
+    ## Related Endpoints
+    - POST `/queue/build` - Populate video_queue by scraping YouTube channel
+    - GET `/queue/stats` - Check video_queue status before bulk fetch
+    - GET `/transcript/{youtube_id}` - Fetch single transcript by ID
+
+    ## Performance Notes
+    - Processing time: ~1-2 seconds per video (due to rate limiting)
+    - 10 videos ≈ 10-20 seconds total
+    - 100 videos ≈ 100-200 seconds (~1.5-3 minutes)
+    - Whisper fallback adds ~30-60 seconds per video (if needed)
+
+    Args:
+        amount (int): Maximum number of transcripts to fetch from queue (must be positive)
+        auto_build (bool): Enable automatic queue building if insufficient videos (default: True)
+            Uses DEFAULT_YOUTUBE_CHANNEL_URL environment variable for building queue.
+
+    Returns:
+        Dict[str, Any]: Response dictionary containing:
+            - success (bool): Overall operation status
+            - message (str): Human-readable summary
+            - transcripts_fetched (int): Count of successful fetches
+            - transcripts_failed (int): Count of failed fetches
+            - results (List[Dict]): Per-video detailed results
+
+    Raises:
+        HTTPException (500): Database unavailable or unexpected error during processing
+    """
+    try:
+        if not database:
+            raise HTTPException(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail="Database not available",
+            )
+
+        logger.info(f"Starting bulk transcript fetch for {amount} videos from queue")
+
+        # ========================================
+        # Step 1: Check Queue Size and Auto-Build if Needed
+        # ========================================
+        # Count available videos in queue (transcript_available = 1, not already in transcripts table)
+        cursor = database.cursor
+        cursor.execute(
+            """SELECT COUNT(*) 
+               FROM video_queue AS T1
+               LEFT JOIN transcripts AS T2 ON T1.youtube_id = T2.youtube_id
+               WHERE T1.transcript_available = 1 AND T2.youtube_id IS NULL"""
+        )
+        available_count = cursor.fetchone()[0]
+
+        logger.info(
+            f"Found {available_count} videos available in queue, requested {amount}"
+        )
+
+        # Track auto-build info for response
+        auto_build_triggered = False
+        auto_build_added = 0
+
+        # Get default channel URL from environment
+        channel_url = os.getenv("DEFAULT_YOUTUBE_CHANNEL_URL")
+        if channel_url:
+            logger.info(f"Using default channel URL from environment: {channel_url}")
+
+        # If insufficient videos, auto_build enabled, and channel_url available, build more queue entries
+        if available_count < amount and auto_build and channel_url:
+            auto_build_triggered = True
+            shortfall = amount - available_count
+            logger.info(
+                f"Queue has only {available_count}/{amount} videos. "
+                f"Auto-building {shortfall} more from {channel_url}"
+            )
+
+            try:
+                # Use async context manager to build queue
+                async with VideoQueueManager(database) as queue_manager:
+                    build_results = await queue_manager.queue_new_videos(
+                        channel_url,
+                        max_limit=shortfall,
+                    )
+                    auto_build_added = build_results.get("newly_queued", 0)
+                    logger.info(
+                        f"Auto-build complete: {auto_build_added} videos added to queue"
+                    )
+            except Exception as e:
+                logger.warning(
+                    f"Failed to auto-build queue: {str(e)}. Proceeding with available videos."
+                )
+        elif available_count < amount and not auto_build:
+            logger.info(
+                f"Queue has only {available_count}/{amount} videos. "
+                f"Auto-build disabled. Proceeding with available videos."
+            )
+        elif available_count < amount:
+            logger.warning(
+                f"Queue has only {available_count}/{amount} videos. "
+                f"No channel_url available (not provided and DEFAULT_YOUTUBE_CHANNEL_URL not set). "
+                f"Proceeding with available videos."
+            )
+
+        # ========================================
+        # Step 2: Query Available Videos from Queue
+        # ========================================
+        # Query video_queue for videos with transcripts available and not already in transcripts table
+        cursor.execute(
+            """SELECT T1.youtube_id
+               FROM video_queue AS T1
+               LEFT JOIN transcripts AS T2 ON T1.youtube_id = T2.youtube_id
+               WHERE T1.transcript_available = 1 AND T2.youtube_id IS NULL
+               LIMIT ?""",
+            (amount,),
+        )
+        queue_items = cursor.fetchall()
+
+        if not queue_items:
+            return {
+                "success": False,
+                "message": "No videos with transcripts available in queue or all already fetched",
+                "transcripts_fetched": 0,
+                "transcripts_failed": 0,
+                "results": [],
+            }
+
+        logger.info(f"Found {len(queue_items)} videos in queue to process")
+
+        results = []
+        transcripts_fetched = 0
+        transcripts_failed = 0
+
+        # Rate limit in milliseconds (adjust as needed)
+        RATE_LIMIT_MS = 1000  # 1 second between requests
+
+        for row in queue_items:
+            youtube_id = row[0]
+
+            try:
+                logger.info(f"Fetching transcript for video {youtube_id}")
+                transcript_result = transcript_manager.get_transcript(youtube_id)
+
+                # Check if transcript_result is a JSONResponse (error) or a Dict (success)
+                if isinstance(transcript_result, JSONResponse):
+                    # Extract error message from JSONResponse content
+                    import json
+
+                    error_content = json.loads(transcript_result.body.decode())
+                    raise Exception(
+                        error_content.get(
+                            "error", "Unknown error during transcript fetch"
+                        )
+                    )
+
+                transcripts_fetched += 1
+                results.append(
+                    {
+                        "youtube_id": youtube_id,
+                        "status": "success",
+                        "source": transcript_result.get("source"),
+                    }
+                )
+                logger.info(f"Successfully fetched transcript for {youtube_id}")
+
+                # Remove from queue after successful fetch
+                cursor.execute(
+                    "DELETE FROM video_queue WHERE youtube_id = ?", (youtube_id,)
+                )
+                database.conn.commit()
+                logger.debug(f"Removed {youtube_id} from video_queue")
+
+            except Exception as e:
+                transcripts_failed += 1
+                error_msg = str(e)
+                results.append(
+                    {"youtube_id": youtube_id, "status": "failed", "error": error_msg}
+                )
+                logger.error(
+                    f"Failed to fetch transcript for {youtube_id}: {error_msg}"
+                )
+
+            # Rate limit: sleep between requests
+            time.sleep(RATE_LIMIT_MS / 1000.0)
+
+        logger.info(
+            f"Bulk transcript fetch complete: {transcripts_fetched} succeeded, {transcripts_failed} failed"
+        )
+
+        response = {
+            "success": True,
+            "message": f"Processed {len(queue_items)} videos from queue",
+            "transcripts_fetched": transcripts_fetched,
+            "transcripts_failed": transcripts_failed,
+            "results": results,
+        }
+
+        # Add auto-build info if it was triggered
+        if auto_build_triggered:
+            response["auto_build"] = {
+                "triggered": True,
+                "videos_added": auto_build_added,
+                "channel_url": channel_url,
+            }
+
+        return response
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Bulk transcript fetch failed: {str(e)}", exc_info=True)
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Bulk transcript fetch failed: {str(e)}",
+        )
+
+
 @app.get("/yt_crawler/{video_id}", response_model=None)
 async def yt_crawler_endpoint(video_id: str) -> Dict[str, Any] | JSONResponse:
     """
@@ -193,7 +546,7 @@ async def yt_crawler_endpoint(video_id: str) -> Dict[str, Any] | JSONResponse:
     Returns:
         Dict[str, Any] | JSONResponse: Combined data from transcript and processing
     """
-    return youtube_crawler.crawl_video(video_id)
+    return "youtube_crawler.crawl_video(video_id)"
 
 
 @app.get("/articles/count")
@@ -562,6 +915,347 @@ def generate_article(
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Failed to generate article: {str(e)}",
+        )
+
+
+@app.post("/article/write/{amount_of_articles}")
+async def bulk_generate_articles(
+    amount_of_articles: int,
+    journalist: Journalist = Journalist.AURELIUS_STONE,
+    tone: Tone = Tone.PROFESSIONAL,
+    article_type: ArticleType = ArticleType.NEWS,
+) -> Dict[str, Any]:
+    """
+    Bulk generate articles from existing transcripts.
+
+    This endpoint:
+    1. Queries the transcripts table for existing transcripts
+    2. Generates articles from each transcript using the specified journalist, tone, and article type
+    3. Saves all articles to the database
+
+    Args:
+        amount_of_articles: Number of articles to generate
+        journalist: Journalist to write the articles (default: Aurelius Stone)
+        tone: Writing tone for all articles (default: professional)
+        article_type: Type of article to generate (default: news)
+
+    Returns:
+        Dict containing:
+            - articles_generated: Number of articles successfully created
+            - articles_failed: Number of articles that failed
+            - results: List of results for each article
+
+    Raises:
+        HTTPException: If database not available or processing fails
+    """
+    try:
+        if not database:
+            raise HTTPException(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail="Database not available",
+            )
+
+        logger.info(
+            f"Starting bulk article generation: {amount_of_articles} articles, "
+            f"journalist={journalist.value}, tone={tone.value}, type={article_type.value}"
+        )
+
+        # Query transcripts table for existing transcripts
+        cursor = database.cursor
+        cursor.execute(
+            """SELECT id, committee, youtube_id, content 
+               FROM transcripts 
+               LIMIT ?""",
+            (amount_of_articles,),
+        )
+        transcripts = cursor.fetchall()
+
+        if not transcripts:
+            return {
+                "success": False,
+                "message": "No transcripts found in database",
+                "articles_generated": 0,
+                "articles_failed": 0,
+                "results": [],
+            }
+
+        logger.info(f"Found {len(transcripts)} transcripts to process")
+
+        results = []
+        articles_generated = 0
+        articles_failed = 0
+
+        # Get journalist instance and ID
+        journalist_instance = AureliusStone()
+        journalist_id = journalist_manager.get_journalist(aurelius.FULL_NAME)["id"]
+
+        # Process each transcript
+        for row in transcripts:
+            # Extract transcript data from query
+            transcript_id = row[0]
+            committee = row[1]
+            youtube_id = row[2]
+            transcript_content = row[3]
+
+            try:
+                logger.info(
+                    f"Processing transcript ID {transcript_id} (video {youtube_id})"
+                )
+
+                # Generate article
+                logger.info(f"Generating article for transcript ID {transcript_id}")
+
+                base_context = journalist_instance.load_context(
+                    tone=tone, article_type=article_type
+                )
+
+                full_context = f"{base_context}\n\nTRANSCRIPT CONTENT TO ANALYZE:\n{transcript_content}"
+
+                article_result = journalist_instance.generate_article(full_context, "")
+
+                # Save article to database
+                database.add_article(
+                    committee=committee,
+                    youtube_id=youtube_id,
+                    journalist_id=journalist_id,
+                    content=article_result["content"],
+                    transcript_id=transcript_id,
+                    date=datetime.now().isoformat(),
+                    article_type=article_type.value,
+                    tone=tone.value,
+                    title=article_result.get("title", "Untitled Article"),
+                )
+
+                articles_generated += 1
+                results.append(
+                    {
+                        "youtube_id": youtube_id,
+                        "transcript_id": transcript_id,
+                        "status": "success",
+                        "title": article_result.get("title", "Untitled Article"),
+                    }
+                )
+
+                logger.info(f"Successfully generated article for {youtube_id}")
+
+            except Exception as e:
+                articles_failed += 1
+                error_msg = str(e)
+                results.append(
+                    {"youtube_id": youtube_id, "status": "failed", "error": error_msg}
+                )
+                logger.error(
+                    f"Failed to generate article for {youtube_id}: {error_msg}"
+                )
+
+        logger.info(
+            f"Bulk generation complete: {articles_generated} succeeded, {articles_failed} failed"
+        )
+
+        return {
+            "success": True,
+            "message": f"Processed {len(transcripts)} transcripts",
+            "articles_generated": articles_generated,
+            "articles_failed": articles_failed,
+            "results": results,
+        }
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Bulk article generation failed: {str(e)}", exc_info=True)
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Bulk article generation failed: {str(e)}",
+        )
+
+
+@app.post("/queue/build")
+async def build_video_queue(
+    limit: int = 5,
+    channel_url: str = os.environ.get("DEFAULT_YOUTUBE_CHANNEL_URL", ""),
+) -> Dict[str, Any]:
+    """
+    Build the video queue by discovering videos from a YouTube channel using YouTube API.
+
+    This endpoint intelligently adjusts the scrape limit to account for already-processed videos.
+    If you request limit=10, it will scrape (current_transcript_count + 10) videos from the channel,
+    ensuring you get approximately 10 NEW videos added to the queue.
+
+    This endpoint:
+    1. Counts existing transcripts in the database
+    2. Adjusts limit: adjusted_limit = transcript_count + requested_limit
+    3. Fetches video IDs from YouTube channel using YouTube Data API v3
+    4. Compares and adds only new videos to the video_queue
+
+    Requires YOUTUBE_API_KEY environment variable to be set.
+    Get a free API key at: https://console.cloud.google.com/apis/credentials
+
+    Args:
+        channel_url: URL of the YouTube channel (@handle, /channel/ID, or /c/custom)
+        limit: Number of NEW videos you want in the queue (default: 0 = all videos)
+               The actual scrape limit will be automatically increased based on existing transcript count
+
+    Returns:
+        Dict containing queue building results:
+            - total_discovered: Number of videos found on YouTube
+            - already_exists: Number of videos that already have transcripts
+            - newly_queued: Number of videos added to queue
+            - skipped: Number of videos skipped
+            - failed: Number of videos that failed to process
+            - youtube_ids: List of all discovered video IDs
+
+    Raises:
+        HTTPException: If database not available, API key missing, or API request fails
+    """
+    try:
+        if not database:
+            raise HTTPException(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail="Database not available",
+            )
+
+        # Get the current count of transcripts in the database
+        cursor = database.cursor
+        cursor.execute("SELECT COUNT(*) FROM transcripts")
+        transcript_count = cursor.fetchone()[0]
+
+        # Get the current count of videos in the queue
+        cursor.execute("SELECT COUNT(*) FROM video_queue")
+        queue_size = cursor.fetchone()[0]
+
+        # Add transcript count AND queue size to the requested limit
+        # This ensures we scrape far enough past all already-processed and already-queued videos
+        adjusted_limit = transcript_count + queue_size + limit
+
+        logger.info(
+            f"Transcripts in database: {transcript_count}, "
+            f"Videos in queue: {queue_size}, "
+            f"Requested limit: {limit}, "
+            f"Adjusted limit: {adjusted_limit}"
+        )
+
+        # Use async context manager
+        async with VideoQueueManager(database) as queue_manager:
+            # Execute queue building with adjusted limit
+            logger.info(
+                f"Building queue from {channel_url} with adjusted limit {adjusted_limit}"
+            )
+            results = await queue_manager.queue_new_videos(
+                channel_url,
+                adjusted_limit,
+            )
+
+            logger.info(f"Queue building complete: {results}")
+            return {
+                "success": True,
+                "message": f"Queue built successfully from {channel_url}",
+                "results": results,
+            }
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Failed to build video queue: {str(e)}", exc_info=True)
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to build video queue: {str(e)}",
+        )
+
+
+@app.post("/queue/cleanup")
+def cleanup_video_queue() -> Dict[str, Any]:
+    """
+    Clean up the video queue by removing videos that already have transcripts.
+
+    This endpoint:
+    1. Finds all youtube_ids that exist in both video_queue and transcripts tables
+    2. Removes those youtube_ids from video_queue
+    3. Returns the count and list of removed IDs
+
+    This is useful for cleaning up duplicates that weren't automatically removed
+    during bulk transcript fetching.
+
+    Returns:
+        Dict containing cleanup results:
+            - success: Whether cleanup succeeded
+            - message: Description of what happened
+            - removed_count: Number of videos removed from queue
+            - removed_ids: List of youtube_ids that were removed
+
+    Raises:
+        HTTPException: If database not available or cleanup fails
+    """
+    try:
+        if not database:
+            raise HTTPException(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail="Database not available",
+            )
+
+        logger.info("Starting video queue cleanup")
+        results = transcript_manager.cleanup_queue()
+
+        if not results.get("success"):
+            raise HTTPException(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail=results.get("error", "Unknown error during cleanup"),
+            )
+
+        logger.info(f"Queue cleanup complete: {results['message']}")
+        return results
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Failed to cleanup video queue: {str(e)}", exc_info=True)
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to cleanup video queue: {str(e)}",
+        )
+
+
+@app.get("/queue/stats")
+def get_queue_stats() -> Dict[str, Any]:
+    """
+    Get statistics about the current video queue.
+
+    Returns:
+        Dict containing queue statistics:
+            - total: Total videos in queue
+            - transcript_available: Videos with transcripts available
+            - pending: Videos without transcripts
+            - errors: Videos with error messages
+
+    Raises:
+        HTTPException: If database not available
+    """
+    try:
+        if not database:
+            raise HTTPException(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail="Database not available",
+            )
+
+        # Initialize VideoQueueManager (no browser needed for stats)
+        queue_manager = VideoQueueManager(database)
+
+        try:
+            stats = queue_manager.get_queue_stats()
+            return {
+                "success": True,
+                "stats": stats,
+            }
+        finally:
+            queue_manager.close()
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Failed to get queue stats: {str(e)}", exc_info=True)
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to get queue stats: {str(e)}",
         )
 
 
