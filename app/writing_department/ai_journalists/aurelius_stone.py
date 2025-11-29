@@ -78,7 +78,7 @@ class AureliusStone(BaseJournalist):
         bio_filename = f"{self.FIRST_NAME.lower()}_{self.LAST_NAME.lower()}_bio.txt"
         # Navigate to context_files/bios from the ai_journalists directory
         context_files_path = os.path.join(
-            os.path.dirname(__file__), "..", "context_files", "bios"
+            os.path.dirname(__file__), "..", "..", "context_files", "bios"
         )
         bio_path = os.path.join(context_files_path, bio_filename)
         try:
@@ -96,7 +96,7 @@ class AureliusStone(BaseJournalist):
         )
         # Navigate to context_files/descriptions from the ai_journalists directory
         context_files_path = os.path.join(
-            os.path.dirname(__file__), "..", "context_files", "descriptions"
+            os.path.dirname(__file__), "..", "..", "context_files", "descriptions"
         )
         description_path = os.path.join(context_files_path, description_filename)
         try:
