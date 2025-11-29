@@ -7,8 +7,6 @@
         "vscode": {
             "extensions": [
                 "anysphere.cursorpyright",
-                "cweijan.dbclient-jdbc",
-                "cweijan.vscode-database-client2",
                 "ms-python.black-formatter",
                 "ms-python.debugpy",
                 "ms-python.python",
