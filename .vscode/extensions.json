@@ -3,6 +3,6 @@
         "ms-vscode-remote.vscode-remote-extensionpack",
         "ms-python.python",
         "ms-python.black-formatter",
-        "cweijan.vscode-database-client2"
+        "alexcvzz.vscode-sqlite"
     ]
 }

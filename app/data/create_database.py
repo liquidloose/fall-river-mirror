@@ -108,7 +108,10 @@ class Database:
             "video_title TEXT, "  # YouTube video title
             "video_duration_seconds INTEGER, "  # Video duration in seconds
             "video_duration_formatted TEXT, "  # Video duration in readable format (e.g., "19:03")
-            "video_channel TEXT",  # YouTube channel name
+            "video_channel TEXT, "  # YouTube channel name
+            "view_count INTEGER, "  # YouTube video view count
+            "like_count INTEGER, "  # YouTube video like count
+            "comment_count INTEGER",  # YouTube video comment count
         )
 
         # Journalists table - stores reporter information
@@ -158,6 +161,14 @@ class Database:
             "created_date TEXT",
         )  # When article type was added
 
+        # Video Queue table - stores discovered YouTube videos
+        self._create_table(
+            "video_queue",
+            "id INTEGER PRIMARY KEY AUTOINCREMENT, "
+            "youtube_id TEXT UNIQUE NOT NULL, "  # YouTube video ID
+            "transcript_available INTEGER DEFAULT 0",  # Boolean: 0=false, 1=true
+        )
+
         self.tables_created = True
         self.logger.info("All tables created/verified successfully")
 
@@ -186,6 +197,7 @@ class Database:
                     "articles",
                     "tones",
                     "article_types",
+                    "video_queue",
                 ]
                 table_counts = {}
 
@@ -317,6 +329,7 @@ class Database:
                     "articles",
                     "tones",
                     "article_types",
+                    "video_queue",
                 ]
 
                 missing_tables = [
@@ -420,24 +433,27 @@ class Database:
         content: str,
         date: str,
         ArticleType: str,
-        video_title: str = None,
-        video_duration_seconds: int = None,
-        video_duration_formatted: str = None,
-        video_channel: str = None,
-        video_description: str = None,
-        youtube_id: str = None,
-        fetch_date: str = None,
-        model: str = None,
+        video_title: str,
+        video_duration_seconds: int,
+        video_duration_formatted: str,
+        video_channel: str,
+        video_description: str,
+        youtube_id: str,
+        fetch_date: str,
+        model: str,
+        view_count: int,
+        like_count: int,
+        comment_count: int,
     ) -> None:
         """
-        Add a new transcript to the database with optional video metadata.
+        Add a new transcript to the database with video metadata.
 
         Args:
             committee: Name of the committee
             title: Title of the transcript
             content: Full transcript content
             date: Date of the meeting (yt_published_date)
-           ArticleType:ArticleType of the transcript
+            ArticleType: ArticleType of the transcript
             video_title: YouTube video title
             video_duration_seconds: Video duration in seconds
             video_duration_formatted: Video duration in readable format
@@ -446,6 +462,9 @@ class Database:
             youtube_id: YouTube video ID
             fetch_date: Date when transcript was fetched
             model: Transcript model used
+            view_count: YouTube video view count
+            like_count: YouTube video like count
+            comment_count: YouTube video comment count
         """
         operation_details = {
             "committee": committee,
@@ -457,6 +476,9 @@ class Database:
             "video_duration_formatted": video_duration_formatted,
             "video_channel": video_channel,
             "youtube_id": youtube_id,
+            "view_count": view_count,
+            "like_count": like_count,
+            "comment_count": comment_count,
         }
         self._log_operation("add_transcript", operation_details)
 
@@ -465,8 +487,8 @@ class Database:
                 """INSERT INTO transcripts 
                 (committee, youtube_id, content, yt_published_date, fetch_date, model, 
                  video_title, video_duration_seconds, video_duration_formatted, 
-                 video_channel, video_description) 
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
+                 video_channel, video_description, view_count, like_count, comment_count) 
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
                 (
                     committee,
                     youtube_id,
@@ -479,6 +501,9 @@ class Database:
                     video_duration_formatted,
                     video_channel,
                     video_description,
+                    view_count,
+                    like_count,
+                    comment_count,
                 ),
             )
             self.conn.commit()
