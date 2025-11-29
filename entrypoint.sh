@@ -1,4 +1,7 @@
 #!/bin/bash
+# Update package lists
+apt update
+
 # Start Xvfb in the background
 Xvfb :99 -screen 0 1920x1080x24 &
 export DISPLAY=:99
