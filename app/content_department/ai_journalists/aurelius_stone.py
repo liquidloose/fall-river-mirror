@@ -1,8 +1,8 @@
 from typing import Dict, Any, Optional
 import os
 from ...data.enum_classes import Tone, ArticleType
-from app.writing_department.ai_journalists.base_journalist import BaseJournalist
-from ..writing_tools.xai_processor import XAIProcessor
+from .base_journalist import BaseJournalist
+from ..creation_tools.xai_processor import XAIProcessor
 
 
 class AureliusStone(BaseJournalist):

@@ -13786,3 +13786,160 @@ Exception: Invalid YouTube channel URL: string
 2025-11-29 04:09:45,269 - app.main - INFO - Successfully fetched transcript for Q_ymaALD-pM
 2025-11-29 04:09:45,272 - app.main - DEBUG - Removed Q_ymaALD-pM from video_queue
 2025-11-29 04:09:46,273 - app.main - INFO - Bulk transcript fetch complete: 15 succeeded, 0 failed
+2025-11-29 06:47:14,956 - Database_app/data/fr-mirror - INFO - Initializing database: app/data/fr-mirror.db
+2025-11-29 06:47:14,956 - Database_app/data/fr-mirror - INFO - Successfully connected to database: app/data/fr-mirror.db
+2025-11-29 06:47:14,957 - Database_app/data/fr-mirror - INFO - Creating/verifying all database tables...
+2025-11-29 06:47:14,957 - Database_app/data/fr-mirror - INFO - Table 'transcripts' created/verified successfully
+2025-11-29 06:47:14,957 - Database_app/data/fr-mirror - INFO - Table 'journalists' created/verified successfully
+2025-11-29 06:47:14,957 - Database_app/data/fr-mirror - INFO - Table 'articles' created/verified successfully
+2025-11-29 06:47:14,957 - Database_app/data/fr-mirror - INFO - Table 'tones' created/verified successfully
+2025-11-29 06:47:14,958 - Database_app/data/fr-mirror - INFO - Table 'categories' created/verified successfully
+2025-11-29 06:47:14,958 - Database_app/data/fr-mirror - INFO - Table 'video_queue' created/verified successfully
+2025-11-29 06:47:14,958 - Database_app/data/fr-mirror - INFO - All tables created/verified successfully
+2025-11-29 06:47:14,958 - Database_app/data/fr-mirror - INFO - Database initialization completed
+2025-11-29 06:47:14,958 - app.main - INFO - Database initialized successfully in main.py
+2025-11-29 06:47:14,958 - app.data.enum_manager - INFO - Starting database enum synchronization...
+2025-11-29 06:47:14,958 - app.data.enum_manager - INFO - Synchronization query made for Tone
+2025-11-29 06:47:14,958 - app.data.enum_manager - INFO - No missing values found for tones - database is in sync
+2025-11-29 06:47:14,958 - app.data.enum_manager - INFO - Synchronization query made for ArticleType
+2025-11-29 06:47:14,958 - app.data.enum_manager - INFO - No missing values found for categories - database is in sync
+2025-11-29 06:47:14,958 - app.main - INFO - Database sync completed: <app.data.enum_manager.DatabaseSync object at 0x7f6359c9c950>
+2025-11-29 06:47:14,959 - app.data.journalist_manager - INFO - Successfully updated journalist: Aurelius Stone
+2025-11-29 06:47:14,959 - app.main - INFO - Journalist initialization completed
+2025-11-29 06:47:14,959 - app.main - INFO - FastAPI app initialized!
+2025-11-29 06:47:14,959 - app.data.transcript_manager - DEBUG - Loaded proxy_username from env: akrds...
+2025-11-29 06:47:14,959 - app.data.transcript_manager - DEBUG - Loaded proxy_password from env: ***set***
+2025-11-29 06:47:39,890 - app.main - INFO - Article count: 0
+2025-11-29 06:47:43,895 - app.main - INFO - Article count: 0
+2025-11-29 06:47:44,910 - app.main - INFO - Article count: 0
+2025-11-29 06:47:55,341 - app.main - INFO - Article count: 0
+2025-11-29 06:49:49,538 - app.main - INFO - Starting bulk article generation: 5 articles, journalist=Aurelius Stone, tone=casual, type=news
+2025-11-29 06:49:49,539 - app.main - INFO - Found 5 transcripts to process
+2025-11-29 06:49:49,539 - app.main - INFO - Processing transcript ID 1 (video eFVR13ZlWEI)
+2025-11-29 06:49:49,539 - app.main - INFO - Generating article for transcript ID 1
+2025-11-29 06:51:28,481 - Database_app/data/fr-mirror - INFO - Database operation: add_article - Details: {'committee': 'Transgender Day of Remembrance', 'youtube_id': 'eFVR13ZlWEI', 'journalist_id': 1, 'transcript_id': 1, 'date': '2025-11-29T06:51:28.481797', 'article_type': 'news', 'tone': 'casual', 'title': 'Fall River Unites to Honor Trans Lives Lost to Violence'}
+2025-11-29 06:51:28,510 - Database_app/data/fr-mirror - INFO - Added article (ID: 1) for committee: Transgender Day of Remembrance, journalist_id: 1
+2025-11-29 06:51:28,511 - app.main - INFO - Successfully generated article for eFVR13ZlWEI
+2025-11-29 06:51:28,511 - app.main - INFO - Processing transcript ID 2 (video lzYq_7tvt3w)
+2025-11-29 06:51:28,511 - app.main - INFO - Generating article for transcript ID 2
+2025-11-29 06:53:24,573 - Database_app/data/fr-mirror - INFO - Database operation: add_article - Details: {'committee': '- A Fall River Icon Recognition - John Ciullo', 'youtube_id': 'lzYq_7tvt3w', 'journalist_id': 1, 'transcript_id': 2, 'date': '2025-11-29T06:53:24.573059', 'article_type': 'news', 'tone': 'casual', 'title': 'Fall River Hero Surprised After 52 Years of Service'}
+2025-11-29 06:53:24,595 - Database_app/data/fr-mirror - INFO - Added article (ID: 2) for committee: - A Fall River Icon Recognition - John Ciullo, journalist_id: 1
+2025-11-29 06:53:24,596 - app.main - INFO - Successfully generated article for lzYq_7tvt3w
+2025-11-29 06:53:24,596 - app.main - INFO - Processing transcript ID 3 (video N2vGeqFZ3OE)
+2025-11-29 06:53:24,596 - app.main - INFO - Generating article for transcript ID 3
+2025-11-29 06:54:56,355 - Database_app/data/fr-mirror - INFO - Database operation: add_article - Details: {'committee': 'Licensing Board', 'youtube_id': 'N2vGeqFZ3OE', 'journalist_id': 1, 'transcript_id': 3, 'date': '2025-11-29T06:54:56.355875', 'article_type': 'news', 'tone': 'casual', 'title': 'Fall River Board Greenlights Key License Transfers, Renewals'}
+2025-11-29 06:54:56,360 - Database_app/data/fr-mirror - INFO - Added article (ID: 3) for committee: Licensing Board, journalist_id: 1
+2025-11-29 06:54:56,360 - app.main - INFO - Successfully generated article for N2vGeqFZ3OE
+2025-11-29 06:54:56,360 - app.main - INFO - Processing transcript ID 4 (video ZbKySDNnObc)
+2025-11-29 06:54:56,361 - app.main - INFO - Generating article for transcript ID 4
+2025-11-29 06:56:42,516 - Database_app/data/fr-mirror - INFO - Database operation: add_article - Details: {'committee': 'Fall River City Council', 'youtube_id': 'ZbKySDNnObc', 'journalist_id': 1, 'transcript_id': 4, 'date': '2025-11-29T06:56:42.516532', 'article_type': 'news', 'tone': 'casual', 'title': 'Fall River Council Clashes on Reforms, Hires, Labor Woes'}
+2025-11-29 06:56:42,522 - Database_app/data/fr-mirror - INFO - Added article (ID: 4) for committee: Fall River City Council, journalist_id: 1
+2025-11-29 06:56:42,522 - app.main - INFO - Successfully generated article for ZbKySDNnObc
+2025-11-29 06:56:42,522 - app.main - INFO - Processing transcript ID 5 (video iJdgxGTd5fk)
+2025-11-29 06:56:42,522 - app.main - INFO - Generating article for transcript ID 5
+2025-11-29 06:58:14,548 - Database_app/data/fr-mirror - INFO - Database operation: add_article - Details: {'committee': 'Park Board', 'youtube_id': 'iJdgxGTd5fk', 'journalist_id': 1, 'transcript_id': 5, 'date': '2025-11-29T06:58:14.548818', 'article_type': 'news', 'tone': 'casual', 'title': 'Fall River Parks Gear Up for Parking, Amenity Overhaul'}
+2025-11-29 06:58:14,574 - Database_app/data/fr-mirror - INFO - Added article (ID: 5) for committee: Park Board, journalist_id: 1
+2025-11-29 06:58:14,574 - app.main - INFO - Successfully generated article for iJdgxGTd5fk
+2025-11-29 06:58:14,574 - app.main - INFO - Bulk generation complete: 5 succeeded, 0 failed
+2025-12-01 16:47:56,978 - Database_app/data/fr-mirror - INFO - Database operation: get_transcript_by_id - Details: {'transcript_id': 3}
+2025-12-01 16:47:56,978 - Database_app/data/fr-mirror - INFO - Retrieved transcript with ID '3' from database
+2025-12-01 16:49:22,257 - Database_app/data/fr-mirror - INFO - Database operation: add_article - Details: {'committee': 'Licensing Board', 'youtube_id': 'N2vGeqFZ3OE', 'journalist_id': 1, 'transcript_id': 3, 'date': '2025-12-01T16:49:22.257902', 'article_type': 'summary', 'tone': 'casual', 'title': 'Fall River Board Greenlights Business Boom for 2026'}
+2025-12-01 16:49:22,281 - Database_app/data/fr-mirror - INFO - Added article (ID: 6) for committee: Licensing Board, journalist_id: 1
+2025-12-01 16:49:22,281 - app.main - INFO - Article generated successfully by Aurelius Stone using transcript ID 3
+2025-12-01 17:11:43,150 - Database_app/data/fr-mirror - INFO - Initializing database: app/data/fr-mirror.db
+2025-12-01 17:11:43,150 - Database_app/data/fr-mirror - INFO - Successfully connected to database: app/data/fr-mirror.db
+2025-12-01 17:11:43,150 - Database_app/data/fr-mirror - INFO - Creating/verifying all database tables...
+2025-12-01 17:11:43,151 - Database_app/data/fr-mirror - INFO - Table 'transcripts' created/verified successfully
+2025-12-01 17:11:43,151 - Database_app/data/fr-mirror - INFO - Table 'journalists' created/verified successfully
+2025-12-01 17:11:43,151 - Database_app/data/fr-mirror - INFO - Table 'articles' created/verified successfully
+2025-12-01 17:11:43,151 - Database_app/data/fr-mirror - INFO - Table 'tones' created/verified successfully
+2025-12-01 17:11:43,151 - Database_app/data/fr-mirror - INFO - Table 'categories' created/verified successfully
+2025-12-01 17:11:43,151 - Database_app/data/fr-mirror - INFO - Table 'video_queue' created/verified successfully
+2025-12-01 17:11:43,151 - Database_app/data/fr-mirror - INFO - All tables created/verified successfully
+2025-12-01 17:11:43,152 - Database_app/data/fr-mirror - INFO - Database initialization completed
+2025-12-01 17:11:43,152 - app.main - INFO - Database initialized successfully in main.py
+2025-12-01 17:11:43,152 - app.data.enum_manager - INFO - Starting database enum synchronization...
+2025-12-01 17:11:43,152 - app.data.enum_manager - INFO - Synchronization query made for Tone
+2025-12-01 17:11:43,152 - app.data.enum_manager - INFO - No missing values found for tones - database is in sync
+2025-12-01 17:11:43,152 - app.data.enum_manager - INFO - Synchronization query made for ArticleType
+2025-12-01 17:11:43,152 - app.data.enum_manager - INFO - No missing values found for categories - database is in sync
+2025-12-01 17:11:43,152 - app.main - INFO - Database sync completed: <app.data.enum_manager.DatabaseSync object at 0x7fd5a2e20fe0>
+2025-12-01 17:11:43,153 - app.data.journalist_manager - INFO - Successfully updated journalist: Aurelius Stone
+2025-12-01 17:11:43,153 - app.main - INFO - Journalist initialization completed
+2025-12-01 17:11:43,153 - app.main - INFO - FastAPI app initialized!
+2025-12-01 17:11:43,153 - app.data.transcript_manager - DEBUG - Loaded proxy_username from env: akrds...
+2025-12-01 17:11:43,153 - app.data.transcript_manager - DEBUG - Loaded proxy_password from env: ***set***
+2025-12-01 17:16:27,358 - Database_app/data/fr-mirror - INFO - Database operation: get_transcript_by_id - Details: {'transcript_id': 3}
+2025-12-01 17:16:27,358 - Database_app/data/fr-mirror - INFO - Retrieved transcript with ID '3' from database
+2025-12-01 17:17:53,172 - Database_app/data/fr-mirror - INFO - Database operation: add_article - Details: {'committee': 'Licensing Board', 'youtube_id': 'N2vGeqFZ3OE', 'journalist_id': 1, 'transcript_id': 3, 'date': '2025-12-01T17:17:53.172729', 'article_type': 'summary', 'tone': 'casual', 'title': 'Fall River Board Approves Business Licenses for 2026 Boom'}
+2025-12-01 17:17:53,177 - Database_app/data/fr-mirror - INFO - Added article (ID: 7) for committee: Licensing Board, journalist_id: 1
+2025-12-01 17:17:53,177 - app.main - INFO - Article generated successfully by Aurelius Stone using transcript ID 3
+2025-12-01 17:53:27,431 - Database_app/data/fr-mirror - INFO - Initializing database: app/data/fr-mirror.db
+2025-12-01 17:53:27,470 - Database_app/data/fr-mirror - INFO - Successfully connected to database: app/data/fr-mirror.db
+2025-12-01 17:53:27,470 - Database_app/data/fr-mirror - INFO - Creating/verifying all database tables...
+2025-12-01 17:53:27,476 - Database_app/data/fr-mirror - INFO - Table 'transcripts' created/verified successfully
+2025-12-01 17:53:27,476 - Database_app/data/fr-mirror - INFO - Table 'journalists' created/verified successfully
+2025-12-01 17:53:27,477 - Database_app/data/fr-mirror - INFO - Table 'articles' created/verified successfully
+2025-12-01 17:53:27,477 - Database_app/data/fr-mirror - INFO - Table 'tones' created/verified successfully
+2025-12-01 17:53:27,477 - Database_app/data/fr-mirror - INFO - Table 'categories' created/verified successfully
+2025-12-01 17:53:27,477 - Database_app/data/fr-mirror - INFO - Table 'video_queue' created/verified successfully
+2025-12-01 17:53:27,477 - Database_app/data/fr-mirror - INFO - All tables created/verified successfully
+2025-12-01 17:53:27,477 - Database_app/data/fr-mirror - INFO - Database initialization completed
+2025-12-01 17:53:27,478 - app.main - INFO - Database initialized successfully in main.py
+2025-12-01 17:53:27,478 - app.data.enum_manager - INFO - Starting database enum synchronization...
+2025-12-01 17:53:27,478 - app.data.enum_manager - INFO - Synchronization query made for Tone
+2025-12-01 17:53:27,478 - app.data.enum_manager - INFO - No missing values found for tones - database is in sync
+2025-12-01 17:53:27,478 - app.data.enum_manager - INFO - Synchronization query made for ArticleType
+2025-12-01 17:53:27,478 - app.data.enum_manager - INFO - No missing values found for categories - database is in sync
+2025-12-01 17:53:27,478 - app.main - INFO - Database sync completed: <app.data.enum_manager.DatabaseSync object at 0x7f0942ee3830>
+2025-12-01 17:53:27,501 - app.data.journalist_manager - INFO - Successfully updated journalist: Aurelius Stone
+2025-12-01 17:53:27,501 - app.main - INFO - Journalist initialization completed
+2025-12-01 17:53:27,501 - app.main - INFO - FastAPI app initialized!
+2025-12-01 17:53:27,501 - app.data.transcript_manager - DEBUG - Loaded proxy_username from env: akrds...
+2025-12-01 17:53:27,502 - app.data.transcript_manager - DEBUG - Loaded proxy_password from env: ***set***
+2025-12-01 17:53:31,946 - Database_app/data/fr-mirror - INFO - Initializing database: app/data/fr-mirror.db
+2025-12-01 17:53:31,946 - Database_app/data/fr-mirror - INFO - Successfully connected to database: app/data/fr-mirror.db
+2025-12-01 17:53:31,946 - Database_app/data/fr-mirror - INFO - Creating/verifying all database tables...
+2025-12-01 17:53:31,947 - Database_app/data/fr-mirror - INFO - Table 'transcripts' created/verified successfully
+2025-12-01 17:53:31,947 - Database_app/data/fr-mirror - INFO - Table 'journalists' created/verified successfully
+2025-12-01 17:53:31,947 - Database_app/data/fr-mirror - INFO - Table 'articles' created/verified successfully
+2025-12-01 17:53:31,947 - Database_app/data/fr-mirror - INFO - Table 'tones' created/verified successfully
+2025-12-01 17:53:31,948 - Database_app/data/fr-mirror - INFO - Table 'categories' created/verified successfully
+2025-12-01 17:53:31,948 - Database_app/data/fr-mirror - INFO - Table 'video_queue' created/verified successfully
+2025-12-01 17:53:31,948 - Database_app/data/fr-mirror - INFO - All tables created/verified successfully
+2025-12-01 17:53:31,948 - Database_app/data/fr-mirror - INFO - Database initialization completed
+2025-12-01 17:53:31,948 - app.main - INFO - Database initialized successfully in main.py
+2025-12-01 17:53:31,948 - app.data.enum_manager - INFO - Starting database enum synchronization...
+2025-12-01 17:53:31,949 - app.data.enum_manager - INFO - Synchronization query made for Tone
+2025-12-01 17:53:31,949 - app.data.enum_manager - INFO - No missing values found for tones - database is in sync
+2025-12-01 17:53:31,949 - app.data.enum_manager - INFO - Synchronization query made for ArticleType
+2025-12-01 17:53:31,949 - app.data.enum_manager - INFO - No missing values found for categories - database is in sync
+2025-12-01 17:53:31,949 - app.main - INFO - Database sync completed: <app.data.enum_manager.DatabaseSync object at 0x7fb10a307e60>
+2025-12-01 17:53:31,950 - app.data.journalist_manager - INFO - Successfully updated journalist: Aurelius Stone
+2025-12-01 17:53:31,950 - app.main - INFO - Journalist initialization completed
+2025-12-01 17:53:31,950 - app.main - INFO - FastAPI app initialized!
+2025-12-01 17:53:31,951 - app.data.transcript_manager - DEBUG - Loaded proxy_username from env: akrds...
+2025-12-01 17:53:31,951 - app.data.transcript_manager - DEBUG - Loaded proxy_password from env: ***set***
+2025-12-01 17:53:34,363 - Database_app/data/fr-mirror - INFO - Initializing database: app/data/fr-mirror.db
+2025-12-01 17:53:34,364 - Database_app/data/fr-mirror - INFO - Successfully connected to database: app/data/fr-mirror.db
+2025-12-01 17:53:34,364 - Database_app/data/fr-mirror - INFO - Creating/verifying all database tables...
+2025-12-01 17:53:34,364 - Database_app/data/fr-mirror - INFO - Table 'transcripts' created/verified successfully
+2025-12-01 17:53:34,364 - Database_app/data/fr-mirror - INFO - Table 'journalists' created/verified successfully
+2025-12-01 17:53:34,365 - Database_app/data/fr-mirror - INFO - Table 'articles' created/verified successfully
+2025-12-01 17:53:34,365 - Database_app/data/fr-mirror - INFO - Table 'tones' created/verified successfully
+2025-12-01 17:53:34,365 - Database_app/data/fr-mirror - INFO - Table 'categories' created/verified successfully
+2025-12-01 17:53:34,365 - Database_app/data/fr-mirror - INFO - Table 'video_queue' created/verified successfully
+2025-12-01 17:53:34,365 - Database_app/data/fr-mirror - INFO - All tables created/verified successfully
+2025-12-01 17:53:34,365 - Database_app/data/fr-mirror - INFO - Database initialization completed
+2025-12-01 17:53:34,365 - app.main - INFO - Database initialized successfully in main.py
+2025-12-01 17:53:34,365 - app.data.enum_manager - INFO - Starting database enum synchronization...
+2025-12-01 17:53:34,366 - app.data.enum_manager - INFO - Synchronization query made for Tone
+2025-12-01 17:53:34,366 - app.data.enum_manager - INFO - No missing values found for tones - database is in sync
+2025-12-01 17:53:34,366 - app.data.enum_manager - INFO - Synchronization query made for ArticleType
+2025-12-01 17:53:34,366 - app.data.enum_manager - INFO - No missing values found for categories - database is in sync
+2025-12-01 17:53:34,366 - app.main - INFO - Database sync completed: <app.data.enum_manager.DatabaseSync object at 0x7fab0394bef0>
+2025-12-01 17:53:34,366 - app.data.journalist_manager - INFO - Successfully updated journalist: Aurelius Stone
+2025-12-01 17:53:34,366 - app.main - INFO - Journalist initialization completed
+2025-12-01 17:53:34,367 - app.main - INFO - FastAPI app initialized!
+2025-12-01 17:53:34,367 - app.data.transcript_manager - DEBUG - Loaded proxy_username from env: akrds...
+2025-12-01 17:53:34,367 - app.data.transcript_manager - DEBUG - Loaded proxy_password from env: ***set***

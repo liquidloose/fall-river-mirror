@@ -22,8 +22,8 @@ from fastapi.responses import JSONResponse
 
 # Local imports
 from app import TranscriptManager, ArticleGenerator
-from app.writing_department.ai_journalists.aurelius_stone import AureliusStone
-from app.writing_department.writing_tools.xai_processor import XAIProcessor
+from app.content_department.ai_journalists.aurelius_stone import AureliusStone
+from app.content_department.creation_tools.xai_processor import XAIProcessor
 from app.data.enum_classes import (
     ArticleType,
     Journalist,
