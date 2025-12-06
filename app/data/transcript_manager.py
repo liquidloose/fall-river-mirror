@@ -1,6 +1,5 @@
 from datetime import datetime
 import os
-import re
 import logging
 import json
 import sqlite3
@@ -21,7 +20,10 @@ from youtube_transcript_api._errors import (
 from .enum_classes import AIAgent
 from .create_database import Database
 from .youtube_metadata_fetcher import YouTubeMetadataFetcher
-from ..content_department.creation_tools.whisper_processor import WhisperProcessor
+from ..content_department.creation_tools.whisper_processor import (
+    WhisperProcessor,
+)
+
 
 logger = logging.getLogger(__name__)
 
