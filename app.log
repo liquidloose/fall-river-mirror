@@ -13943,3 +13943,934 @@ Exception: Invalid YouTube channel URL: string
 2025-12-01 17:53:34,367 - app.main - INFO - FastAPI app initialized!
 2025-12-01 17:53:34,367 - app.data.transcript_manager - DEBUG - Loaded proxy_username from env: akrds...
 2025-12-01 17:53:34,367 - app.data.transcript_manager - DEBUG - Loaded proxy_password from env: ***set***
+2025-12-03 06:17:05,240 - Database_app/data/fr-mirror - INFO - Initializing database: app/data/fr-mirror.db
+2025-12-03 06:17:05,242 - Database_app/data/fr-mirror - INFO - Successfully connected to database: app/data/fr-mirror.db
+2025-12-03 06:17:05,242 - Database_app/data/fr-mirror - INFO - Creating/verifying all database tables...
+2025-12-03 06:17:05,243 - Database_app/data/fr-mirror - INFO - Table 'transcripts' created/verified successfully
+2025-12-03 06:17:05,244 - Database_app/data/fr-mirror - INFO - Table 'journalists' created/verified successfully
+2025-12-03 06:17:05,244 - Database_app/data/fr-mirror - INFO - Table 'articles' created/verified successfully
+2025-12-03 06:17:05,245 - Database_app/data/fr-mirror - INFO - Table 'tones' created/verified successfully
+2025-12-03 06:17:05,245 - Database_app/data/fr-mirror - INFO - Table 'categories' created/verified successfully
+2025-12-03 06:17:05,246 - Database_app/data/fr-mirror - INFO - Table 'video_queue' created/verified successfully
+2025-12-03 06:17:05,246 - Database_app/data/fr-mirror - INFO - All tables created/verified successfully
+2025-12-03 06:17:05,246 - Database_app/data/fr-mirror - INFO - Database initialization completed
+2025-12-03 06:17:05,246 - app.main - INFO - Database initialized successfully in main.py
+2025-12-03 06:17:05,246 - app.data.enum_manager - INFO - Starting database enum synchronization...
+2025-12-03 06:17:05,247 - app.data.enum_manager - INFO - Synchronization query made for Tone
+2025-12-03 06:17:05,247 - app.data.enum_manager - INFO - No missing values found for tones - database is in sync
+2025-12-03 06:17:05,247 - app.data.enum_manager - INFO - Synchronization query made for ArticleType
+2025-12-03 06:17:05,248 - app.data.enum_manager - INFO - No missing values found for categories - database is in sync
+2025-12-03 06:17:05,248 - app.main - INFO - Database sync completed: <app.data.enum_manager.DatabaseSync object at 0x7f97b6dccc50>
+2025-12-03 06:17:05,248 - app.data.journalist_manager - INFO - Successfully updated journalist: Aurelius Stone
+2025-12-03 06:17:05,248 - app.main - INFO - Journalist initialization completed
+2025-12-03 06:17:05,249 - app.main - INFO - FastAPI app initialized!
+2025-12-03 06:17:05,249 - app.data.transcript_manager - DEBUG - Loaded proxy_username from env: akrds...
+2025-12-03 06:17:05,250 - app.data.transcript_manager - DEBUG - Loaded proxy_password from env: ***set***
+2025-12-03 06:17:06,737 - Database_app/data/fr-mirror - INFO - Initializing database: app/data/fr-mirror.db
+2025-12-03 06:17:06,738 - Database_app/data/fr-mirror - INFO - Successfully connected to database: app/data/fr-mirror.db
+2025-12-03 06:17:06,738 - Database_app/data/fr-mirror - INFO - Creating/verifying all database tables...
+2025-12-03 06:17:06,738 - Database_app/data/fr-mirror - INFO - Table 'transcripts' created/verified successfully
+2025-12-03 06:17:06,738 - Database_app/data/fr-mirror - INFO - Table 'journalists' created/verified successfully
+2025-12-03 06:17:06,738 - Database_app/data/fr-mirror - INFO - Table 'articles' created/verified successfully
+2025-12-03 06:17:06,739 - Database_app/data/fr-mirror - INFO - Table 'tones' created/verified successfully
+2025-12-03 06:17:06,739 - Database_app/data/fr-mirror - INFO - Table 'categories' created/verified successfully
+2025-12-03 06:17:06,739 - Database_app/data/fr-mirror - INFO - Table 'video_queue' created/verified successfully
+2025-12-03 06:17:06,739 - Database_app/data/fr-mirror - INFO - All tables created/verified successfully
+2025-12-03 06:17:06,739 - Database_app/data/fr-mirror - INFO - Database initialization completed
+2025-12-03 06:17:06,739 - app.main - INFO - Database initialized successfully in main.py
+2025-12-03 06:17:06,739 - app.data.enum_manager - INFO - Starting database enum synchronization...
+2025-12-03 06:17:06,739 - app.data.enum_manager - INFO - Synchronization query made for Tone
+2025-12-03 06:17:06,740 - app.data.enum_manager - INFO - No missing values found for tones - database is in sync
+2025-12-03 06:17:06,740 - app.data.enum_manager - INFO - Synchronization query made for ArticleType
+2025-12-03 06:17:06,740 - app.data.enum_manager - INFO - No missing values found for categories - database is in sync
+2025-12-03 06:17:06,740 - app.main - INFO - Database sync completed: <app.data.enum_manager.DatabaseSync object at 0x7f52f87308c0>
+2025-12-03 06:17:06,740 - app.data.journalist_manager - INFO - Successfully updated journalist: Aurelius Stone
+2025-12-03 06:17:06,740 - app.main - INFO - Journalist initialization completed
+2025-12-03 06:17:06,741 - app.main - INFO - FastAPI app initialized!
+2025-12-03 06:17:06,741 - app.data.transcript_manager - DEBUG - Loaded proxy_username from env: akrds...
+2025-12-03 06:17:06,741 - app.data.transcript_manager - DEBUG - Loaded proxy_password from env: ***set***
+2025-12-03 06:17:09,868 - Database_app/data/fr-mirror - INFO - Initializing database: app/data/fr-mirror.db
+2025-12-03 06:17:09,869 - Database_app/data/fr-mirror - INFO - Successfully connected to database: app/data/fr-mirror.db
+2025-12-03 06:17:09,870 - Database_app/data/fr-mirror - INFO - Creating/verifying all database tables...
+2025-12-03 06:17:09,870 - Database_app/data/fr-mirror - INFO - Table 'transcripts' created/verified successfully
+2025-12-03 06:17:09,871 - Database_app/data/fr-mirror - INFO - Table 'journalists' created/verified successfully
+2025-12-03 06:17:09,871 - Database_app/data/fr-mirror - INFO - Table 'articles' created/verified successfully
+2025-12-03 06:17:09,871 - Database_app/data/fr-mirror - INFO - Table 'tones' created/verified successfully
+2025-12-03 06:17:09,872 - Database_app/data/fr-mirror - INFO - Table 'categories' created/verified successfully
+2025-12-03 06:17:09,872 - Database_app/data/fr-mirror - INFO - Table 'video_queue' created/verified successfully
+2025-12-03 06:17:09,873 - Database_app/data/fr-mirror - INFO - All tables created/verified successfully
+2025-12-03 06:17:09,873 - Database_app/data/fr-mirror - INFO - Database initialization completed
+2025-12-03 06:17:09,873 - app.main - INFO - Database initialized successfully in main.py
+2025-12-03 06:17:09,874 - app.data.enum_manager - INFO - Starting database enum synchronization...
+2025-12-03 06:17:09,874 - app.data.enum_manager - INFO - Synchronization query made for Tone
+2025-12-03 06:17:09,874 - app.data.enum_manager - INFO - No missing values found for tones - database is in sync
+2025-12-03 06:17:09,874 - app.data.enum_manager - INFO - Synchronization query made for ArticleType
+2025-12-03 06:17:09,875 - app.data.enum_manager - INFO - No missing values found for categories - database is in sync
+2025-12-03 06:17:09,875 - app.main - INFO - Database sync completed: <app.data.enum_manager.DatabaseSync object at 0x7f6c4532be60>
+2025-12-03 06:17:09,875 - app.data.journalist_manager - INFO - Successfully updated journalist: Aurelius Stone
+2025-12-03 06:17:09,876 - app.main - INFO - Journalist initialization completed
+2025-12-03 06:17:09,876 - app.main - INFO - FastAPI app initialized!
+2025-12-03 06:17:09,877 - app.data.transcript_manager - DEBUG - Loaded proxy_username from env: akrds...
+2025-12-03 06:17:09,877 - app.data.transcript_manager - DEBUG - Loaded proxy_password from env: ***set***
+2025-12-03 06:17:11,297 - Database_app/data/fr-mirror - INFO - Initializing database: app/data/fr-mirror.db
+2025-12-03 06:17:11,297 - Database_app/data/fr-mirror - INFO - Successfully connected to database: app/data/fr-mirror.db
+2025-12-03 06:17:11,298 - Database_app/data/fr-mirror - INFO - Creating/verifying all database tables...
+2025-12-03 06:17:11,298 - Database_app/data/fr-mirror - INFO - Table 'transcripts' created/verified successfully
+2025-12-03 06:17:11,298 - Database_app/data/fr-mirror - INFO - Table 'journalists' created/verified successfully
+2025-12-03 06:17:11,298 - Database_app/data/fr-mirror - INFO - Table 'articles' created/verified successfully
+2025-12-03 06:17:11,299 - Database_app/data/fr-mirror - INFO - Table 'tones' created/verified successfully
+2025-12-03 06:17:11,299 - Database_app/data/fr-mirror - INFO - Table 'categories' created/verified successfully
+2025-12-03 06:17:11,299 - Database_app/data/fr-mirror - INFO - Table 'video_queue' created/verified successfully
+2025-12-03 06:17:11,299 - Database_app/data/fr-mirror - INFO - All tables created/verified successfully
+2025-12-03 06:17:11,299 - Database_app/data/fr-mirror - INFO - Database initialization completed
+2025-12-03 06:17:11,299 - app.main - INFO - Database initialized successfully in main.py
+2025-12-03 06:17:11,299 - app.data.enum_manager - INFO - Starting database enum synchronization...
+2025-12-03 06:17:11,299 - app.data.enum_manager - INFO - Synchronization query made for Tone
+2025-12-03 06:17:11,299 - app.data.enum_manager - INFO - No missing values found for tones - database is in sync
+2025-12-03 06:17:11,300 - app.data.enum_manager - INFO - Synchronization query made for ArticleType
+2025-12-03 06:17:11,300 - app.data.enum_manager - INFO - No missing values found for categories - database is in sync
+2025-12-03 06:17:11,300 - app.main - INFO - Database sync completed: <app.data.enum_manager.DatabaseSync object at 0x7f3a74b5afc0>
+2025-12-03 06:17:11,300 - app.data.journalist_manager - INFO - Successfully updated journalist: Aurelius Stone
+2025-12-03 06:17:11,300 - app.main - INFO - Journalist initialization completed
+2025-12-03 06:17:11,301 - app.main - INFO - FastAPI app initialized!
+2025-12-03 06:17:11,301 - app.data.transcript_manager - DEBUG - Loaded proxy_username from env: akrds...
+2025-12-03 06:17:11,301 - app.data.transcript_manager - DEBUG - Loaded proxy_password from env: ***set***
+2025-12-03 06:17:20,254 - Database_app/data/fr-mirror - INFO - Initializing database: app/data/fr-mirror.db
+2025-12-03 06:17:20,254 - Database_app/data/fr-mirror - INFO - Successfully connected to database: app/data/fr-mirror.db
+2025-12-03 06:17:20,255 - Database_app/data/fr-mirror - INFO - Creating/verifying all database tables...
+2025-12-03 06:17:20,255 - Database_app/data/fr-mirror - INFO - Table 'transcripts' created/verified successfully
+2025-12-03 06:17:20,255 - Database_app/data/fr-mirror - INFO - Table 'journalists' created/verified successfully
+2025-12-03 06:17:20,255 - Database_app/data/fr-mirror - INFO - Table 'articles' created/verified successfully
+2025-12-03 06:17:20,256 - Database_app/data/fr-mirror - INFO - Table 'tones' created/verified successfully
+2025-12-03 06:17:20,256 - Database_app/data/fr-mirror - INFO - Table 'categories' created/verified successfully
+2025-12-03 06:17:20,256 - Database_app/data/fr-mirror - INFO - Table 'video_queue' created/verified successfully
+2025-12-03 06:17:20,257 - Database_app/data/fr-mirror - INFO - All tables created/verified successfully
+2025-12-03 06:17:20,257 - Database_app/data/fr-mirror - INFO - Database initialization completed
+2025-12-03 06:17:20,257 - app.main - INFO - Database initialized successfully in main.py
+2025-12-03 06:17:20,257 - app.data.enum_manager - INFO - Starting database enum synchronization...
+2025-12-03 06:17:20,257 - app.data.enum_manager - INFO - Synchronization query made for Tone
+2025-12-03 06:17:20,257 - app.data.enum_manager - INFO - No missing values found for tones - database is in sync
+2025-12-03 06:17:20,258 - app.data.enum_manager - INFO - Synchronization query made for ArticleType
+2025-12-03 06:17:20,258 - app.data.enum_manager - INFO - No missing values found for categories - database is in sync
+2025-12-03 06:17:20,258 - app.main - INFO - Database sync completed: <app.data.enum_manager.DatabaseSync object at 0x7fa3a41d8980>
+2025-12-03 06:17:20,258 - app.data.journalist_manager - INFO - Successfully updated journalist: Aurelius Stone
+2025-12-03 06:17:20,258 - app.main - INFO - Journalist initialization completed
+2025-12-03 06:17:20,259 - app.main - INFO - FastAPI app initialized!
+2025-12-03 06:17:20,259 - app.data.transcript_manager - DEBUG - Loaded proxy_username from env: akrds...
+2025-12-03 06:17:20,259 - app.data.transcript_manager - DEBUG - Loaded proxy_password from env: ***set***
+2025-12-03 06:17:30,001 - Database_app/data/fr-mirror - INFO - Initializing database: app/data/fr-mirror.db
+2025-12-03 06:17:30,002 - Database_app/data/fr-mirror - INFO - Successfully connected to database: app/data/fr-mirror.db
+2025-12-03 06:17:30,002 - Database_app/data/fr-mirror - INFO - Creating/verifying all database tables...
+2025-12-03 06:17:30,002 - Database_app/data/fr-mirror - INFO - Table 'transcripts' created/verified successfully
+2025-12-03 06:17:30,002 - Database_app/data/fr-mirror - INFO - Table 'journalists' created/verified successfully
+2025-12-03 06:17:30,003 - Database_app/data/fr-mirror - INFO - Table 'articles' created/verified successfully
+2025-12-03 06:17:30,003 - Database_app/data/fr-mirror - INFO - Table 'tones' created/verified successfully
+2025-12-03 06:17:30,003 - Database_app/data/fr-mirror - INFO - Table 'categories' created/verified successfully
+2025-12-03 06:17:30,003 - Database_app/data/fr-mirror - INFO - Table 'video_queue' created/verified successfully
+2025-12-03 06:17:30,003 - Database_app/data/fr-mirror - INFO - All tables created/verified successfully
+2025-12-03 06:17:30,003 - Database_app/data/fr-mirror - INFO - Database initialization completed
+2025-12-03 06:17:30,003 - app.main - INFO - Database initialized successfully in main.py
+2025-12-03 06:17:30,003 - app.data.enum_manager - INFO - Starting database enum synchronization...
+2025-12-03 06:17:30,004 - app.data.enum_manager - INFO - Synchronization query made for Tone
+2025-12-03 06:17:30,004 - app.data.enum_manager - INFO - No missing values found for tones - database is in sync
+2025-12-03 06:17:30,004 - app.data.enum_manager - INFO - Synchronization query made for ArticleType
+2025-12-03 06:17:30,004 - app.data.enum_manager - INFO - No missing values found for categories - database is in sync
+2025-12-03 06:17:30,004 - app.main - INFO - Database sync completed: <app.data.enum_manager.DatabaseSync object at 0x7ff09f954fb0>
+2025-12-03 06:17:30,005 - app.data.journalist_manager - INFO - Successfully updated journalist: Aurelius Stone
+2025-12-03 06:17:30,005 - app.main - INFO - Journalist initialization completed
+2025-12-03 06:17:30,005 - app.main - INFO - FastAPI app initialized!
+2025-12-03 06:17:30,005 - app.data.transcript_manager - DEBUG - Loaded proxy_username from env: akrds...
+2025-12-03 06:17:30,005 - app.data.transcript_manager - DEBUG - Loaded proxy_password from env: ***set***
+2025-12-03 06:24:51,245 - Database_app/data/fr-mirror - INFO - Initializing database: app/data/fr-mirror.db
+2025-12-03 06:24:51,246 - Database_app/data/fr-mirror - INFO - Successfully connected to database: app/data/fr-mirror.db
+2025-12-03 06:24:51,246 - Database_app/data/fr-mirror - INFO - Creating/verifying all database tables...
+2025-12-03 06:24:51,246 - Database_app/data/fr-mirror - INFO - Table 'transcripts' created/verified successfully
+2025-12-03 06:24:51,247 - Database_app/data/fr-mirror - INFO - Table 'journalists' created/verified successfully
+2025-12-03 06:24:51,247 - Database_app/data/fr-mirror - INFO - Table 'articles' created/verified successfully
+2025-12-03 06:24:51,247 - Database_app/data/fr-mirror - INFO - Table 'tones' created/verified successfully
+2025-12-03 06:24:51,247 - Database_app/data/fr-mirror - INFO - Table 'categories' created/verified successfully
+2025-12-03 06:24:51,248 - Database_app/data/fr-mirror - INFO - Table 'video_queue' created/verified successfully
+2025-12-03 06:24:51,248 - Database_app/data/fr-mirror - INFO - All tables created/verified successfully
+2025-12-03 06:24:51,248 - Database_app/data/fr-mirror - INFO - Database initialization completed
+2025-12-03 06:24:51,248 - app.main - INFO - Database initialized successfully in main.py
+2025-12-03 06:24:51,248 - app.data.enum_manager - INFO - Starting database enum synchronization...
+2025-12-03 06:24:51,248 - app.data.enum_manager - INFO - Synchronization query made for Tone
+2025-12-03 06:24:51,248 - app.data.enum_manager - INFO - No missing values found for tones - database is in sync
+2025-12-03 06:24:51,249 - app.data.enum_manager - INFO - Synchronization query made for ArticleType
+2025-12-03 06:24:51,249 - app.data.enum_manager - INFO - No missing values found for categories - database is in sync
+2025-12-03 06:24:51,249 - app.main - INFO - Database sync completed: <app.data.enum_manager.DatabaseSync object at 0x7f6e92eaddf0>
+2025-12-03 06:24:51,249 - app.data.journalist_manager - INFO - Successfully updated journalist: Aurelius Stone
+2025-12-03 06:24:51,249 - app.main - INFO - Journalist initialization completed
+2025-12-03 06:24:51,250 - app.main - INFO - FastAPI app initialized!
+2025-12-03 06:24:51,250 - app.data.transcript_manager - DEBUG - Loaded proxy_username from env: akrds...
+2025-12-03 06:24:51,250 - app.data.transcript_manager - DEBUG - Loaded proxy_password from env: ***set***
+2025-12-03 06:24:54,784 - Database_app/data/fr-mirror - INFO - Initializing database: app/data/fr-mirror.db
+2025-12-03 06:24:54,784 - Database_app/data/fr-mirror - INFO - Successfully connected to database: app/data/fr-mirror.db
+2025-12-03 06:24:54,785 - Database_app/data/fr-mirror - INFO - Creating/verifying all database tables...
+2025-12-03 06:24:54,785 - Database_app/data/fr-mirror - INFO - Table 'transcripts' created/verified successfully
+2025-12-03 06:24:54,785 - Database_app/data/fr-mirror - INFO - Table 'journalists' created/verified successfully
+2025-12-03 06:24:54,785 - Database_app/data/fr-mirror - INFO - Table 'articles' created/verified successfully
+2025-12-03 06:24:54,785 - Database_app/data/fr-mirror - INFO - Table 'tones' created/verified successfully
+2025-12-03 06:24:54,785 - Database_app/data/fr-mirror - INFO - Table 'categories' created/verified successfully
+2025-12-03 06:24:54,786 - Database_app/data/fr-mirror - INFO - Table 'video_queue' created/verified successfully
+2025-12-03 06:24:54,786 - Database_app/data/fr-mirror - INFO - All tables created/verified successfully
+2025-12-03 06:24:54,786 - Database_app/data/fr-mirror - INFO - Database initialization completed
+2025-12-03 06:24:54,786 - app.main - INFO - Database initialized successfully in main.py
+2025-12-03 06:24:54,786 - app.data.enum_manager - INFO - Starting database enum synchronization...
+2025-12-03 06:24:54,786 - app.data.enum_manager - INFO - Synchronization query made for Tone
+2025-12-03 06:24:54,786 - app.data.enum_manager - INFO - No missing values found for tones - database is in sync
+2025-12-03 06:24:54,786 - app.data.enum_manager - INFO - Synchronization query made for ArticleType
+2025-12-03 06:24:54,787 - app.data.enum_manager - INFO - No missing values found for categories - database is in sync
+2025-12-03 06:24:54,787 - app.main - INFO - Database sync completed: <app.data.enum_manager.DatabaseSync object at 0x7fcbc0368830>
+2025-12-03 06:24:54,787 - app.data.journalist_manager - INFO - Successfully updated journalist: Aurelius Stone
+2025-12-03 06:24:54,787 - app.main - INFO - Journalist initialization completed
+2025-12-03 06:24:54,788 - app.main - INFO - FastAPI app initialized!
+2025-12-03 06:24:54,788 - app.data.transcript_manager - DEBUG - Loaded proxy_username from env: akrds...
+2025-12-03 06:24:54,788 - app.data.transcript_manager - DEBUG - Loaded proxy_password from env: ***set***
+2025-12-03 07:01:55,009 - Database_app/data/fr-mirror - INFO - Initializing database: app/data/fr-mirror.db
+2025-12-03 07:01:55,010 - Database_app/data/fr-mirror - INFO - Successfully connected to database: app/data/fr-mirror.db
+2025-12-03 07:01:55,010 - Database_app/data/fr-mirror - INFO - Creating/verifying all database tables...
+2025-12-03 07:01:55,010 - Database_app/data/fr-mirror - INFO - Table 'transcripts' created/verified successfully
+2025-12-03 07:01:55,011 - Database_app/data/fr-mirror - INFO - Table 'journalists' created/verified successfully
+2025-12-03 07:01:55,011 - Database_app/data/fr-mirror - INFO - Table 'articles' created/verified successfully
+2025-12-03 07:01:55,011 - Database_app/data/fr-mirror - INFO - Table 'tones' created/verified successfully
+2025-12-03 07:01:55,011 - Database_app/data/fr-mirror - INFO - Table 'categories' created/verified successfully
+2025-12-03 07:01:55,011 - Database_app/data/fr-mirror - INFO - Table 'video_queue' created/verified successfully
+2025-12-03 07:01:55,011 - Database_app/data/fr-mirror - INFO - All tables created/verified successfully
+2025-12-03 07:01:55,011 - Database_app/data/fr-mirror - INFO - Database initialization completed
+2025-12-03 07:01:55,011 - app.main - INFO - Database initialized successfully in main.py
+2025-12-03 07:01:55,012 - app.data.enum_manager - INFO - Starting database enum synchronization...
+2025-12-03 07:01:55,012 - app.data.enum_manager - INFO - Synchronization query made for Tone
+2025-12-03 07:01:55,012 - app.data.enum_manager - INFO - No missing values found for tones - database is in sync
+2025-12-03 07:01:55,012 - app.data.enum_manager - INFO - Synchronization query made for ArticleType
+2025-12-03 07:01:55,012 - app.data.enum_manager - INFO - No missing values found for categories - database is in sync
+2025-12-03 07:01:55,012 - app.main - INFO - Database sync completed: <app.data.enum_manager.DatabaseSync object at 0x7f4e6eb56180>
+2025-12-03 07:01:55,013 - app.data.journalist_manager - INFO - Successfully updated journalist: Aurelius Stone
+2025-12-03 07:01:55,013 - app.main - INFO - Journalist initialization completed
+2025-12-03 07:01:55,013 - app.main - INFO - FastAPI app initialized!
+2025-12-03 07:01:55,013 - app.data.transcript_manager - DEBUG - Loaded proxy_username from env: akrds...
+2025-12-03 07:01:55,013 - app.data.transcript_manager - DEBUG - Loaded proxy_password from env: ***set***
+2025-12-03 07:07:27,214 - Database_app/data/fr-mirror - INFO - Initializing database: app/data/fr-mirror.db
+2025-12-03 07:07:27,214 - Database_app/data/fr-mirror - INFO - Successfully connected to database: app/data/fr-mirror.db
+2025-12-03 07:07:27,214 - Database_app/data/fr-mirror - INFO - Creating/verifying all database tables...
+2025-12-03 07:07:27,214 - Database_app/data/fr-mirror - INFO - Table 'transcripts' created/verified successfully
+2025-12-03 07:07:27,214 - Database_app/data/fr-mirror - INFO - Table 'journalists' created/verified successfully
+2025-12-03 07:07:27,215 - Database_app/data/fr-mirror - INFO - Table 'articles' created/verified successfully
+2025-12-03 07:07:27,215 - Database_app/data/fr-mirror - INFO - Table 'tones' created/verified successfully
+2025-12-03 07:07:27,215 - Database_app/data/fr-mirror - INFO - Table 'categories' created/verified successfully
+2025-12-03 07:07:27,215 - Database_app/data/fr-mirror - INFO - Table 'video_queue' created/verified successfully
+2025-12-03 07:07:27,215 - Database_app/data/fr-mirror - INFO - All tables created/verified successfully
+2025-12-03 07:07:27,215 - Database_app/data/fr-mirror - INFO - Database initialization completed
+2025-12-03 07:07:27,215 - app.main - INFO - Database initialized successfully in main.py
+2025-12-03 07:07:27,215 - app.data.enum_manager - INFO - Starting database enum synchronization...
+2025-12-03 07:07:27,215 - app.data.enum_manager - INFO - Synchronization query made for Tone
+2025-12-03 07:07:27,216 - app.data.enum_manager - INFO - No missing values found for tones - database is in sync
+2025-12-03 07:07:27,216 - app.data.enum_manager - INFO - Synchronization query made for ArticleType
+2025-12-03 07:07:27,216 - app.data.enum_manager - INFO - No missing values found for categories - database is in sync
+2025-12-03 07:07:27,216 - app.main - INFO - Database sync completed: <app.data.enum_manager.DatabaseSync object at 0x7f6a5e010980>
+2025-12-03 07:07:27,216 - app.data.journalist_manager - INFO - Successfully updated journalist: Aurelius Stone
+2025-12-03 07:07:27,216 - app.main - INFO - Journalist initialization completed
+2025-12-03 07:07:27,217 - app.main - INFO - FastAPI app initialized!
+2025-12-03 07:07:27,217 - app.data.transcript_manager - DEBUG - Loaded proxy_username from env: akrds...
+2025-12-03 07:07:27,217 - app.data.transcript_manager - DEBUG - Loaded proxy_password from env: ***set***
+2025-12-03 07:07:42,906 - Database_app/data/fr-mirror - INFO - Initializing database: app/data/fr-mirror.db
+2025-12-03 07:07:42,906 - Database_app/data/fr-mirror - INFO - Successfully connected to database: app/data/fr-mirror.db
+2025-12-03 07:07:42,906 - Database_app/data/fr-mirror - INFO - Creating/verifying all database tables...
+2025-12-03 07:07:42,907 - Database_app/data/fr-mirror - INFO - Table 'transcripts' created/verified successfully
+2025-12-03 07:07:42,907 - Database_app/data/fr-mirror - INFO - Table 'journalists' created/verified successfully
+2025-12-03 07:07:42,907 - Database_app/data/fr-mirror - INFO - Table 'articles' created/verified successfully
+2025-12-03 07:07:42,907 - Database_app/data/fr-mirror - INFO - Table 'tones' created/verified successfully
+2025-12-03 07:07:42,907 - Database_app/data/fr-mirror - INFO - Table 'categories' created/verified successfully
+2025-12-03 07:07:42,908 - Database_app/data/fr-mirror - INFO - Table 'video_queue' created/verified successfully
+2025-12-03 07:07:42,908 - Database_app/data/fr-mirror - INFO - All tables created/verified successfully
+2025-12-03 07:07:42,908 - Database_app/data/fr-mirror - INFO - Database initialization completed
+2025-12-03 07:07:42,908 - app.main - INFO - Database initialized successfully in main.py
+2025-12-03 07:07:42,908 - app.data.enum_manager - INFO - Starting database enum synchronization...
+2025-12-03 07:07:42,908 - app.data.enum_manager - INFO - Synchronization query made for Tone
+2025-12-03 07:07:42,908 - app.data.enum_manager - INFO - No missing values found for tones - database is in sync
+2025-12-03 07:07:42,909 - app.data.enum_manager - INFO - Synchronization query made for ArticleType
+2025-12-03 07:07:42,909 - app.data.enum_manager - INFO - No missing values found for categories - database is in sync
+2025-12-03 07:07:42,909 - app.main - INFO - Database sync completed: <app.data.enum_manager.DatabaseSync object at 0x7f92506f1010>
+2025-12-03 07:07:42,909 - app.data.journalist_manager - INFO - Successfully updated journalist: Aurelius Stone
+2025-12-03 07:07:42,910 - app.main - INFO - Journalist initialization completed
+2025-12-03 07:07:42,910 - app.main - INFO - FastAPI app initialized!
+2025-12-03 07:07:42,910 - app.data.transcript_manager - DEBUG - Loaded proxy_username from env: akrds...
+2025-12-03 07:07:42,910 - app.data.transcript_manager - DEBUG - Loaded proxy_password from env: ***set***
+2025-12-03 07:07:44,339 - Database_app/data/fr-mirror - INFO - Initializing database: app/data/fr-mirror.db
+2025-12-03 07:07:44,340 - Database_app/data/fr-mirror - INFO - Successfully connected to database: app/data/fr-mirror.db
+2025-12-03 07:07:44,340 - Database_app/data/fr-mirror - INFO - Creating/verifying all database tables...
+2025-12-03 07:07:44,340 - Database_app/data/fr-mirror - INFO - Table 'transcripts' created/verified successfully
+2025-12-03 07:07:44,341 - Database_app/data/fr-mirror - INFO - Table 'journalists' created/verified successfully
+2025-12-03 07:07:44,341 - Database_app/data/fr-mirror - INFO - Table 'articles' created/verified successfully
+2025-12-03 07:07:44,341 - Database_app/data/fr-mirror - INFO - Table 'tones' created/verified successfully
+2025-12-03 07:07:44,341 - Database_app/data/fr-mirror - INFO - Table 'categories' created/verified successfully
+2025-12-03 07:07:44,342 - Database_app/data/fr-mirror - INFO - Table 'video_queue' created/verified successfully
+2025-12-03 07:07:44,342 - Database_app/data/fr-mirror - INFO - All tables created/verified successfully
+2025-12-03 07:07:44,342 - Database_app/data/fr-mirror - INFO - Database initialization completed
+2025-12-03 07:07:44,342 - app.main - INFO - Database initialized successfully in main.py
+2025-12-03 07:07:44,342 - app.data.enum_manager - INFO - Starting database enum synchronization...
+2025-12-03 07:07:44,343 - app.data.enum_manager - INFO - Synchronization query made for Tone
+2025-12-03 07:07:44,343 - app.data.enum_manager - INFO - No missing values found for tones - database is in sync
+2025-12-03 07:07:44,343 - app.data.enum_manager - INFO - Synchronization query made for ArticleType
+2025-12-03 07:07:44,343 - app.data.enum_manager - INFO - No missing values found for categories - database is in sync
+2025-12-03 07:07:44,343 - app.main - INFO - Database sync completed: <app.data.enum_manager.DatabaseSync object at 0x7fd7bffccaa0>
+2025-12-03 07:07:44,344 - app.data.journalist_manager - INFO - Successfully updated journalist: Aurelius Stone
+2025-12-03 07:07:44,344 - app.main - INFO - Journalist initialization completed
+2025-12-03 07:07:44,344 - app.main - INFO - FastAPI app initialized!
+2025-12-03 07:07:44,345 - app.data.transcript_manager - DEBUG - Loaded proxy_username from env: akrds...
+2025-12-03 07:07:44,345 - app.data.transcript_manager - DEBUG - Loaded proxy_password from env: ***set***
+2025-12-03 07:07:52,515 - Database_app/data/fr-mirror - INFO - Initializing database: app/data/fr-mirror.db
+2025-12-03 07:07:52,515 - Database_app/data/fr-mirror - INFO - Successfully connected to database: app/data/fr-mirror.db
+2025-12-03 07:07:52,516 - Database_app/data/fr-mirror - INFO - Creating/verifying all database tables...
+2025-12-03 07:07:52,516 - Database_app/data/fr-mirror - INFO - Table 'transcripts' created/verified successfully
+2025-12-03 07:07:52,516 - Database_app/data/fr-mirror - INFO - Table 'journalists' created/verified successfully
+2025-12-03 07:07:52,517 - Database_app/data/fr-mirror - INFO - Table 'articles' created/verified successfully
+2025-12-03 07:07:52,517 - Database_app/data/fr-mirror - INFO - Table 'tones' created/verified successfully
+2025-12-03 07:07:52,517 - Database_app/data/fr-mirror - INFO - Table 'categories' created/verified successfully
+2025-12-03 07:07:52,517 - Database_app/data/fr-mirror - INFO - Table 'video_queue' created/verified successfully
+2025-12-03 07:07:52,517 - Database_app/data/fr-mirror - INFO - All tables created/verified successfully
+2025-12-03 07:07:52,518 - Database_app/data/fr-mirror - INFO - Database initialization completed
+2025-12-03 07:07:52,518 - app.main - INFO - Database initialized successfully in main.py
+2025-12-03 07:07:52,518 - app.data.enum_manager - INFO - Starting database enum synchronization...
+2025-12-03 07:07:52,518 - app.data.enum_manager - INFO - Synchronization query made for Tone
+2025-12-03 07:07:52,518 - app.data.enum_manager - INFO - No missing values found for tones - database is in sync
+2025-12-03 07:07:52,518 - app.data.enum_manager - INFO - Synchronization query made for ArticleType
+2025-12-03 07:07:52,519 - app.data.enum_manager - INFO - No missing values found for categories - database is in sync
+2025-12-03 07:07:52,519 - app.main - INFO - Database sync completed: <app.data.enum_manager.DatabaseSync object at 0x7fcf642b18b0>
+2025-12-03 07:07:52,519 - app.data.journalist_manager - INFO - Successfully updated journalist: Aurelius Stone
+2025-12-03 07:07:52,519 - app.main - INFO - Journalist initialization completed
+2025-12-03 07:07:52,520 - app.main - INFO - FastAPI app initialized!
+2025-12-03 07:07:52,520 - app.data.transcript_manager - DEBUG - Loaded proxy_username from env: akrds...
+2025-12-03 07:07:52,520 - app.data.transcript_manager - DEBUG - Loaded proxy_password from env: ***set***
+2025-12-03 07:07:53,903 - Database_app/data/fr-mirror - INFO - Initializing database: app/data/fr-mirror.db
+2025-12-03 07:07:53,903 - Database_app/data/fr-mirror - INFO - Successfully connected to database: app/data/fr-mirror.db
+2025-12-03 07:07:53,904 - Database_app/data/fr-mirror - INFO - Creating/verifying all database tables...
+2025-12-03 07:07:53,904 - Database_app/data/fr-mirror - INFO - Table 'transcripts' created/verified successfully
+2025-12-03 07:07:53,904 - Database_app/data/fr-mirror - INFO - Table 'journalists' created/verified successfully
+2025-12-03 07:07:53,904 - Database_app/data/fr-mirror - INFO - Table 'articles' created/verified successfully
+2025-12-03 07:07:53,904 - Database_app/data/fr-mirror - INFO - Table 'tones' created/verified successfully
+2025-12-03 07:07:53,904 - Database_app/data/fr-mirror - INFO - Table 'categories' created/verified successfully
+2025-12-03 07:07:53,905 - Database_app/data/fr-mirror - INFO - Table 'video_queue' created/verified successfully
+2025-12-03 07:07:53,905 - Database_app/data/fr-mirror - INFO - All tables created/verified successfully
+2025-12-03 07:07:53,905 - Database_app/data/fr-mirror - INFO - Database initialization completed
+2025-12-03 07:07:53,905 - app.main - INFO - Database initialized successfully in main.py
+2025-12-03 07:07:53,905 - app.data.enum_manager - INFO - Starting database enum synchronization...
+2025-12-03 07:07:53,905 - app.data.enum_manager - INFO - Synchronization query made for Tone
+2025-12-03 07:07:53,905 - app.data.enum_manager - INFO - No missing values found for tones - database is in sync
+2025-12-03 07:07:53,905 - app.data.enum_manager - INFO - Synchronization query made for ArticleType
+2025-12-03 07:07:53,906 - app.data.enum_manager - INFO - No missing values found for categories - database is in sync
+2025-12-03 07:07:53,906 - app.main - INFO - Database sync completed: <app.data.enum_manager.DatabaseSync object at 0x7f8d218be180>
+2025-12-03 07:07:53,906 - app.data.journalist_manager - INFO - Successfully updated journalist: Aurelius Stone
+2025-12-03 07:07:53,906 - app.main - INFO - Journalist initialization completed
+2025-12-03 07:07:53,907 - app.main - INFO - FastAPI app initialized!
+2025-12-03 07:07:53,907 - app.data.transcript_manager - DEBUG - Loaded proxy_username from env: akrds...
+2025-12-03 07:07:53,907 - app.data.transcript_manager - DEBUG - Loaded proxy_password from env: ***set***
+2025-12-03 07:08:22,237 - Database_app/data/fr-mirror - INFO - Initializing database: app/data/fr-mirror.db
+2025-12-03 07:08:22,238 - Database_app/data/fr-mirror - INFO - Successfully connected to database: app/data/fr-mirror.db
+2025-12-03 07:08:22,238 - Database_app/data/fr-mirror - INFO - Creating/verifying all database tables...
+2025-12-03 07:08:22,238 - Database_app/data/fr-mirror - INFO - Table 'transcripts' created/verified successfully
+2025-12-03 07:08:22,239 - Database_app/data/fr-mirror - INFO - Table 'journalists' created/verified successfully
+2025-12-03 07:08:22,239 - Database_app/data/fr-mirror - INFO - Table 'articles' created/verified successfully
+2025-12-03 07:08:22,239 - Database_app/data/fr-mirror - INFO - Table 'tones' created/verified successfully
+2025-12-03 07:08:22,239 - Database_app/data/fr-mirror - INFO - Table 'categories' created/verified successfully
+2025-12-03 07:08:22,239 - Database_app/data/fr-mirror - INFO - Table 'video_queue' created/verified successfully
+2025-12-03 07:08:22,239 - Database_app/data/fr-mirror - INFO - All tables created/verified successfully
+2025-12-03 07:08:22,239 - Database_app/data/fr-mirror - INFO - Database initialization completed
+2025-12-03 07:08:22,239 - app.main - INFO - Database initialized successfully in main.py
+2025-12-03 07:08:22,239 - app.data.enum_manager - INFO - Starting database enum synchronization...
+2025-12-03 07:08:22,240 - app.data.enum_manager - INFO - Synchronization query made for Tone
+2025-12-03 07:08:22,240 - app.data.enum_manager - INFO - No missing values found for tones - database is in sync
+2025-12-03 07:08:22,240 - app.data.enum_manager - INFO - Synchronization query made for ArticleType
+2025-12-03 07:08:22,240 - app.data.enum_manager - INFO - No missing values found for categories - database is in sync
+2025-12-03 07:08:22,240 - app.main - INFO - Database sync completed: <app.data.enum_manager.DatabaseSync object at 0x7fc9ea8a9010>
+2025-12-03 07:08:22,276 - app.data.journalist_manager - INFO - Successfully updated journalist: Aurelius Stone
+2025-12-03 07:08:22,276 - app.main - INFO - Journalist initialization completed
+2025-12-03 07:08:22,277 - app.main - INFO - FastAPI app initialized!
+2025-12-03 07:08:22,277 - app.data.transcript_manager - DEBUG - Loaded proxy_username from env: akrds...
+2025-12-03 07:08:22,277 - app.data.transcript_manager - DEBUG - Loaded proxy_password from env: ***set***
+2025-12-03 07:08:37,086 - Database_app/data/fr-mirror - INFO - Initializing database: app/data/fr-mirror.db
+2025-12-03 07:08:37,086 - Database_app/data/fr-mirror - INFO - Successfully connected to database: app/data/fr-mirror.db
+2025-12-03 07:08:37,086 - Database_app/data/fr-mirror - INFO - Creating/verifying all database tables...
+2025-12-03 07:08:37,086 - Database_app/data/fr-mirror - INFO - Table 'transcripts' created/verified successfully
+2025-12-03 07:08:37,087 - Database_app/data/fr-mirror - INFO - Table 'journalists' created/verified successfully
+2025-12-03 07:08:37,087 - Database_app/data/fr-mirror - INFO - Table 'articles' created/verified successfully
+2025-12-03 07:08:37,087 - Database_app/data/fr-mirror - INFO - Table 'tones' created/verified successfully
+2025-12-03 07:08:37,087 - Database_app/data/fr-mirror - INFO - Table 'categories' created/verified successfully
+2025-12-03 07:08:37,087 - Database_app/data/fr-mirror - INFO - Table 'video_queue' created/verified successfully
+2025-12-03 07:08:37,087 - Database_app/data/fr-mirror - INFO - All tables created/verified successfully
+2025-12-03 07:08:37,087 - Database_app/data/fr-mirror - INFO - Database initialization completed
+2025-12-03 07:08:37,087 - app.main - INFO - Database initialized successfully in main.py
+2025-12-03 07:08:37,087 - app.data.enum_manager - INFO - Starting database enum synchronization...
+2025-12-03 07:08:37,087 - app.data.enum_manager - INFO - Synchronization query made for Tone
+2025-12-03 07:08:37,088 - app.data.enum_manager - INFO - No missing values found for tones - database is in sync
+2025-12-03 07:08:37,088 - app.data.enum_manager - INFO - Synchronization query made for ArticleType
+2025-12-03 07:08:37,088 - app.data.enum_manager - INFO - No missing values found for categories - database is in sync
+2025-12-03 07:08:37,088 - app.main - INFO - Database sync completed: <app.data.enum_manager.DatabaseSync object at 0x7efc2717bdd0>
+2025-12-03 07:08:37,088 - app.data.journalist_manager - INFO - Successfully updated journalist: Aurelius Stone
+2025-12-03 07:08:37,088 - app.main - INFO - Journalist initialization completed
+2025-12-03 07:08:37,089 - app.main - INFO - FastAPI app initialized!
+2025-12-03 07:08:37,089 - app.data.transcript_manager - DEBUG - Loaded proxy_username from env: akrds...
+2025-12-03 07:08:37,089 - app.data.transcript_manager - DEBUG - Loaded proxy_password from env: ***set***
+2025-12-03 07:08:38,402 - Database_app/data/fr-mirror - INFO - Initializing database: app/data/fr-mirror.db
+2025-12-03 07:08:38,402 - Database_app/data/fr-mirror - INFO - Successfully connected to database: app/data/fr-mirror.db
+2025-12-03 07:08:38,403 - Database_app/data/fr-mirror - INFO - Creating/verifying all database tables...
+2025-12-03 07:08:38,403 - Database_app/data/fr-mirror - INFO - Table 'transcripts' created/verified successfully
+2025-12-03 07:08:38,403 - Database_app/data/fr-mirror - INFO - Table 'journalists' created/verified successfully
+2025-12-03 07:08:38,403 - Database_app/data/fr-mirror - INFO - Table 'articles' created/verified successfully
+2025-12-03 07:08:38,403 - Database_app/data/fr-mirror - INFO - Table 'tones' created/verified successfully
+2025-12-03 07:08:38,403 - Database_app/data/fr-mirror - INFO - Table 'categories' created/verified successfully
+2025-12-03 07:08:38,403 - Database_app/data/fr-mirror - INFO - Table 'video_queue' created/verified successfully
+2025-12-03 07:08:38,403 - Database_app/data/fr-mirror - INFO - All tables created/verified successfully
+2025-12-03 07:08:38,403 - Database_app/data/fr-mirror - INFO - Database initialization completed
+2025-12-03 07:08:38,404 - app.main - INFO - Database initialized successfully in main.py
+2025-12-03 07:08:38,404 - app.data.enum_manager - INFO - Starting database enum synchronization...
+2025-12-03 07:08:38,404 - app.data.enum_manager - INFO - Synchronization query made for Tone
+2025-12-03 07:08:38,404 - app.data.enum_manager - INFO - No missing values found for tones - database is in sync
+2025-12-03 07:08:38,404 - app.data.enum_manager - INFO - Synchronization query made for ArticleType
+2025-12-03 07:08:38,404 - app.data.enum_manager - INFO - No missing values found for categories - database is in sync
+2025-12-03 07:08:38,404 - app.main - INFO - Database sync completed: <app.data.enum_manager.DatabaseSync object at 0x7fb2d29d4950>
+2025-12-03 07:08:38,404 - app.data.journalist_manager - INFO - Successfully updated journalist: Aurelius Stone
+2025-12-03 07:08:38,404 - app.main - INFO - Journalist initialization completed
+2025-12-03 07:08:38,405 - app.main - INFO - FastAPI app initialized!
+2025-12-03 07:08:38,405 - app.data.transcript_manager - DEBUG - Loaded proxy_username from env: akrds...
+2025-12-03 07:08:38,405 - app.data.transcript_manager - DEBUG - Loaded proxy_password from env: ***set***
+2025-12-03 07:10:24,391 - Database_app/data/fr-mirror - INFO - Initializing database: app/data/fr-mirror.db
+2025-12-03 07:10:24,391 - Database_app/data/fr-mirror - INFO - Successfully connected to database: app/data/fr-mirror.db
+2025-12-03 07:10:24,391 - Database_app/data/fr-mirror - INFO - Creating/verifying all database tables...
+2025-12-03 07:10:24,392 - Database_app/data/fr-mirror - INFO - Table 'transcripts' created/verified successfully
+2025-12-03 07:10:24,392 - Database_app/data/fr-mirror - INFO - Table 'journalists' created/verified successfully
+2025-12-03 07:10:24,392 - Database_app/data/fr-mirror - INFO - Table 'articles' created/verified successfully
+2025-12-03 07:10:24,392 - Database_app/data/fr-mirror - INFO - Table 'tones' created/verified successfully
+2025-12-03 07:10:24,392 - Database_app/data/fr-mirror - INFO - Table 'categories' created/verified successfully
+2025-12-03 07:10:24,392 - Database_app/data/fr-mirror - INFO - Table 'video_queue' created/verified successfully
+2025-12-03 07:10:24,392 - Database_app/data/fr-mirror - INFO - All tables created/verified successfully
+2025-12-03 07:10:24,393 - Database_app/data/fr-mirror - INFO - Database initialization completed
+2025-12-03 07:10:24,393 - app.main - INFO - Database initialized successfully in main.py
+2025-12-03 07:10:24,393 - app.data.enum_manager - INFO - Starting database enum synchronization...
+2025-12-03 07:10:24,393 - app.data.enum_manager - INFO - Synchronization query made for Tone
+2025-12-03 07:10:24,393 - app.data.enum_manager - INFO - No missing values found for tones - database is in sync
+2025-12-03 07:10:24,393 - app.data.enum_manager - INFO - Synchronization query made for ArticleType
+2025-12-03 07:10:24,393 - app.data.enum_manager - INFO - No missing values found for categories - database is in sync
+2025-12-03 07:10:24,393 - app.main - INFO - Database sync completed: <app.data.enum_manager.DatabaseSync object at 0x7f395f41cc20>
+2025-12-03 07:10:24,394 - app.data.journalist_manager - INFO - Successfully updated journalist: Aurelius Stone
+2025-12-03 07:10:24,394 - app.main - INFO - Journalist initialization completed
+2025-12-03 07:10:24,394 - app.main - INFO - FastAPI app initialized!
+2025-12-03 07:10:24,394 - app.data.transcript_manager - DEBUG - Loaded proxy_username from env: akrds...
+2025-12-03 07:10:24,394 - app.data.transcript_manager - DEBUG - Loaded proxy_password from env: ***set***
+2025-12-03 07:10:55,273 - Database_app/data/fr-mirror - INFO - Initializing database: app/data/fr-mirror.db
+2025-12-03 07:10:55,274 - Database_app/data/fr-mirror - INFO - Successfully connected to database: app/data/fr-mirror.db
+2025-12-03 07:10:55,274 - Database_app/data/fr-mirror - INFO - Creating/verifying all database tables...
+2025-12-03 07:10:55,274 - Database_app/data/fr-mirror - INFO - Table 'transcripts' created/verified successfully
+2025-12-03 07:10:55,274 - Database_app/data/fr-mirror - INFO - Table 'journalists' created/verified successfully
+2025-12-03 07:10:55,274 - Database_app/data/fr-mirror - INFO - Table 'articles' created/verified successfully
+2025-12-03 07:10:55,275 - Database_app/data/fr-mirror - INFO - Table 'tones' created/verified successfully
+2025-12-03 07:10:55,275 - Database_app/data/fr-mirror - INFO - Table 'categories' created/verified successfully
+2025-12-03 07:10:55,275 - Database_app/data/fr-mirror - INFO - Table 'video_queue' created/verified successfully
+2025-12-03 07:10:55,275 - Database_app/data/fr-mirror - INFO - All tables created/verified successfully
+2025-12-03 07:10:55,275 - Database_app/data/fr-mirror - INFO - Database initialization completed
+2025-12-03 07:10:55,275 - app.main - INFO - Database initialized successfully in main.py
+2025-12-03 07:10:55,275 - app.data.enum_manager - INFO - Starting database enum synchronization...
+2025-12-03 07:10:55,275 - app.data.enum_manager - INFO - Synchronization query made for Tone
+2025-12-03 07:10:55,275 - app.data.enum_manager - INFO - No missing values found for tones - database is in sync
+2025-12-03 07:10:55,275 - app.data.enum_manager - INFO - Synchronization query made for ArticleType
+2025-12-03 07:10:55,276 - app.data.enum_manager - INFO - No missing values found for categories - database is in sync
+2025-12-03 07:10:55,276 - app.main - INFO - Database sync completed: <app.data.enum_manager.DatabaseSync object at 0x7fb44d5fd8b0>
+2025-12-03 07:10:55,276 - app.data.journalist_manager - INFO - Successfully updated journalist: Aurelius Stone
+2025-12-03 07:10:55,276 - app.main - INFO - Journalist initialization completed
+2025-12-03 07:10:55,277 - app.main - INFO - FastAPI app initialized!
+2025-12-03 07:10:55,277 - app.data.transcript_manager - DEBUG - Loaded proxy_username from env: akrds...
+2025-12-03 07:10:55,277 - app.data.transcript_manager - DEBUG - Loaded proxy_password from env: ***set***
+2025-12-03 07:11:55,043 - Database_app/data/fr-mirror - INFO - Initializing database: app/data/fr-mirror.db
+2025-12-03 07:11:55,044 - Database_app/data/fr-mirror - INFO - Successfully connected to database: app/data/fr-mirror.db
+2025-12-03 07:11:55,044 - Database_app/data/fr-mirror - INFO - Creating/verifying all database tables...
+2025-12-03 07:11:55,044 - Database_app/data/fr-mirror - INFO - Table 'transcripts' created/verified successfully
+2025-12-03 07:11:55,044 - Database_app/data/fr-mirror - INFO - Table 'journalists' created/verified successfully
+2025-12-03 07:11:55,044 - Database_app/data/fr-mirror - INFO - Table 'articles' created/verified successfully
+2025-12-03 07:11:55,045 - Database_app/data/fr-mirror - INFO - Table 'tones' created/verified successfully
+2025-12-03 07:11:55,045 - Database_app/data/fr-mirror - INFO - Table 'categories' created/verified successfully
+2025-12-03 07:11:55,045 - Database_app/data/fr-mirror - INFO - Table 'video_queue' created/verified successfully
+2025-12-03 07:11:55,045 - Database_app/data/fr-mirror - INFO - All tables created/verified successfully
+2025-12-03 07:11:55,045 - Database_app/data/fr-mirror - INFO - Database initialization completed
+2025-12-03 07:11:55,045 - app.main - INFO - Database initialized successfully in main.py
+2025-12-03 07:11:55,045 - app.data.enum_manager - INFO - Starting database enum synchronization...
+2025-12-03 07:11:55,045 - app.data.enum_manager - INFO - Synchronization query made for Tone
+2025-12-03 07:11:55,046 - app.data.enum_manager - INFO - No missing values found for tones - database is in sync
+2025-12-03 07:11:55,046 - app.data.enum_manager - INFO - Synchronization query made for ArticleType
+2025-12-03 07:11:55,046 - app.data.enum_manager - INFO - No missing values found for categories - database is in sync
+2025-12-03 07:11:55,046 - app.main - INFO - Database sync completed: <app.data.enum_manager.DatabaseSync object at 0x7f8e1dcb0770>
+2025-12-03 07:11:55,046 - app.data.journalist_manager - INFO - Successfully updated journalist: Aurelius Stone
+2025-12-03 07:11:55,046 - app.main - INFO - Journalist initialization completed
+2025-12-03 07:11:55,047 - app.main - INFO - FastAPI app initialized!
+2025-12-03 07:11:55,047 - app.data.transcript_manager - DEBUG - Loaded proxy_username from env: akrds...
+2025-12-03 07:11:55,047 - app.data.transcript_manager - DEBUG - Loaded proxy_password from env: ***set***
+2025-12-03 07:12:46,488 - Database_app/data/fr-mirror - INFO - Initializing database: app/data/fr-mirror.db
+2025-12-03 07:12:46,488 - Database_app/data/fr-mirror - INFO - Successfully connected to database: app/data/fr-mirror.db
+2025-12-03 07:12:46,489 - Database_app/data/fr-mirror - INFO - Creating/verifying all database tables...
+2025-12-03 07:12:46,489 - Database_app/data/fr-mirror - INFO - Table 'transcripts' created/verified successfully
+2025-12-03 07:12:46,489 - Database_app/data/fr-mirror - INFO - Table 'journalists' created/verified successfully
+2025-12-03 07:12:46,489 - Database_app/data/fr-mirror - INFO - Table 'articles' created/verified successfully
+2025-12-03 07:12:46,489 - Database_app/data/fr-mirror - INFO - Table 'tones' created/verified successfully
+2025-12-03 07:12:46,489 - Database_app/data/fr-mirror - INFO - Table 'categories' created/verified successfully
+2025-12-03 07:12:46,489 - Database_app/data/fr-mirror - INFO - Table 'video_queue' created/verified successfully
+2025-12-03 07:12:46,489 - Database_app/data/fr-mirror - INFO - All tables created/verified successfully
+2025-12-03 07:12:46,489 - Database_app/data/fr-mirror - INFO - Database initialization completed
+2025-12-03 07:12:46,489 - app.main - INFO - Database initialized successfully in main.py
+2025-12-03 07:12:46,490 - app.data.enum_manager - INFO - Starting database enum synchronization...
+2025-12-03 07:12:46,490 - app.data.enum_manager - INFO - Synchronization query made for Tone
+2025-12-03 07:12:46,490 - app.data.enum_manager - INFO - No missing values found for tones - database is in sync
+2025-12-03 07:12:46,490 - app.data.enum_manager - INFO - Synchronization query made for ArticleType
+2025-12-03 07:12:46,490 - app.data.enum_manager - INFO - No missing values found for categories - database is in sync
+2025-12-03 07:12:46,490 - app.main - INFO - Database sync completed: <app.data.enum_manager.DatabaseSync object at 0x7f4d500f98b0>
+2025-12-03 07:12:46,490 - app.data.journalist_manager - INFO - Successfully updated journalist: Aurelius Stone
+2025-12-03 07:12:46,491 - app.main - INFO - Journalist initialization completed
+2025-12-03 07:12:46,491 - app.main - INFO - FastAPI app initialized!
+2025-12-03 07:12:46,491 - app.data.transcript_manager - DEBUG - Loaded proxy_username from env: akrds...
+2025-12-03 07:12:46,491 - app.data.transcript_manager - DEBUG - Loaded proxy_password from env: ***set***
+2025-12-03 16:08:13,380 - Database_app/data/fr-mirror - INFO - Database operation: get_transcript_by_id - Details: {'transcript_id': 4}
+2025-12-03 16:08:13,381 - Database_app/data/fr-mirror - INFO - Retrieved transcript with ID '4' from database
+2025-12-03 16:09:48,346 - Database_app/data/fr-mirror - INFO - Database operation: add_article - Details: {'committee': 'Fall River City Council', 'youtube_id': 'ZbKySDNnObc', 'journalist_id': 1, 'transcript_id': 4, 'date': '2025-12-03T16:09:48.345970', 'article_type': 'summary', 'tone': 'casual', 'title': 'Fall River Council Clashes on Reforms, Hires, Equity'}
+2025-12-03 16:09:48,379 - Database_app/data/fr-mirror - INFO - Added article (ID: 8) for committee: Fall River City Council, journalist_id: 1
+2025-12-03 16:09:48,380 - app.main - INFO - Article generated successfully by Aurelius Stone using transcript ID 4
+2025-12-05 20:38:26,627 - Database_app/data/fr-mirror - INFO - Initializing database: app/data/fr-mirror.db
+2025-12-05 20:38:26,682 - Database_app/data/fr-mirror - INFO - Successfully connected to database: app/data/fr-mirror.db
+2025-12-05 20:38:26,683 - Database_app/data/fr-mirror - INFO - Creating/verifying all database tables...
+2025-12-05 20:38:26,689 - Database_app/data/fr-mirror - INFO - Table 'transcripts' created/verified successfully
+2025-12-05 20:38:26,689 - Database_app/data/fr-mirror - INFO - Table 'journalists' created/verified successfully
+2025-12-05 20:38:26,690 - Database_app/data/fr-mirror - INFO - Table 'articles' created/verified successfully
+2025-12-05 20:38:26,690 - Database_app/data/fr-mirror - INFO - Table 'tones' created/verified successfully
+2025-12-05 20:38:26,690 - Database_app/data/fr-mirror - INFO - Table 'categories' created/verified successfully
+2025-12-05 20:38:26,690 - Database_app/data/fr-mirror - INFO - Table 'video_queue' created/verified successfully
+2025-12-05 20:38:26,690 - Database_app/data/fr-mirror - INFO - All tables created/verified successfully
+2025-12-05 20:38:26,691 - Database_app/data/fr-mirror - INFO - Database initialization completed
+2025-12-05 20:38:26,691 - app.main - INFO - Database initialized successfully in main.py
+2025-12-05 20:38:26,691 - app.data.enum_manager - INFO - Starting database enum synchronization...
+2025-12-05 20:38:26,691 - app.data.enum_manager - INFO - Synchronization query made for Tone
+2025-12-05 20:38:26,703 - app.data.enum_manager - INFO - No missing values found for tones - database is in sync
+2025-12-05 20:38:26,703 - app.data.enum_manager - INFO - Synchronization query made for ArticleType
+2025-12-05 20:38:26,704 - app.data.enum_manager - INFO - No missing values found for categories - database is in sync
+2025-12-05 20:38:26,704 - app.main - INFO - Database sync completed: <app.data.enum_manager.DatabaseSync object at 0x7fc5ca328b00>
+2025-12-05 20:38:26,720 - app.data.journalist_manager - INFO - Successfully updated journalist: Aurelius Stone
+2025-12-05 20:38:26,720 - app.main - INFO - Journalist initialization completed
+2025-12-05 20:38:26,721 - app.main - INFO - FastAPI app initialized!
+2025-12-05 20:38:26,721 - app.data.transcript_manager - DEBUG - Loaded proxy_username from env: akrds...
+2025-12-05 20:38:26,721 - app.data.transcript_manager - DEBUG - Loaded proxy_password from env: ***set***
+2025-12-05 21:49:02,909 - Database_app/data/fr-mirror - INFO - Initializing database: app/data/fr-mirror.db
+2025-12-05 21:49:02,909 - Database_app/data/fr-mirror - INFO - Successfully connected to database: app/data/fr-mirror.db
+2025-12-05 21:49:02,909 - Database_app/data/fr-mirror - INFO - Creating/verifying all database tables...
+2025-12-05 21:49:02,910 - Database_app/data/fr-mirror - INFO - Table 'transcripts' created/verified successfully
+2025-12-05 21:49:02,910 - Database_app/data/fr-mirror - INFO - Table 'journalists' created/verified successfully
+2025-12-05 21:49:02,910 - Database_app/data/fr-mirror - INFO - Table 'articles' created/verified successfully
+2025-12-05 21:49:02,910 - Database_app/data/fr-mirror - INFO - Table 'tones' created/verified successfully
+2025-12-05 21:49:02,910 - Database_app/data/fr-mirror - INFO - Table 'categories' created/verified successfully
+2025-12-05 21:49:02,910 - Database_app/data/fr-mirror - INFO - Table 'video_queue' created/verified successfully
+2025-12-05 21:49:02,910 - Database_app/data/fr-mirror - INFO - All tables created/verified successfully
+2025-12-05 21:49:02,910 - Database_app/data/fr-mirror - INFO - Database initialization completed
+2025-12-05 21:49:02,911 - app.main - INFO - Database initialized successfully in main.py
+2025-12-05 21:49:02,911 - app.data.enum_manager - INFO - Starting database enum synchronization...
+2025-12-05 21:49:02,911 - app.data.enum_manager - INFO - Synchronization query made for Tone
+2025-12-05 21:49:02,911 - app.data.enum_manager - INFO - No missing values found for tones - database is in sync
+2025-12-05 21:49:02,911 - app.data.enum_manager - INFO - Synchronization query made for ArticleType
+2025-12-05 21:49:02,911 - app.data.enum_manager - INFO - No missing values found for categories - database is in sync
+2025-12-05 21:49:02,911 - app.main - INFO - Database sync completed: <app.data.enum_manager.DatabaseSync object at 0x7fca5ca30740>
+2025-12-05 21:49:02,912 - app.data.journalist_manager - INFO - Successfully updated journalist: Aurelius Stone
+2025-12-05 21:49:02,912 - app.main - INFO - Journalist initialization completed
+2025-12-05 21:49:02,912 - app.main - INFO - FastAPI app initialized!
+2025-12-05 21:49:02,912 - app.data.transcript_manager - DEBUG - Loaded proxy_username from env: akrds...
+2025-12-05 21:49:02,912 - app.data.transcript_manager - DEBUG - Loaded proxy_password from env: ***set***
+2025-12-05 21:49:04,801 - Database_app/data/fr-mirror - INFO - Initializing database: app/data/fr-mirror.db
+2025-12-05 21:49:04,803 - Database_app/data/fr-mirror - INFO - Successfully connected to database: app/data/fr-mirror.db
+2025-12-05 21:49:04,803 - Database_app/data/fr-mirror - INFO - Creating/verifying all database tables...
+2025-12-05 21:49:04,806 - Database_app/data/fr-mirror - INFO - Table 'transcripts' created/verified successfully
+2025-12-05 21:49:04,807 - Database_app/data/fr-mirror - INFO - Table 'journalists' created/verified successfully
+2025-12-05 21:49:04,807 - Database_app/data/fr-mirror - INFO - Table 'articles' created/verified successfully
+2025-12-05 21:49:04,807 - Database_app/data/fr-mirror - INFO - Table 'tones' created/verified successfully
+2025-12-05 21:49:04,807 - Database_app/data/fr-mirror - INFO - Table 'categories' created/verified successfully
+2025-12-05 21:49:04,807 - Database_app/data/fr-mirror - INFO - Table 'video_queue' created/verified successfully
+2025-12-05 21:49:04,808 - Database_app/data/fr-mirror - INFO - All tables created/verified successfully
+2025-12-05 21:49:04,808 - Database_app/data/fr-mirror - INFO - Database initialization completed
+2025-12-05 21:49:04,808 - app.main - INFO - Database initialized successfully in main.py
+2025-12-05 21:49:04,808 - app.data.enum_manager - INFO - Starting database enum synchronization...
+2025-12-05 21:49:04,808 - app.data.enum_manager - INFO - Synchronization query made for Tone
+2025-12-05 21:49:04,808 - app.data.enum_manager - INFO - No missing values found for tones - database is in sync
+2025-12-05 21:49:04,808 - app.data.enum_manager - INFO - Synchronization query made for ArticleType
+2025-12-05 21:49:04,808 - app.data.enum_manager - INFO - No missing values found for categories - database is in sync
+2025-12-05 21:49:04,809 - app.main - INFO - Database sync completed: <app.data.enum_manager.DatabaseSync object at 0x7f90b2494fb0>
+2025-12-05 21:49:04,809 - app.data.journalist_manager - INFO - Successfully updated journalist: Aurelius Stone
+2025-12-05 21:49:04,809 - app.main - INFO - Journalist initialization completed
+2025-12-05 21:49:04,809 - app.main - INFO - FastAPI app initialized!
+2025-12-05 21:49:04,809 - app.data.transcript_manager - DEBUG - Loaded proxy_username from env: akrds...
+2025-12-05 21:49:04,810 - app.data.transcript_manager - DEBUG - Loaded proxy_password from env: ***set***
+2025-12-05 21:49:11,899 - Database_app/data/fr-mirror - INFO - Initializing database: app/data/fr-mirror.db
+2025-12-05 21:49:11,899 - Database_app/data/fr-mirror - INFO - Successfully connected to database: app/data/fr-mirror.db
+2025-12-05 21:49:11,899 - Database_app/data/fr-mirror - INFO - Creating/verifying all database tables...
+2025-12-05 21:49:11,900 - Database_app/data/fr-mirror - INFO - Table 'transcripts' created/verified successfully
+2025-12-05 21:49:11,900 - Database_app/data/fr-mirror - INFO - Table 'journalists' created/verified successfully
+2025-12-05 21:49:11,900 - Database_app/data/fr-mirror - INFO - Table 'articles' created/verified successfully
+2025-12-05 21:49:11,900 - Database_app/data/fr-mirror - INFO - Table 'tones' created/verified successfully
+2025-12-05 21:49:11,900 - Database_app/data/fr-mirror - INFO - Table 'categories' created/verified successfully
+2025-12-05 21:49:11,900 - Database_app/data/fr-mirror - INFO - Table 'video_queue' created/verified successfully
+2025-12-05 21:49:11,900 - Database_app/data/fr-mirror - INFO - All tables created/verified successfully
+2025-12-05 21:49:11,901 - Database_app/data/fr-mirror - INFO - Database initialization completed
+2025-12-05 21:49:11,901 - app.main - INFO - Database initialized successfully in main.py
+2025-12-05 21:49:11,901 - app.data.enum_manager - INFO - Starting database enum synchronization...
+2025-12-05 21:49:11,901 - app.data.enum_manager - INFO - Synchronization query made for Tone
+2025-12-05 21:49:11,901 - app.data.enum_manager - INFO - No missing values found for tones - database is in sync
+2025-12-05 21:49:11,901 - app.data.enum_manager - INFO - Synchronization query made for ArticleType
+2025-12-05 21:49:11,901 - app.data.enum_manager - INFO - No missing values found for categories - database is in sync
+2025-12-05 21:49:11,901 - app.main - INFO - Database sync completed: <app.data.enum_manager.DatabaseSync object at 0x7fa439830ad0>
+2025-12-05 21:49:11,902 - app.data.journalist_manager - INFO - Successfully updated journalist: Aurelius Stone
+2025-12-05 21:49:11,902 - app.main - INFO - Journalist initialization completed
+2025-12-05 21:49:11,902 - app.main - INFO - FastAPI app initialized!
+2025-12-05 21:49:11,902 - app.data.transcript_manager - DEBUG - Loaded proxy_username from env: akrds...
+2025-12-05 21:49:11,902 - app.data.transcript_manager - DEBUG - Loaded proxy_password from env: ***set***
+2025-12-05 21:49:36,832 - Database_app/data/fr-mirror - INFO - Initializing database: app/data/fr-mirror.db
+2025-12-05 21:49:36,833 - Database_app/data/fr-mirror - INFO - Successfully connected to database: app/data/fr-mirror.db
+2025-12-05 21:49:36,833 - Database_app/data/fr-mirror - INFO - Creating/verifying all database tables...
+2025-12-05 21:49:36,833 - Database_app/data/fr-mirror - INFO - Table 'transcripts' created/verified successfully
+2025-12-05 21:49:36,833 - Database_app/data/fr-mirror - INFO - Table 'journalists' created/verified successfully
+2025-12-05 21:49:36,833 - Database_app/data/fr-mirror - INFO - Table 'articles' created/verified successfully
+2025-12-05 21:49:36,833 - Database_app/data/fr-mirror - INFO - Table 'tones' created/verified successfully
+2025-12-05 21:49:36,833 - Database_app/data/fr-mirror - INFO - Table 'categories' created/verified successfully
+2025-12-05 21:49:36,834 - Database_app/data/fr-mirror - INFO - Table 'video_queue' created/verified successfully
+2025-12-05 21:49:36,834 - Database_app/data/fr-mirror - INFO - All tables created/verified successfully
+2025-12-05 21:49:36,834 - Database_app/data/fr-mirror - INFO - Database initialization completed
+2025-12-05 21:49:36,834 - app.main - INFO - Database initialized successfully in main.py
+2025-12-05 21:49:36,834 - app.data.enum_manager - INFO - Starting database enum synchronization...
+2025-12-05 21:49:36,834 - app.data.enum_manager - INFO - Synchronization query made for Tone
+2025-12-05 21:49:36,834 - app.data.enum_manager - INFO - No missing values found for tones - database is in sync
+2025-12-05 21:49:36,834 - app.data.enum_manager - INFO - Synchronization query made for ArticleType
+2025-12-05 21:49:36,834 - app.data.enum_manager - INFO - No missing values found for categories - database is in sync
+2025-12-05 21:49:36,834 - app.main - INFO - Database sync completed: <app.data.enum_manager.DatabaseSync object at 0x7f2dec5f2180>
+2025-12-05 21:49:36,835 - app.data.journalist_manager - INFO - Successfully updated journalist: Aurelius Stone
+2025-12-05 21:49:36,835 - app.main - INFO - Journalist initialization completed
+2025-12-05 21:49:36,835 - app.main - INFO - FastAPI app initialized!
+2025-12-05 21:49:36,835 - app.data.transcript_manager - DEBUG - Loaded proxy_username from env: akrds...
+2025-12-05 21:49:36,835 - app.data.transcript_manager - DEBUG - Loaded proxy_password from env: ***set***
+2025-12-05 22:13:42,675 - Database_app/data/fr-mirror - INFO - Initializing database: app/data/fr-mirror.db
+2025-12-05 22:13:42,676 - Database_app/data/fr-mirror - INFO - Successfully connected to database: app/data/fr-mirror.db
+2025-12-05 22:13:42,676 - Database_app/data/fr-mirror - INFO - Creating/verifying all database tables...
+2025-12-05 22:13:42,676 - Database_app/data/fr-mirror - INFO - Table 'transcripts' created/verified successfully
+2025-12-05 22:13:42,676 - Database_app/data/fr-mirror - INFO - Table 'journalists' created/verified successfully
+2025-12-05 22:13:42,677 - Database_app/data/fr-mirror - INFO - Table 'articles' created/verified successfully
+2025-12-05 22:13:42,677 - Database_app/data/fr-mirror - INFO - Table 'tones' created/verified successfully
+2025-12-05 22:13:42,677 - Database_app/data/fr-mirror - INFO - Table 'categories' created/verified successfully
+2025-12-05 22:13:42,677 - Database_app/data/fr-mirror - INFO - Table 'video_queue' created/verified successfully
+2025-12-05 22:13:42,677 - Database_app/data/fr-mirror - INFO - All tables created/verified successfully
+2025-12-05 22:13:42,677 - Database_app/data/fr-mirror - INFO - Database initialization completed
+2025-12-05 22:13:42,677 - app.main - INFO - Database initialized successfully in main.py
+2025-12-05 22:13:42,677 - app.data.enum_manager - INFO - Starting database enum synchronization...
+2025-12-05 22:13:42,677 - app.data.enum_manager - INFO - Synchronization query made for Tone
+2025-12-05 22:13:42,678 - app.data.enum_manager - INFO - No missing values found for tones - database is in sync
+2025-12-05 22:13:42,678 - app.data.enum_manager - INFO - Synchronization query made for ArticleType
+2025-12-05 22:13:42,678 - app.data.enum_manager - INFO - No missing values found for categories - database is in sync
+2025-12-05 22:13:42,678 - app.main - INFO - Database sync completed: <app.data.enum_manager.DatabaseSync object at 0x7fa2c22b85f0>
+2025-12-05 23:39:24,708 - Database_app/data/fr-mirror - INFO - Initializing database: app/data/fr-mirror.db
+2025-12-05 23:39:24,709 - Database_app/data/fr-mirror - INFO - Successfully connected to database: app/data/fr-mirror.db
+2025-12-05 23:39:24,709 - Database_app/data/fr-mirror - INFO - Creating/verifying all database tables...
+2025-12-05 23:39:24,710 - Database_app/data/fr-mirror - INFO - Table 'transcripts' created/verified successfully
+2025-12-05 23:39:24,710 - Database_app/data/fr-mirror - INFO - Table 'journalists' created/verified successfully
+2025-12-05 23:39:24,710 - Database_app/data/fr-mirror - INFO - Table 'articles' created/verified successfully
+2025-12-05 23:39:24,710 - Database_app/data/fr-mirror - INFO - Table 'tones' created/verified successfully
+2025-12-05 23:39:24,711 - Database_app/data/fr-mirror - INFO - Table 'categories' created/verified successfully
+2025-12-05 23:39:24,711 - Database_app/data/fr-mirror - INFO - Table 'video_queue' created/verified successfully
+2025-12-05 23:39:24,711 - Database_app/data/fr-mirror - INFO - All tables created/verified successfully
+2025-12-05 23:39:24,711 - Database_app/data/fr-mirror - INFO - Database initialization completed
+2025-12-05 23:39:24,711 - app.main - INFO - Database initialized successfully in main.py
+2025-12-05 23:39:24,712 - app.data.enum_manager - INFO - Starting database enum synchronization...
+2025-12-05 23:39:24,712 - app.data.enum_manager - INFO - Synchronization query made for Tone
+2025-12-05 23:39:24,712 - app.data.enum_manager - INFO - No missing values found for tones - database is in sync
+2025-12-05 23:39:24,712 - app.data.enum_manager - INFO - Synchronization query made for ArticleType
+2025-12-05 23:39:24,712 - app.data.enum_manager - INFO - No missing values found for categories - database is in sync
+2025-12-05 23:39:24,712 - app.main - INFO - Database sync completed: <app.data.enum_manager.DatabaseSync object at 0x7fa2a1895fa0>
+2025-12-05 23:39:26,396 - Database_app/data/fr-mirror - INFO - Initializing database: app/data/fr-mirror.db
+2025-12-05 23:39:26,396 - Database_app/data/fr-mirror - INFO - Successfully connected to database: app/data/fr-mirror.db
+2025-12-05 23:39:26,396 - Database_app/data/fr-mirror - INFO - Creating/verifying all database tables...
+2025-12-05 23:39:26,397 - Database_app/data/fr-mirror - INFO - Table 'transcripts' created/verified successfully
+2025-12-05 23:39:26,397 - Database_app/data/fr-mirror - INFO - Table 'journalists' created/verified successfully
+2025-12-05 23:39:26,397 - Database_app/data/fr-mirror - INFO - Table 'articles' created/verified successfully
+2025-12-05 23:39:26,397 - Database_app/data/fr-mirror - INFO - Table 'tones' created/verified successfully
+2025-12-05 23:39:26,397 - Database_app/data/fr-mirror - INFO - Table 'categories' created/verified successfully
+2025-12-05 23:39:26,398 - Database_app/data/fr-mirror - INFO - Table 'video_queue' created/verified successfully
+2025-12-05 23:39:26,398 - Database_app/data/fr-mirror - INFO - All tables created/verified successfully
+2025-12-05 23:39:26,398 - Database_app/data/fr-mirror - INFO - Database initialization completed
+2025-12-05 23:39:26,398 - app.main - INFO - Database initialized successfully in main.py
+2025-12-05 23:39:26,398 - app.data.enum_manager - INFO - Starting database enum synchronization...
+2025-12-05 23:39:26,398 - app.data.enum_manager - INFO - Synchronization query made for Tone
+2025-12-05 23:39:26,398 - app.data.enum_manager - INFO - No missing values found for tones - database is in sync
+2025-12-05 23:39:26,398 - app.data.enum_manager - INFO - Synchronization query made for ArticleType
+2025-12-05 23:39:26,398 - app.data.enum_manager - INFO - No missing values found for categories - database is in sync
+2025-12-05 23:39:26,398 - app.main - INFO - Database sync completed: <app.data.enum_manager.DatabaseSync object at 0x7fb28c4dd010>
+2025-12-05 23:39:33,688 - Database_app/data/fr-mirror - INFO - Initializing database: app/data/fr-mirror.db
+2025-12-05 23:39:33,689 - Database_app/data/fr-mirror - INFO - Successfully connected to database: app/data/fr-mirror.db
+2025-12-05 23:39:33,689 - Database_app/data/fr-mirror - INFO - Creating/verifying all database tables...
+2025-12-05 23:39:33,689 - Database_app/data/fr-mirror - INFO - Table 'transcripts' created/verified successfully
+2025-12-05 23:39:33,689 - Database_app/data/fr-mirror - INFO - Table 'journalists' created/verified successfully
+2025-12-05 23:39:33,689 - Database_app/data/fr-mirror - INFO - Table 'articles' created/verified successfully
+2025-12-05 23:39:33,690 - Database_app/data/fr-mirror - INFO - Table 'tones' created/verified successfully
+2025-12-05 23:39:33,690 - Database_app/data/fr-mirror - INFO - Table 'categories' created/verified successfully
+2025-12-05 23:39:33,690 - Database_app/data/fr-mirror - INFO - Table 'video_queue' created/verified successfully
+2025-12-05 23:39:33,690 - Database_app/data/fr-mirror - INFO - All tables created/verified successfully
+2025-12-05 23:39:33,690 - Database_app/data/fr-mirror - INFO - Database initialization completed
+2025-12-05 23:39:33,690 - app.main - INFO - Database initialized successfully in main.py
+2025-12-05 23:39:33,690 - app.data.enum_manager - INFO - Starting database enum synchronization...
+2025-12-05 23:39:33,690 - app.data.enum_manager - INFO - Synchronization query made for Tone
+2025-12-05 23:39:33,690 - app.data.enum_manager - INFO - No missing values found for tones - database is in sync
+2025-12-05 23:39:33,690 - app.data.enum_manager - INFO - Synchronization query made for ArticleType
+2025-12-05 23:39:33,690 - app.data.enum_manager - INFO - No missing values found for categories - database is in sync
+2025-12-05 23:39:33,691 - app.main - INFO - Database sync completed: <app.data.enum_manager.DatabaseSync object at 0x7f094ead0c20>
+2025-12-05 23:41:32,932 - Database_app/data/fr-mirror - INFO - Initializing database: app/data/fr-mirror.db
+2025-12-05 23:41:32,933 - Database_app/data/fr-mirror - INFO - Successfully connected to database: app/data/fr-mirror.db
+2025-12-05 23:41:32,933 - Database_app/data/fr-mirror - INFO - Creating/verifying all database tables...
+2025-12-05 23:41:32,933 - Database_app/data/fr-mirror - INFO - Table 'transcripts' created/verified successfully
+2025-12-05 23:41:32,933 - Database_app/data/fr-mirror - INFO - Table 'journalists' created/verified successfully
+2025-12-05 23:41:32,933 - Database_app/data/fr-mirror - INFO - Table 'articles' created/verified successfully
+2025-12-05 23:41:32,934 - Database_app/data/fr-mirror - INFO - Table 'tones' created/verified successfully
+2025-12-05 23:41:32,934 - Database_app/data/fr-mirror - INFO - Table 'categories' created/verified successfully
+2025-12-05 23:41:32,934 - Database_app/data/fr-mirror - INFO - Table 'video_queue' created/verified successfully
+2025-12-05 23:41:32,934 - Database_app/data/fr-mirror - INFO - All tables created/verified successfully
+2025-12-05 23:41:32,934 - Database_app/data/fr-mirror - INFO - Database initialization completed
+2025-12-05 23:41:32,934 - app.main - INFO - Database initialized successfully in main.py
+2025-12-05 23:41:32,934 - app.data.enum_manager - INFO - Starting database enum synchronization...
+2025-12-05 23:41:32,934 - app.data.enum_manager - INFO - Synchronization query made for Tone
+2025-12-05 23:41:32,934 - app.data.enum_manager - INFO - No missing values found for tones - database is in sync
+2025-12-05 23:41:32,934 - app.data.enum_manager - INFO - Synchronization query made for ArticleType
+2025-12-05 23:41:32,935 - app.data.enum_manager - INFO - No missing values found for categories - database is in sync
+2025-12-05 23:41:32,935 - app.main - INFO - Database sync completed: <app.data.enum_manager.DatabaseSync object at 0x7f6e17cb4e30>
+2025-12-05 23:47:14,752 - Database_app/data/fr-mirror - INFO - Initializing database: app/data/fr-mirror.db
+2025-12-05 23:47:14,753 - Database_app/data/fr-mirror - INFO - Successfully connected to database: app/data/fr-mirror.db
+2025-12-05 23:47:14,753 - Database_app/data/fr-mirror - INFO - Creating/verifying all database tables...
+2025-12-05 23:47:14,753 - Database_app/data/fr-mirror - INFO - Table 'transcripts' created/verified successfully
+2025-12-05 23:47:14,753 - Database_app/data/fr-mirror - INFO - Table 'journalists' created/verified successfully
+2025-12-05 23:47:14,753 - Database_app/data/fr-mirror - INFO - Table 'articles' created/verified successfully
+2025-12-05 23:47:14,754 - Database_app/data/fr-mirror - INFO - Table 'tones' created/verified successfully
+2025-12-05 23:47:14,754 - Database_app/data/fr-mirror - INFO - Table 'categories' created/verified successfully
+2025-12-05 23:47:14,754 - Database_app/data/fr-mirror - INFO - Table 'video_queue' created/verified successfully
+2025-12-05 23:47:14,754 - Database_app/data/fr-mirror - INFO - All tables created/verified successfully
+2025-12-05 23:47:14,754 - Database_app/data/fr-mirror - INFO - Database initialization completed
+2025-12-05 23:47:14,754 - app.main - INFO - Database initialized successfully in main.py
+2025-12-05 23:47:14,754 - app.data.enum_manager - INFO - Starting database enum synchronization...
+2025-12-05 23:47:14,754 - app.data.enum_manager - INFO - Synchronization query made for Tone
+2025-12-05 23:47:14,754 - app.data.enum_manager - INFO - No missing values found for tones - database is in sync
+2025-12-05 23:47:14,754 - app.data.enum_manager - INFO - Synchronization query made for ArticleType
+2025-12-05 23:47:14,755 - app.data.enum_manager - INFO - No missing values found for categories - database is in sync
+2025-12-05 23:47:14,755 - app.main - INFO - Database sync completed: <app.data.enum_manager.DatabaseSync object at 0x7f57837a48c0>
+2025-12-05 23:47:14,755 - app.data.journalist_manager - INFO - Successfully updated journalist: Aurelius Stone
+2025-12-05 23:47:14,755 - app.main - INFO - Journalist initialization completed
+2025-12-05 23:47:14,756 - app.main - INFO - FastAPI app initialized!
+2025-12-05 23:47:14,756 - app.data.transcript_manager - DEBUG - Loaded proxy_username from env: akrds...
+2025-12-05 23:47:14,756 - app.data.transcript_manager - DEBUG - Loaded proxy_password from env: ***set***
+2025-12-05 23:51:36,172 - Database_app/data/fr-mirror - INFO - Initializing database: app/data/fr-mirror.db
+2025-12-05 23:51:36,172 - Database_app/data/fr-mirror - INFO - Successfully connected to database: app/data/fr-mirror.db
+2025-12-05 23:51:36,172 - Database_app/data/fr-mirror - INFO - Creating/verifying all database tables...
+2025-12-05 23:51:36,173 - Database_app/data/fr-mirror - INFO - Table 'transcripts' created/verified successfully
+2025-12-05 23:51:36,173 - Database_app/data/fr-mirror - INFO - Table 'journalists' created/verified successfully
+2025-12-05 23:51:36,173 - Database_app/data/fr-mirror - INFO - Table 'articles' created/verified successfully
+2025-12-05 23:51:36,173 - Database_app/data/fr-mirror - INFO - Table 'tones' created/verified successfully
+2025-12-05 23:51:36,173 - Database_app/data/fr-mirror - INFO - Table 'categories' created/verified successfully
+2025-12-05 23:51:36,173 - Database_app/data/fr-mirror - INFO - Table 'video_queue' created/verified successfully
+2025-12-05 23:51:36,174 - Database_app/data/fr-mirror - INFO - All tables created/verified successfully
+2025-12-05 23:51:36,174 - Database_app/data/fr-mirror - INFO - Database initialization completed
+2025-12-05 23:51:36,174 - app.main - INFO - Database initialized successfully in main.py
+2025-12-05 23:51:36,174 - app.data.enum_manager - INFO - Starting database enum synchronization...
+2025-12-05 23:51:36,174 - app.data.enum_manager - INFO - Synchronization query made for Tone
+2025-12-05 23:51:36,174 - app.data.enum_manager - INFO - No missing values found for tones - database is in sync
+2025-12-05 23:51:36,174 - app.data.enum_manager - INFO - Synchronization query made for ArticleType
+2025-12-05 23:51:36,174 - app.data.enum_manager - INFO - No missing values found for categories - database is in sync
+2025-12-05 23:51:36,174 - app.main - INFO - Database sync completed: <app.data.enum_manager.DatabaseSync object at 0x7fb5f4635a30>
+2025-12-06 02:42:53,053 - Database_app/data/fr-mirror - INFO - Initializing database: app/data/fr-mirror.db
+2025-12-06 02:42:53,054 - Database_app/data/fr-mirror - INFO - Successfully connected to database: app/data/fr-mirror.db
+2025-12-06 02:42:53,054 - Database_app/data/fr-mirror - INFO - Creating/verifying all database tables...
+2025-12-06 02:42:53,055 - Database_app/data/fr-mirror - INFO - Table 'transcripts' created/verified successfully
+2025-12-06 02:42:53,055 - Database_app/data/fr-mirror - INFO - Table 'journalists' created/verified successfully
+2025-12-06 02:42:53,055 - Database_app/data/fr-mirror - INFO - Table 'articles' created/verified successfully
+2025-12-06 02:42:53,055 - Database_app/data/fr-mirror - INFO - Table 'tones' created/verified successfully
+2025-12-06 02:42:53,055 - Database_app/data/fr-mirror - INFO - Table 'categories' created/verified successfully
+2025-12-06 02:42:53,055 - Database_app/data/fr-mirror - INFO - Table 'video_queue' created/verified successfully
+2025-12-06 02:42:53,056 - Database_app/data/fr-mirror - INFO - All tables created/verified successfully
+2025-12-06 02:42:53,056 - Database_app/data/fr-mirror - INFO - Database initialization completed
+2025-12-06 02:42:53,056 - app.main - INFO - Database initialized successfully in main.py
+2025-12-06 02:42:53,056 - app.data.enum_manager - INFO - Starting database enum synchronization...
+2025-12-06 02:42:53,056 - app.data.enum_manager - INFO - Synchronization query made for Tone
+2025-12-06 02:42:53,056 - app.data.enum_manager - INFO - No missing values found for tones - database is in sync
+2025-12-06 02:42:53,056 - app.data.enum_manager - INFO - Synchronization query made for ArticleType
+2025-12-06 02:42:53,056 - app.data.enum_manager - INFO - No missing values found for categories - database is in sync
+2025-12-06 02:42:53,056 - app.main - INFO - Database sync completed: <app.data.enum_manager.DatabaseSync object at 0x7f29e6a598b0>
+2025-12-06 02:43:02,054 - Database_app/data/fr-mirror - INFO - Initializing database: app/data/fr-mirror.db
+2025-12-06 02:43:02,054 - Database_app/data/fr-mirror - INFO - Successfully connected to database: app/data/fr-mirror.db
+2025-12-06 02:43:02,054 - Database_app/data/fr-mirror - INFO - Creating/verifying all database tables...
+2025-12-06 02:43:02,055 - Database_app/data/fr-mirror - INFO - Table 'transcripts' created/verified successfully
+2025-12-06 02:43:02,055 - Database_app/data/fr-mirror - INFO - Table 'journalists' created/verified successfully
+2025-12-06 02:43:02,055 - Database_app/data/fr-mirror - INFO - Table 'articles' created/verified successfully
+2025-12-06 02:43:02,055 - Database_app/data/fr-mirror - INFO - Table 'tones' created/verified successfully
+2025-12-06 02:43:02,055 - Database_app/data/fr-mirror - INFO - Table 'categories' created/verified successfully
+2025-12-06 02:43:02,056 - Database_app/data/fr-mirror - INFO - Table 'video_queue' created/verified successfully
+2025-12-06 02:43:02,056 - Database_app/data/fr-mirror - INFO - All tables created/verified successfully
+2025-12-06 02:43:02,056 - Database_app/data/fr-mirror - INFO - Database initialization completed
+2025-12-06 02:43:02,056 - app.main - INFO - Database initialized successfully in main.py
+2025-12-06 02:43:02,056 - app.data.enum_manager - INFO - Starting database enum synchronization...
+2025-12-06 02:43:02,056 - app.data.enum_manager - INFO - Synchronization query made for Tone
+2025-12-06 02:43:02,056 - app.data.enum_manager - INFO - No missing values found for tones - database is in sync
+2025-12-06 02:43:02,056 - app.data.enum_manager - INFO - Synchronization query made for ArticleType
+2025-12-06 02:43:02,056 - app.data.enum_manager - INFO - No missing values found for categories - database is in sync
+2025-12-06 02:43:02,057 - app.main - INFO - Database sync completed: <app.data.enum_manager.DatabaseSync object at 0x7f84c50e3950>
+2025-12-06 02:49:23,421 - Database_app/data/fr-mirror - INFO - Initializing database: app/data/fr-mirror.db
+2025-12-06 02:49:23,421 - Database_app/data/fr-mirror - INFO - Successfully connected to database: app/data/fr-mirror.db
+2025-12-06 02:49:23,421 - Database_app/data/fr-mirror - INFO - Creating/verifying all database tables...
+2025-12-06 02:49:23,421 - Database_app/data/fr-mirror - INFO - Table 'transcripts' created/verified successfully
+2025-12-06 02:49:23,422 - Database_app/data/fr-mirror - INFO - Table 'journalists' created/verified successfully
+2025-12-06 02:49:23,422 - Database_app/data/fr-mirror - INFO - Table 'articles' created/verified successfully
+2025-12-06 02:49:23,422 - Database_app/data/fr-mirror - INFO - Table 'tones' created/verified successfully
+2025-12-06 02:49:23,422 - Database_app/data/fr-mirror - INFO - Table 'categories' created/verified successfully
+2025-12-06 02:49:23,422 - Database_app/data/fr-mirror - INFO - Table 'video_queue' created/verified successfully
+2025-12-06 02:49:23,422 - Database_app/data/fr-mirror - INFO - All tables created/verified successfully
+2025-12-06 02:49:23,422 - Database_app/data/fr-mirror - INFO - Database initialization completed
+2025-12-06 02:49:23,422 - app.main - INFO - Database initialized successfully in main.py
+2025-12-06 02:49:23,422 - app.data.enum_manager - INFO - Starting database enum synchronization...
+2025-12-06 02:49:23,423 - app.data.enum_manager - INFO - Synchronization query made for Tone
+2025-12-06 02:49:23,423 - app.data.enum_manager - INFO - No missing values found for tones - database is in sync
+2025-12-06 02:49:23,423 - app.data.enum_manager - INFO - Synchronization query made for ArticleType
+2025-12-06 02:49:23,423 - app.data.enum_manager - INFO - No missing values found for categories - database is in sync
+2025-12-06 02:49:23,423 - app.main - INFO - Database sync completed: <app.data.enum_manager.DatabaseSync object at 0x7f9654879a30>
+2025-12-06 03:25:09,107 - Database_app/data/fr-mirror - INFO - Initializing database: app/data/fr-mirror.db
+2025-12-06 03:25:09,108 - Database_app/data/fr-mirror - INFO - Successfully connected to database: app/data/fr-mirror.db
+2025-12-06 03:25:09,108 - Database_app/data/fr-mirror - INFO - Creating/verifying all database tables...
+2025-12-06 03:25:09,109 - Database_app/data/fr-mirror - INFO - Table 'transcripts' created/verified successfully
+2025-12-06 03:25:09,109 - Database_app/data/fr-mirror - INFO - Table 'journalists' created/verified successfully
+2025-12-06 03:25:09,109 - Database_app/data/fr-mirror - INFO - Table 'articles' created/verified successfully
+2025-12-06 03:25:09,109 - Database_app/data/fr-mirror - INFO - Table 'tones' created/verified successfully
+2025-12-06 03:25:09,109 - Database_app/data/fr-mirror - INFO - Table 'categories' created/verified successfully
+2025-12-06 03:25:09,109 - Database_app/data/fr-mirror - INFO - Table 'video_queue' created/verified successfully
+2025-12-06 03:25:09,109 - Database_app/data/fr-mirror - INFO - All tables created/verified successfully
+2025-12-06 03:25:09,110 - Database_app/data/fr-mirror - INFO - Database initialization completed
+2025-12-06 03:25:09,110 - app.main - INFO - Database initialized successfully in main.py
+2025-12-06 03:25:09,110 - app.data.enum_manager - INFO - Starting database enum synchronization...
+2025-12-06 03:25:09,110 - app.data.enum_manager - INFO - Synchronization query made for Tone
+2025-12-06 03:25:09,110 - app.data.enum_manager - INFO - No missing values found for tones - database is in sync
+2025-12-06 03:25:09,110 - app.data.enum_manager - INFO - Synchronization query made for ArticleType
+2025-12-06 03:25:09,110 - app.data.enum_manager - INFO - No missing values found for categories - database is in sync
+2025-12-06 03:25:09,110 - app.main - INFO - Database sync completed: <app.data.enum_manager.DatabaseSync object at 0x7f9bde1d8d10>
+2025-12-06 03:25:09,111 - app.data.journalist_manager - INFO - Successfully updated journalist: Aurelius Stone
+2025-12-06 03:25:09,111 - app.main - INFO - Journalist initialization completed
+2025-12-06 03:25:09,111 - app.main - INFO - FastAPI app initialized!
+2025-12-06 03:25:09,111 - app.data.transcript_manager - DEBUG - Loaded proxy_username from env: akrds...
+2025-12-06 03:25:09,111 - app.data.transcript_manager - DEBUG - Loaded proxy_password from env: ***set***
+2025-12-06 03:25:27,933 - Database_app/data/fr-mirror - INFO - Initializing database: app/data/fr-mirror.db
+2025-12-06 03:25:27,934 - Database_app/data/fr-mirror - INFO - Successfully connected to database: app/data/fr-mirror.db
+2025-12-06 03:25:27,934 - Database_app/data/fr-mirror - INFO - Creating/verifying all database tables...
+2025-12-06 03:25:27,934 - Database_app/data/fr-mirror - INFO - Table 'transcripts' created/verified successfully
+2025-12-06 03:25:27,934 - Database_app/data/fr-mirror - INFO - Table 'journalists' created/verified successfully
+2025-12-06 03:25:27,934 - Database_app/data/fr-mirror - INFO - Table 'articles' created/verified successfully
+2025-12-06 03:25:27,935 - Database_app/data/fr-mirror - INFO - Table 'tones' created/verified successfully
+2025-12-06 03:25:27,935 - Database_app/data/fr-mirror - INFO - Table 'categories' created/verified successfully
+2025-12-06 03:25:27,935 - Database_app/data/fr-mirror - INFO - Table 'video_queue' created/verified successfully
+2025-12-06 03:25:27,935 - Database_app/data/fr-mirror - INFO - All tables created/verified successfully
+2025-12-06 03:25:27,935 - Database_app/data/fr-mirror - INFO - Database initialization completed
+2025-12-06 03:25:27,935 - app.main - INFO - Database initialized successfully in main.py
+2025-12-06 03:25:27,935 - app.data.enum_manager - INFO - Starting database enum synchronization...
+2025-12-06 03:25:27,935 - app.data.enum_manager - INFO - Synchronization query made for Tone
+2025-12-06 03:25:27,935 - app.data.enum_manager - INFO - No missing values found for tones - database is in sync
+2025-12-06 03:25:27,936 - app.data.enum_manager - INFO - Synchronization query made for ArticleType
+2025-12-06 03:25:27,936 - app.data.enum_manager - INFO - No missing values found for categories - database is in sync
+2025-12-06 03:25:27,936 - app.main - INFO - Database sync completed: <app.data.enum_manager.DatabaseSync object at 0x7f2b005de330>
+2025-12-06 03:25:27,936 - app.data.journalist_manager - INFO - Successfully updated journalist: Aurelius Stone
+2025-12-06 03:25:27,936 - app.main - INFO - Journalist initialization completed
+2025-12-06 03:25:27,937 - app.main - INFO - FastAPI app initialized!
+2025-12-06 03:25:27,937 - app.data.transcript_manager - DEBUG - Loaded proxy_username from env: akrds...
+2025-12-06 03:25:27,937 - app.data.transcript_manager - DEBUG - Loaded proxy_password from env: ***set***
+2025-12-06 03:25:39,140 - Database_app/data/fr-mirror - INFO - Initializing database: app/data/fr-mirror.db
+2025-12-06 03:25:39,140 - Database_app/data/fr-mirror - INFO - Successfully connected to database: app/data/fr-mirror.db
+2025-12-06 03:25:39,140 - Database_app/data/fr-mirror - INFO - Creating/verifying all database tables...
+2025-12-06 03:25:39,140 - Database_app/data/fr-mirror - INFO - Table 'transcripts' created/verified successfully
+2025-12-06 03:25:39,140 - Database_app/data/fr-mirror - INFO - Table 'journalists' created/verified successfully
+2025-12-06 03:25:39,141 - Database_app/data/fr-mirror - INFO - Table 'articles' created/verified successfully
+2025-12-06 03:25:39,141 - Database_app/data/fr-mirror - INFO - Table 'tones' created/verified successfully
+2025-12-06 03:25:39,141 - Database_app/data/fr-mirror - INFO - Table 'categories' created/verified successfully
+2025-12-06 03:25:39,141 - Database_app/data/fr-mirror - INFO - Table 'video_queue' created/verified successfully
+2025-12-06 03:25:39,141 - Database_app/data/fr-mirror - INFO - All tables created/verified successfully
+2025-12-06 03:25:39,141 - Database_app/data/fr-mirror - INFO - Database initialization completed
+2025-12-06 03:25:39,141 - app.main - INFO - Database initialized successfully in main.py
+2025-12-06 03:25:39,141 - app.data.enum_manager - INFO - Starting database enum synchronization...
+2025-12-06 03:25:39,141 - app.data.enum_manager - INFO - Synchronization query made for Tone
+2025-12-06 03:25:39,142 - app.data.enum_manager - INFO - No missing values found for tones - database is in sync
+2025-12-06 03:25:39,142 - app.data.enum_manager - INFO - Synchronization query made for ArticleType
+2025-12-06 03:25:39,142 - app.data.enum_manager - INFO - No missing values found for categories - database is in sync
+2025-12-06 03:25:39,142 - app.main - INFO - Database sync completed: <app.data.enum_manager.DatabaseSync object at 0x7fd7ecd33980>
+2025-12-06 03:25:39,142 - app.data.journalist_manager - INFO - Successfully updated journalist: Aurelius Stone
+2025-12-06 03:25:39,142 - app.main - INFO - Journalist initialization completed
+2025-12-06 03:25:39,143 - app.main - INFO - FastAPI app initialized!
+2025-12-06 03:25:39,143 - app.data.transcript_manager - DEBUG - Loaded proxy_username from env: akrds...
+2025-12-06 03:25:39,143 - app.data.transcript_manager - DEBUG - Loaded proxy_password from env: ***set***
+2025-12-06 03:26:56,253 - Database_app/data/fr-mirror - INFO - Initializing database: app/data/fr-mirror.db
+2025-12-06 03:26:56,254 - Database_app/data/fr-mirror - INFO - Successfully connected to database: app/data/fr-mirror.db
+2025-12-06 03:26:56,254 - Database_app/data/fr-mirror - INFO - Creating/verifying all database tables...
+2025-12-06 03:26:56,254 - Database_app/data/fr-mirror - INFO - Table 'transcripts' created/verified successfully
+2025-12-06 03:26:56,254 - Database_app/data/fr-mirror - INFO - Table 'journalists' created/verified successfully
+2025-12-06 03:26:56,254 - Database_app/data/fr-mirror - INFO - Table 'articles' created/verified successfully
+2025-12-06 03:26:56,255 - Database_app/data/fr-mirror - INFO - Table 'tones' created/verified successfully
+2025-12-06 03:26:56,255 - Database_app/data/fr-mirror - INFO - Table 'categories' created/verified successfully
+2025-12-06 03:26:56,255 - Database_app/data/fr-mirror - INFO - Table 'video_queue' created/verified successfully
+2025-12-06 03:26:56,255 - Database_app/data/fr-mirror - INFO - All tables created/verified successfully
+2025-12-06 03:26:56,255 - Database_app/data/fr-mirror - INFO - Database initialization completed
+2025-12-06 03:26:56,255 - app.main - INFO - Database initialized successfully in main.py
+2025-12-06 03:26:56,255 - app.data.enum_manager - INFO - Starting database enum synchronization...
+2025-12-06 03:26:56,255 - app.data.enum_manager - INFO - Synchronization query made for Tone
+2025-12-06 03:26:56,256 - app.data.enum_manager - INFO - No missing values found for tones - database is in sync
+2025-12-06 03:26:56,256 - app.data.enum_manager - INFO - Synchronization query made for ArticleType
+2025-12-06 03:26:56,256 - app.data.enum_manager - INFO - No missing values found for categories - database is in sync
+2025-12-06 03:26:56,256 - app.main - INFO - Database sync completed: <app.data.enum_manager.DatabaseSync object at 0x7f49d821d010>
+2025-12-06 03:26:56,256 - app.data.journalist_manager - INFO - Successfully updated journalist: Aurelius Stone
+2025-12-06 03:26:56,256 - app.main - INFO - Journalist initialization completed
+2025-12-06 03:26:56,257 - app.main - INFO - FastAPI app initialized!
+2025-12-06 03:26:56,257 - app.data.transcript_manager - DEBUG - Loaded proxy_username from env: akrds...
+2025-12-06 03:26:56,257 - app.data.transcript_manager - DEBUG - Loaded proxy_password from env: ***set***
+2025-12-06 03:30:03,983 - Database_app/data/fr-mirror - INFO - Initializing database: app/data/fr-mirror.db
+2025-12-06 03:30:03,984 - Database_app/data/fr-mirror - INFO - Successfully connected to database: app/data/fr-mirror.db
+2025-12-06 03:30:03,984 - Database_app/data/fr-mirror - INFO - Creating/verifying all database tables...
+2025-12-06 03:30:03,984 - Database_app/data/fr-mirror - INFO - Table 'transcripts' created/verified successfully
+2025-12-06 03:30:03,984 - Database_app/data/fr-mirror - INFO - Table 'journalists' created/verified successfully
+2025-12-06 03:30:03,985 - Database_app/data/fr-mirror - INFO - Table 'articles' created/verified successfully
+2025-12-06 03:30:03,985 - Database_app/data/fr-mirror - INFO - Table 'tones' created/verified successfully
+2025-12-06 03:30:03,985 - Database_app/data/fr-mirror - INFO - Table 'categories' created/verified successfully
+2025-12-06 03:30:03,985 - Database_app/data/fr-mirror - INFO - Table 'video_queue' created/verified successfully
+2025-12-06 03:30:03,985 - Database_app/data/fr-mirror - INFO - All tables created/verified successfully
+2025-12-06 03:30:03,985 - Database_app/data/fr-mirror - INFO - Database initialization completed
+2025-12-06 03:30:03,985 - app.main - INFO - Database initialized successfully in main.py
+2025-12-06 03:30:03,985 - app.data.enum_manager - INFO - Starting database enum synchronization...
+2025-12-06 03:30:03,985 - app.data.enum_manager - INFO - Synchronization query made for Tone
+2025-12-06 03:30:03,986 - app.data.enum_manager - INFO - No missing values found for tones - database is in sync
+2025-12-06 03:30:03,986 - app.data.enum_manager - INFO - Synchronization query made for ArticleType
+2025-12-06 03:30:03,986 - app.data.enum_manager - INFO - No missing values found for categories - database is in sync
+2025-12-06 03:30:03,986 - app.main - INFO - Database sync completed: <app.data.enum_manager.DatabaseSync object at 0x7f6b5a990fb0>
+2025-12-06 03:30:03,986 - app.data.journalist_manager - INFO - Successfully updated journalist: Aurelius Stone
+2025-12-06 03:30:03,986 - app.main - INFO - Journalist initialization completed
+2025-12-06 03:30:03,987 - app.main - INFO - FastAPI app initialized!
+2025-12-06 03:30:03,987 - app.data.transcript_manager - DEBUG - Loaded proxy_username from env: akrds...
+2025-12-06 03:30:03,987 - app.data.transcript_manager - DEBUG - Loaded proxy_password from env: ***set***
+2025-12-06 03:30:53,185 - Database_app/data/fr-mirror - INFO - Initializing database: app/data/fr-mirror.db
+2025-12-06 03:30:53,186 - Database_app/data/fr-mirror - INFO - Successfully connected to database: app/data/fr-mirror.db
+2025-12-06 03:30:53,186 - Database_app/data/fr-mirror - INFO - Creating/verifying all database tables...
+2025-12-06 03:30:53,186 - Database_app/data/fr-mirror - INFO - Table 'transcripts' created/verified successfully
+2025-12-06 03:30:53,186 - Database_app/data/fr-mirror - INFO - Table 'journalists' created/verified successfully
+2025-12-06 03:30:53,187 - Database_app/data/fr-mirror - INFO - Table 'articles' created/verified successfully
+2025-12-06 03:30:53,187 - Database_app/data/fr-mirror - INFO - Table 'tones' created/verified successfully
+2025-12-06 03:30:53,187 - Database_app/data/fr-mirror - INFO - Table 'categories' created/verified successfully
+2025-12-06 03:30:53,187 - Database_app/data/fr-mirror - INFO - Table 'video_queue' created/verified successfully
+2025-12-06 03:30:53,187 - Database_app/data/fr-mirror - INFO - All tables created/verified successfully
+2025-12-06 03:30:53,187 - Database_app/data/fr-mirror - INFO - Database initialization completed
+2025-12-06 03:30:53,187 - app.main - INFO - Database initialized successfully in main.py
+2025-12-06 03:30:53,187 - app.data.enum_manager - INFO - Starting database enum synchronization...
+2025-12-06 03:30:53,187 - app.data.enum_manager - INFO - Synchronization query made for Tone
+2025-12-06 03:30:53,188 - app.data.enum_manager - INFO - No missing values found for tones - database is in sync
+2025-12-06 03:30:53,188 - app.data.enum_manager - INFO - Synchronization query made for ArticleType
+2025-12-06 03:30:53,188 - app.data.enum_manager - INFO - No missing values found for categories - database is in sync
+2025-12-06 03:30:53,188 - app.main - INFO - Database sync completed: <app.data.enum_manager.DatabaseSync object at 0x7fdece028a10>
+2025-12-06 03:30:53,188 - app.data.journalist_manager - INFO - Successfully updated journalist: Aurelius Stone
+2025-12-06 03:30:53,188 - app.main - INFO - Journalist initialization completed
+2025-12-06 03:30:53,189 - app.main - INFO - FastAPI app initialized!
+2025-12-06 03:30:53,189 - app.data.transcript_manager - DEBUG - Loaded proxy_username from env: akrds...
+2025-12-06 03:30:53,189 - app.data.transcript_manager - DEBUG - Loaded proxy_password from env: ***set***
+2025-12-06 03:58:56,787 - Database_app/data/fr-mirror - INFO - Database operation: get_transcript_by_id - Details: {'transcript_id': 14}
+2025-12-06 03:58:56,788 - Database_app/data/fr-mirror - INFO - Retrieved transcript with ID '14' from database
+2025-12-06 04:00:54,064 - Database_app/data/fr-mirror - INFO - Database operation: add_article - Details: {'committee': '- Herman Bomback Bench Dedication', 'youtube_id': '88GT-aB9cr8', 'journalist_id': 1, 'transcript_id': 14, 'date': '2025-12-06T04:00:54.063946', 'article_type': 'summary', 'tone': 'casual', 'title': 'Fall River Honors Herman Bombback with Memorial Bench'}
+2025-12-06 04:00:54,068 - Database_app/data/fr-mirror - INFO - Added article (ID: 9) for committee: - Herman Bomback Bench Dedication, journalist_id: 1
+2025-12-06 04:00:54,068 - app.main - INFO - Article generated successfully by Aurelius Stone using transcript ID 14
