@@ -22,6 +22,7 @@ class ArticleGenerator:
         article_type: ArticleType,
         tone: Tone,
         committee: str,
+        x,
     ) -> Dict[str, Any] | JSONResponse:
         """
         Generate article content based on context and parameters.
