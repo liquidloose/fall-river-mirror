@@ -1,6 +1,6 @@
-from abc import abstractmethod
 from typing import Dict, Any, Optional
 from ..creation_tools.base_creator import BaseCreator
+from ..creation_tools.xai_image_query import XAIImageQuery
 
 
 class BaseArtist(BaseCreator):
@@ -67,7 +67,54 @@ class BaseArtist(BaseCreator):
             f"Style Context ({self.STYLE}):\n{style_content}"
         )
 
-    @abstractmethod
     def generate_image(self, context: str, prompt: str) -> Dict[str, Any]:
-        """Generate image content. Implemented by concrete artist classes."""
-        pass
+        """
+        Generate image content using xAI Aurora.
+        Uses the artist's personality and style guidelines.
+
+        Args:
+            context (str): Context information for the image generation.
+            prompt (str): The user's image generation request.
+
+        Returns:
+            Dict containing image_url, prompt_used, artist info, or error.
+        """
+        personality = self.get_personality()
+
+        # Build styled prompt incorporating artist traits
+        full_prompt = (
+            f"{prompt}, "
+            f"{personality['medium']} medium, "
+            f"{personality['aesthetic']} aesthetic, "
+            f"{personality['style']} style"
+        )
+
+        xai_image_query = XAIImageQuery()  # Initialize the XAIImageQuery class
+
+        try:
+            response = xai_image_query.generate_image(
+                prompt=full_prompt,
+                medium=personality["medium"],
+                aesthetic=personality["aesthetic"],
+            )
+
+            if hasattr(response, "status_code"):
+                return {
+                    "image_url": None,
+                    "error": f"Error generating image: {response.content}",
+                }
+
+            return {
+                "image_url": response.get("image_url"),
+                "prompt_used": full_prompt,
+                "context": context,
+                "artist": personality["name"],
+                "medium": personality["medium"],
+                "aesthetic": personality["aesthetic"],
+            }
+
+        except Exception as e:
+            return {
+                "image_url": None,
+                "error": f"Failed to generate image: {str(e)}",
+            }
