@@ -91,6 +91,7 @@ class Database:
         - articles: News articles with foreign key relationships
         - tones: Available tones for articles
         - article_types: Available article types
+        - art: AI-generated artwork
         """
         self.logger.info("Creating/verifying all database tables...")
 
@@ -169,6 +170,23 @@ class Database:
             "transcript_available INTEGER DEFAULT 0",  # Boolean: 0=false, 1=true
         )
 
+        # Art table - stores AI-generated artwork
+        self._create_table(
+            "art",
+            "id INTEGER PRIMARY KEY AUTOINCREMENT, "
+            "artist_id INTEGER, "  # Foreign key to artists table (if you have one)
+            "title TEXT, "  # Artwork title
+            "prompt TEXT, "  # Generation prompt
+            "medium TEXT, "  # e.g., "digital", "watercolor"
+            "aesthetic TEXT, "  # e.g., "surrealist", "minimalist"
+            "image_path TEXT, "  # Path to stored image
+            "transcript_id INTEGER, "  # If linked to a transcript
+            "article_id INTEGER, "  # If linked to an article
+            "created_date TEXT, "  # When artwork was generated
+            "FOREIGN KEY(transcript_id) REFERENCES transcripts(id), "
+            "FOREIGN KEY(article_id) REFERENCES articles(id)",
+        )
+
         self.tables_created = True
         self.logger.info("All tables created/verified successfully")
 
@@ -198,6 +216,7 @@ class Database:
                     "tones",
                     "article_types",
                     "video_queue",
+                    "art",
                 ]
                 table_counts = {}
 
@@ -330,6 +349,7 @@ class Database:
                     "tones",
                     "article_types",
                     "video_queue",
+                    "art",
                 ]
 
                 missing_tables = [
