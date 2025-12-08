@@ -1,7 +1,7 @@
 import logging
 from typing import Dict, Any
 from fastapi.responses import JSONResponse
-from .xai_processor import XAIProcessor
+from .xai_text_query import XAITextQuery
 from ...data.enum_classes import ArticleType, Tone
 from .context_manager import ContextManager
 
@@ -13,7 +13,7 @@ class ArticleGenerator:
 
     def __init__(self, context_manager: ContextManager = None):
         self.context_manager = context_manager or ContextManager()
-        self.xai_processor = XAIProcessor()
+        self.xai_processor = XAITextQuery()
 
     def write_article(
         self,
@@ -71,15 +71,15 @@ class ArticleGenerator:
             )
 
     def _build_article_context(self, context: str, article_type: ArticleType) -> str:
-        """Build context based on article typeT."""
+        """Build context based on article type."""
         final_context = context
         match article_type:
             case ArticleType.OP_ED:
-                final_context = context + self.context_manager.read_context_fileT(
+                final_context = context + self.context_manager.read_context_file(
                     "article_types", "op_ed.txt"
                 )
             case ArticleType.SUMMARY:
-                final_context = context + self.context_manager.read_context_fileT(
+                final_context = context + self.context_manager.read_context_file(
                     "article_types", "summary.txt"
                 )
         return final_context
