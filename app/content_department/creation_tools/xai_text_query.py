@@ -7,7 +7,7 @@ from xai_sdk import Client
 from xai_sdk.chat import user, system
 
 
-class XAIProcessor:
+class XAITextQuery:
     """
     A processor class for handling xAI (x.AI) API interactions.
 
