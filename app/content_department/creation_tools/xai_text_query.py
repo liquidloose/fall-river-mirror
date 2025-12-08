@@ -79,8 +79,6 @@ class XAITextQuery:
 
             # Generate response from the AI model
             response = chat.sample()
-            # Generate response from the AI model
-            response = chat.sample()
 
             # Generate a catchy headline based on the article content
             headline_chat = client.chat.create(model="grok-4")
