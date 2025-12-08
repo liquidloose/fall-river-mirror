@@ -1,7 +1,7 @@
 from typing import Dict, Any, Optional
 from ...data.enum_classes import Tone, ArticleType
 from ..creation_tools.base_creator import BaseCreator
-from ..creation_tools.xai_processor import XAIProcessor
+from ..creation_tools.xai_text_query import XAITextQuery
 
 
 class BaseJournalist(BaseCreator):
@@ -133,10 +133,9 @@ Guidelines:
 
 Write a full article that would be suitable for publication."""
 
-        xai_processor = XAIProcessor()
-
+        xai_text_query = XAITextQuery()  # Initialize the XAITextQuery class
         try:
-            response = xai_processor.get_response(
+            response = xai_text_query.get_response(
                 context=system_prompt,
                 message=user_message,
                 article_type=personality["article_type"],
