@@ -2,13 +2,12 @@
 import os
 
 # Third-party imports
-from fastapi.responses import JSONResponse
 from xai_sdk import Client
 
 
 class XAIImageQuery:
     """
-    A processor class for handling xAI image generation (Aurora) interactions.
+    A processor class for handling xAI image generation (grok-2-image) interactions.
 
     This class provides functionality to communicate with the xAI API for generating
     AI-powered images. It handles authentication, prompt formatting, and error
@@ -34,7 +33,7 @@ class XAIImageQuery:
         aesthetic: str = None,
     ) -> dict:
         """
-        Generate an image using the xAI Aurora API based on provided prompt.
+        Generate an image using the xAI grok-2-image model.
 
         This method creates an image generation request with the xAI API,
         incorporating style parameters like medium and aesthetic into the prompt.
@@ -45,29 +44,20 @@ class XAIImageQuery:
             aesthetic (str, optional): The aesthetic style (e.g., "surrealist", "minimalist").
 
         Returns:
-            dict: A dictionary containing the generated image info:
-                  {"image_url": "url_to_image", "prompt_used": "full_prompt"}
-
-        Raises:
-            JSONResponse: Returns a 500 status code with error details if:
-                - XAI_API_KEY environment variable is not set
-                - API communication fails for any reason
+            dict: A dictionary containing either:
+                  - Success: {"image_url": "url", "prompt_used": "prompt", ...}
+                  - Error: {"error": "error message"}
         """
         if not self.api_key:
-            return JSONResponse(
-                status_code=500,
-                content={"error": "XAI_API_KEY environment variable is not set"},
-            )
+            return {"error": "XAI_API_KEY environment variable is not set"}
 
         try:
-            # Initialize xAI client with timeout for long-running requests
-            client = Client(api_key=self.api_key, timeout=3600)
+            client = Client(api_key=self.api_key)
 
-            # TODO: Verify exact xAI SDK method for image generation
-            # This is the expected interface based on SDK patterns
-            response = client.image.generate(
-                model="aurora",
+            response = client.image.sample(
+                model="grok-2-image",
                 prompt=prompt,
+                image_format="url",
             )
 
             return {
@@ -78,7 +68,4 @@ class XAIImageQuery:
             }
 
         except Exception as e:
-            return JSONResponse(
-                status_code=500,
-                content={"error": f"Failed to generate image from xAI: {str(e)}"},
-            )
+            return {"error": f"Failed to generate image from xAI: {str(e)}"}

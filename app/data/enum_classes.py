@@ -14,6 +14,10 @@ class ArticleType(str, Enum):
     EDITORIAL = "editorial"
 
 
+class Artist(str, Enum):
+    SPECTRA_VERITAS = "Spectra Veritas"
+
+
 class AIAgent(str, Enum):
     GROK = "Grok"
     WHISPER = "Whisper"
