@@ -23,17 +23,20 @@ from fastapi.responses import JSONResponse
 # Local imports
 from app import TranscriptManager, ArticleGenerator
 from app.content_department.ai_journalists.aurelius_stone import AureliusStone
-from app.content_department.creation_tools.xai_processor import XAIProcessor
+from app.content_department.creation_tools.xai_text_query import XAITextQuery
 from app.data.enum_classes import (
     ArticleType,
-    Journalist,
     Tone,
+    Journalist,
+    Artist,
+    CreateArticleRequest,
     UpdateArticleRequest,
     PartialUpdateRequest,
 )
 from app.data.create_database import Database
 from app.data.journalist_manager import JournalistManager
 from app.data.video_queue_manager import VideoQueueManager
+from app.content_department.ai_artists.spectra_veritas import SpectraVeritas
 
 # Configure logging with both console and file output
 logging.basicConfig(
@@ -81,7 +84,6 @@ app = FastAPI(
     version="1.0.0",
 )
 
-xai_processor = XAIProcessor()
 logger.info("FastAPI app initialized!")
 
 # Create class instances once at startup
@@ -735,6 +737,48 @@ def get_journalist_profile(journalist_name: Journalist):
 # ===== POST ENDPOINTS =====
 
 
+@app.post("/image/generate/{artist_name}/{article_id}")
+def generate_image(artist_name: Artist, article_id: int):
+    """
+    Generate an image using the xAI Aurora API.
+    """
+    article = database.get_article_by_id(article_id)
+    if not article:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Article with ID {article_id} not found",
+        )
+
+    artist_instance = SpectraVeritas()
+    # Use title for image prompt (max 1024 chars for xAI)
+    prompt = f"Editorial illustration for: {article['title']}"
+    image_result = artist_instance.generate_image(context="", prompt=prompt)
+
+    # Save to database if successful
+    if image_result.get("image_url"):
+        import requests
+
+        # Download the image
+        image_url = image_result["image_url"]
+        response = requests.get(image_url)
+
+        if response.status_code == 200:
+            art_id = database.add_art(
+                prompt=image_result["prompt_used"],
+                image_url=image_url,
+                image_data=response.content,
+                medium=image_result.get("medium"),
+                aesthetic=image_result.get("aesthetic"),
+                title=article["title"],
+                article_id=article_id,
+            )
+            image_result["art_id"] = art_id
+        else:
+            image_result["error"] = f"Failed to download image: {response.status_code}"
+
+    return image_result
+
+
 @app.post("/article/generate/{journalist}/{tone}/{article_type}/{transcript_id}")
 def generate_article_from_strings(
     journalist: Journalist,
@@ -1264,7 +1308,7 @@ def get_queue_stats() -> Dict[str, Any]:
 
 @app.put("/articles/{article_id}")
 async def update_article(
-    article_id: str, request: UpdateArticleRequest
+    article_id: str, request: CreateArticleRequest
 ) -> Dict[str, Any]:
     """
     Update an existing article (full update).
@@ -1405,3 +1449,32 @@ async def partial_update_article(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Failed to partially update article: {str(e)}",
         )
+
+
+@app.patch("/article/{article_id}/bullet-points")
+def generate_article_bullet_points(article_id: int):
+    """Generate and save bullet points for an existing article."""
+    article = database.get_article_by_id(article_id)
+    if not article:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Article {article_id} not found",
+        )
+
+    journalist = AureliusStone()
+    result = journalist.generate_bullet_points(article["content"])
+
+    if result.get("error"):
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=result["error"],
+        )
+
+    success = database.update_article_bullet_points(article_id, result["bullet_points"])
+    if not success:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Failed to update article",
+        )
+
+    return {"article_id": article_id, "bullet_points": result["bullet_points"]}

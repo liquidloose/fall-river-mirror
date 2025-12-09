@@ -98,11 +98,8 @@ class BaseArtist(BaseCreator):
                 aesthetic=personality["aesthetic"],
             )
 
-            if hasattr(response, "status_code"):
-                return {
-                    "image_url": None,
-                    "error": f"Error generating image: {response.content}",
-                }
+            if "error" in response:
+                return {"image_url": None, "error": response["error"]}
 
             return {
                 "image_url": response.get("image_url"),
@@ -114,7 +111,4 @@ class BaseArtist(BaseCreator):
             }
 
         except Exception as e:
-            return {
-                "image_url": None,
-                "error": f"Failed to generate image: {str(e)}",
-            }
+            return {"image_url": None, "error": f"Failed to generate image: {str(e)}"}
