@@ -80,6 +80,33 @@ class Database:
             self.logger.error(f"Failed to create table '{table_name}': {str(e)}")
             raise
 
+    def _add_column_if_not_exists(
+        self, table_name: str, column_name: str, column_type: str
+    ) -> None:
+        """
+        Add a column to a table if it doesn't already exist.
+
+        Args:
+            table_name: Name of the table
+            column_name: Name of the column to add
+            column_type: SQL type of the column (e.g., 'TEXT', 'INTEGER')
+        """
+        try:
+            self.cursor.execute(f"PRAGMA table_info({table_name})")
+            columns = [row[1] for row in self.cursor.fetchall()]
+            if column_name not in columns:
+                self.cursor.execute(
+                    f"ALTER TABLE {table_name} ADD COLUMN {column_name} {column_type}"
+                )
+                self.conn.commit()
+                self.logger.info(
+                    f"Added column '{column_name}' to table '{table_name}'"
+                )
+        except Exception as e:
+            self.logger.error(
+                f"Failed to add column '{column_name}' to '{table_name}': {str(e)}"
+            )
+
     def _create_all_tables(self) -> None:
         """
         Create all required tables for the application.
@@ -141,10 +168,13 @@ class Database:
             "date TEXT, "  # Article publication date
             "tone TEXT, "  # Article tone
             "article_type TEXT, "  # Article type
+            "bullet_points TEXT, "  # Bullet point summary
             "FOREIGN KEY(committee) REFERENCES committees(id), "
             "FOREIGN KEY(journalist_id) REFERENCES journalists(id), "
             "FOREIGN KEY(transcript_id) REFERENCES transcripts(id)",
         )
+        # Migration: add bullet_points column if it doesn't exist
+        self._add_column_if_not_exists("articles", "bullet_points", "TEXT")
 
         # Tones table - stores available tones for articles
         self._create_table(
@@ -179,7 +209,8 @@ class Database:
             "prompt TEXT, "  # Generation prompt
             "medium TEXT, "  # e.g., "digital", "watercolor"
             "aesthetic TEXT, "  # e.g., "surrealist", "minimalist"
-            "image_path TEXT, "  # Path to stored image
+            "image_url TEXT, "  # Original URL from xAI
+            "image_data BLOB, "  # Actual image binary data
             "transcript_id INTEGER, "  # If linked to a transcript
             "article_id INTEGER, "  # If linked to an article
             "created_date TEXT, "  # When artwork was generated
@@ -638,6 +669,138 @@ class Database:
             )
         except Exception as e:
             self._log_error("add_article", e, operation_details)
+            raise
+
+    def get_article_by_id(self, article_id: int) -> Optional[dict]:
+        """
+        Retrieve an article by its ID.
+
+        Args:
+            article_id: The unique identifier of the article
+
+        Returns:
+            Dict with article data or None if not found
+        """
+        self._log_operation("get_article_by_id", {"article_id": article_id})
+
+        try:
+            self.cursor.execute(
+                "SELECT id, committee, youtube_id, journalist_id, title, content, transcript_id, date, tone, article_type FROM articles WHERE id = ?",
+                (article_id,),
+            )
+            result = self.cursor.fetchone()
+
+            if result:
+                return {
+                    "id": result[0],
+                    "committee": result[1],
+                    "youtube_id": result[2],
+                    "journalist_id": result[3],
+                    "title": result[4],
+                    "content": result[5],
+                    "transcript_id": result[6],
+                    "date": result[7],
+                    "tone": result[8],
+                    "article_type": result[9],
+                }
+            return None
+        except Exception as e:
+            self._log_error("get_article_by_id", e, {"article_id": article_id})
+            return None
+
+    def update_article_bullet_points(self, article_id: int, bullet_points: str) -> bool:
+        """
+        Update bullet points for an existing article.
+
+        Args:
+            article_id: The unique identifier of the article
+            bullet_points: The bullet point summary text
+
+        Returns:
+            True if update succeeded, False otherwise
+        """
+        self._log_operation(
+            "update_article_bullet_points",
+            {"article_id": article_id, "bullet_points_len": len(bullet_points)},
+        )
+
+        try:
+            self.cursor.execute(
+                "UPDATE articles SET bullet_points = ? WHERE id = ?",
+                (bullet_points, article_id),
+            )
+            self.conn.commit()
+            updated = self.cursor.rowcount > 0
+            if updated:
+                self.logger.info(f"Updated bullet points for article ID: {article_id}")
+            else:
+                self.logger.warning(f"No article found with ID: {article_id}")
+            return updated
+        except Exception as e:
+            self._log_error(
+                "update_article_bullet_points", e, {"article_id": article_id}
+            )
+            return False
+
+    def add_art(
+        self,
+        prompt: str,
+        image_url: str,
+        image_data: bytes,
+        medium: Optional[str] = None,
+        aesthetic: Optional[str] = None,
+        title: Optional[str] = None,
+        artist_id: Optional[int] = None,
+        transcript_id: Optional[int] = None,
+        article_id: Optional[int] = None,
+    ) -> int:
+        """
+        Add a new artwork to the database.
+
+        Args:
+            prompt: The generation prompt used
+            image_url: Original URL from xAI
+            image_data: The actual image binary data
+            medium: Artistic medium (e.g., "digital")
+            aesthetic: Aesthetic style (e.g., "surrealist")
+            title: Artwork title (optional)
+            artist_id: ID of the artist (optional)
+            transcript_id: ID of linked transcript (optional)
+            article_id: ID of linked article (optional)
+
+        Returns:
+            int: The ID of the newly created art record
+        """
+        operation_details = {
+            "prompt": prompt[:100],  # Truncate for logging
+            "image_url": image_url,
+            "article_id": article_id,
+        }
+        self._log_operation("add_art", operation_details)
+
+        try:
+            created_date = datetime.now().isoformat()
+            self.cursor.execute(
+                "INSERT INTO art (artist_id, title, prompt, medium, aesthetic, image_url, image_data, transcript_id, article_id, created_date) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+                (
+                    artist_id,
+                    title,
+                    prompt,
+                    medium,
+                    aesthetic,
+                    image_url,
+                    image_data,
+                    transcript_id,
+                    article_id,
+                    created_date,
+                ),
+            )
+            self.conn.commit()
+            art_id = self.cursor.lastrowid
+            self.logger.info(f"Added art (ID: {art_id})")
+            return art_id
+        except Exception as e:
+            self._log_error("add_art", e, operation_details)
             raise
 
     def add_committee(
