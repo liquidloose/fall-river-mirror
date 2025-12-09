@@ -152,17 +152,133 @@ If the ms-python language support displays red, squiggly lines underneath the im
 `which python`
 if the output is anything besides 3.13, then you need to change your language interpreter the 3.13 one in VScode/Cursor.
 
+## AI Creator Architecture
+
+The project uses a singleton-based class hierarchy for AI content creators (journalists, artists, etc.). This architecture provides:
+
+- **Consistent identity** - Each creator has fixed traits (name, slant, style)
+- **Flexible output** - Mutable attributes can be overridden at runtime
+- **Shared functionality** - Common methods inherited from base classes
+- **Type safety** - Clear contracts for what subclasses must implement
+
+### Class Hierarchy
+
+```
+BaseCreator (ABC)
+├── BaseJournalist
+│   └── AureliusStone
+└── BaseArtist
+    └── SpectraVeritas
+```
+
+### BaseCreator
+
+The abstract base class for all AI creators. Implements singleton pattern per subclass.
+
+**Fixed Identity Traits** (class constants, defined by subclasses):
+- `FIRST_NAME`, `LAST_NAME`, `FULL_NAME`, `NAME`
+- `SLANT` - Political/editorial perspective
+- `STYLE` - Writing/artistic style
+
+**Shared Methods**:
+- `get_bio()` - Loads bio from `context_files/bios/{name}_bio.txt`
+- `get_description()` - Loads description from `context_files/descriptions/{name}_description.txt`
+- `get_base_personality()` - Returns dict of core traits
+- `_load_attribute_context()` - Helper to load context files
+
+**Abstract Methods** (must be implemented by subclasses):
+- `load_context()` - Load relevant context files
+- `get_personality()` - Get full personality including subclass traits
+- `get_full_profile()` - Return complete creator profile
+
+### BaseJournalist
+
+Extends BaseCreator with article-specific functionality.
+
+**Additional Traits**:
+- `DEFAULT_TONE` - e.g., `Tone.ANALYTICAL`
+- `DEFAULT_ARTICLE_TYPE` - e.g., `ArticleType.OP_ED`
+
+**Key Methods**:
+- `generate_article(context, user_content)` - Generate article via xAI
+- `get_guidelines()` - Override for journalist-specific rules
+- `get_system_prompt(context)` - Build AI system prompt
+
+### BaseArtist
+
+Extends BaseCreator with image-specific functionality.
+
+**Additional Traits**:
+- `DEFAULT_MEDIUM` - e.g., "digital", "watercolor"
+- `DEFAULT_AESTHETIC` - e.g., "surrealist", "minimalist"
+
+**Key Methods**:
+- `generate_image(context, prompt)` - Generate image via xAI Aurora
+- `load_context()` - Load medium/aesthetic context files
+
+### Usage Example
+
+```python
+from app.content_department.ai_journalists.aurelius_stone import AureliusStone
+from app.content_department.ai_artists.spectra_veritas import SpectraVeritas
+
+# Singleton - same instance every time
+journalist = AureliusStone()
+artist = SpectraVeritas()
+
+# Override mutable attributes at instantiation
+artist_watercolor = SpectraVeritas(medium="watercolor", aesthetic="impressionist")
+
+# Generate content
+article = journalist.generate_article(context="...", user_content="")
+image = artist.generate_image(context="...", prompt="A city council meeting")
+```
+
+### Adding a New Creator
+
+1. Create class in appropriate folder (`ai_journalists/` or `ai_artists/`)
+2. Inherit from `BaseJournalist` or `BaseArtist`
+3. Define required class constants (identity traits)
+4. Override `get_guidelines()` or other methods as needed
+5. Add bio/description files to `context_files/`
+
+```python
+class NewJournalist(BaseJournalist):
+    FIRST_NAME = "Jane"
+    LAST_NAME = "Doe"
+    FULL_NAME = f"{FIRST_NAME} {LAST_NAME}"
+    NAME = FULL_NAME
+    SLANT = "progressive"
+    STYLE = "investigative"
+    
+    DEFAULT_TONE = Tone.CRITICAL
+    DEFAULT_ARTICLE_TYPE = ArticleType.INVESTIGATIVE
+    
+    def get_guidelines(self) -> str:
+        return "- Focus on accountability..."
+```
+
 ## Project Structure
 
 ```
 app/
-├── main.py              # FastAPI application and endpoints
-├── utils.py             # Utility functions and business logic
-├── database.py          # Database management and operations
-├── data_classes.py      # Pydantic models and data structures
-├── crud_endpoints.py    # CRUD operations for articles
-├── xai_processor.py     # AI processing functionality
-└── context_files/       # Context files for AI prompts
+├── main.py                          # FastAPI application and endpoints
+├── data/
+│   ├── create_database.py           # Database management
+│   ├── enum_classes.py              # Enums (Tone, ArticleType, etc.)
+│   └── transcript_manager.py        # YouTube transcript handling
+└── content_department/
+    ├── ai_journalists/
+    │   ├── base_journalist.py       # BaseJournalist class
+    │   └── aurelius_stone.py        # Journalist implementation
+    ├── ai_artists/
+    │   ├── base_artist.py           # BaseArtist class
+    │   └── spectra_veritas.py       # Artist implementation
+    └── creation_tools/
+        ├── base_creator.py          # BaseCreator ABC
+        ├── xai_text_query.py        # Text generation API
+        ├── xai_image_query.py       # Image generation API
+        └── context_files/           # Context/prompt files
 ```
 
 ## Development

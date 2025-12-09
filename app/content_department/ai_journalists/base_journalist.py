@@ -1,7 +1,10 @@
+import logging
 from typing import Dict, Any, Optional
 from ...data.enum_classes import Tone, ArticleType
 from ..creation_tools.base_creator import BaseCreator
 from ..creation_tools.xai_text_query import XAITextQuery
+
+logger = logging.getLogger(__name__)
 
 
 class BaseJournalist(BaseCreator):
@@ -155,3 +158,45 @@ Write a full article that would be suitable for publication."""
                 "title": "Error",
                 "content": f"Failed to generate article: {str(e)}",
             }
+
+    def generate_bullet_points(self, article_content: str) -> Dict[str, Any]:
+        """
+        Generate bullet point summary from article content.
+        Uses the bullet-point-summary article type context.
+        """
+        base_path = "./app/content_department/creation_tools/context_files"
+        bullet_point_summary_context = self._load_attribute_context(
+            base_path, "article_types", "bullet-point-summary"
+        )
+        context = (
+            "You are writing this type of article: "
+            + bullet_point_summary_context
+            + "\n\n"
+            + "Here is the article content that you will be summarizing: "
+            + "\n"
+            + article_content
+        )
+        message = "Now write a bullet point summary of the article content. Keep the summary under 1000 characters."
+        logger.info(f"Context: {context}")
+        logger.info(f"Message: {message}")
+
+        xai_text_query = XAITextQuery()
+        try:
+            response = xai_text_query.get_response(
+                context=context,
+                message=message,
+                article_type="bullet-point-summary",
+                tone="neutral",
+            )
+
+            if hasattr(response, "status_code"):
+                return {
+                    "bullet_points": None,
+                    "error": f"API error: {response.content}",
+                }
+
+            bullet_points = response.get("response", "")
+            return {"bullet_points": bullet_points, "error": None}
+
+        except Exception as e:
+            return {"bullet_points": None, "error": str(e)}
