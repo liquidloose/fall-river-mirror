@@ -1,8 +1,11 @@
 # Standard library imports
 import os
+import logging
 
 # Third-party imports
 from xai_sdk import Client
+
+logger = logging.getLogger(__name__)
 
 
 class XAIImageQuery:
@@ -53,6 +56,11 @@ class XAIImageQuery:
 
         try:
             client = Client(api_key=self.api_key)
+
+            # Log the full prompt before sending to xAI
+            logger.info(f"=== XAI IMAGE PROMPT ({len(prompt)} chars) ===")
+            logger.info(f"FULL PROMPT: {prompt}")
+            logger.info(f"=== END PROMPT ===")
 
             response = client.image.sample(
                 model="grok-2-image",

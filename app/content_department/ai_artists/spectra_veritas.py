@@ -12,9 +12,5 @@ class SpectraVeritas(BaseArtist):
     LAST_NAME = "Veritas"
     FULL_NAME = f"{FIRST_NAME} {LAST_NAME}"
     NAME = FULL_NAME
-    SLANT = "unbiased"
-    STYLE = "expressive"
-
-    # Artist-specific defaults
-    DEFAULT_MEDIUM = "digital"
-    DEFAULT_AESTHETIC = "surrealist"
+    SLANT = "neutral"  # Artists stay apolitical
+    STYLE = "versatile"  # Randomized per image
