@@ -204,19 +204,24 @@ class Database:
         self._create_table(
             "art",
             "id INTEGER PRIMARY KEY AUTOINCREMENT, "
-            "artist_id INTEGER, "  # Foreign key to artists table (if you have one)
+            "artist_name TEXT, "  # Name of the AI artist
             "title TEXT, "  # Artwork title
             "prompt TEXT, "  # Generation prompt
             "medium TEXT, "  # e.g., "digital", "watercolor"
             "aesthetic TEXT, "  # e.g., "surrealist", "minimalist"
             "image_url TEXT, "  # Original URL from xAI
             "image_data BLOB, "  # Actual image binary data
+            "snippet TEXT, "  # AI-generated short summary for image prompt
             "transcript_id INTEGER, "  # If linked to a transcript
             "article_id INTEGER, "  # If linked to an article
             "created_date TEXT, "  # When artwork was generated
             "FOREIGN KEY(transcript_id) REFERENCES transcripts(id), "
             "FOREIGN KEY(article_id) REFERENCES articles(id)",
         )
+        # Migration: add artist_name column if it doesn't exist (replaces artist_id)
+        self._add_column_if_not_exists("art", "artist_name", "TEXT")
+        # Migration: add snippet column if it doesn't exist
+        self._add_column_if_not_exists("art", "snippet", "TEXT")
 
         self.tables_created = True
         self.logger.info("All tables created/verified successfully")
@@ -685,7 +690,7 @@ class Database:
 
         try:
             self.cursor.execute(
-                "SELECT id, committee, youtube_id, journalist_id, title, content, transcript_id, date, tone, article_type FROM articles WHERE id = ?",
+                "SELECT id, committee, youtube_id, journalist_id, title, content, transcript_id, date, tone, article_type, bullet_points FROM articles WHERE id = ?",
                 (article_id,),
             )
             result = self.cursor.fetchone()
@@ -702,6 +707,7 @@ class Database:
                     "date": result[7],
                     "tone": result[8],
                     "article_type": result[9],
+                    "bullet_points": result[10],
                 }
             return None
         except Exception as e:
@@ -750,7 +756,8 @@ class Database:
         medium: Optional[str] = None,
         aesthetic: Optional[str] = None,
         title: Optional[str] = None,
-        artist_id: Optional[int] = None,
+        artist_name: Optional[str] = None,
+        snippet: Optional[str] = None,
         transcript_id: Optional[int] = None,
         article_id: Optional[int] = None,
     ) -> int:
@@ -764,7 +771,8 @@ class Database:
             medium: Artistic medium (e.g., "digital")
             aesthetic: Aesthetic style (e.g., "surrealist")
             title: Artwork title (optional)
-            artist_id: ID of the artist (optional)
+            artist_name: Name of the AI artist (optional)
+            snippet: AI-generated short summary for image prompt (optional)
             transcript_id: ID of linked transcript (optional)
             article_id: ID of linked article (optional)
 
@@ -775,21 +783,23 @@ class Database:
             "prompt": prompt[:100],  # Truncate for logging
             "image_url": image_url,
             "article_id": article_id,
+            "artist_name": artist_name,
         }
         self._log_operation("add_art", operation_details)
 
         try:
             created_date = datetime.now().isoformat()
             self.cursor.execute(
-                "INSERT INTO art (artist_id, title, prompt, medium, aesthetic, image_url, image_data, transcript_id, article_id, created_date) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+                "INSERT INTO art (artist_name, title, prompt, medium, aesthetic, image_url, image_data, snippet, transcript_id, article_id, created_date) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
                 (
-                    artist_id,
+                    artist_name,
                     title,
                     prompt,
                     medium,
                     aesthetic,
                     image_url,
                     image_data,
+                    snippet,
                     transcript_id,
                     article_id,
                     created_date,
@@ -960,6 +970,41 @@ class Database:
         except Exception as e:
             self._log_error("get_transcript_by_id", e, {"transcript_id": transcript_id})
             return None
+
+    def get_all_articles(self) -> List[dict]:
+        """
+        Retrieve all articles from the database.
+
+        Returns:
+            List of dictionaries containing article data.
+            Each dictionary contains: (id, committee, youtube_id, journalist_id, title, content, transcript_id, date, tone, article_type, bullet_points)
+        """
+        self._log_operation("get_all_articles", {})
+        try:
+            self.cursor.execute(
+                "SELECT id, committee, youtube_id, journalist_id, title, content, "
+                "transcript_id, date, tone, article_type, bullet_points FROM articles"
+            )
+            results = self.cursor.fetchall()
+            return [
+                {
+                    "id": row[0],
+                    "committee": row[1],
+                    "youtube_id": row[2],
+                    "journalist_id": row[3],
+                    "title": row[4],
+                    "content": row[5],
+                    "transcript_id": row[6],
+                    "date": row[7],
+                    "tone": row[8],
+                    "article_type": row[9],
+                    "bullet_points": row[10],
+                }
+                for row in results
+            ]
+        except Exception as e:
+            self._log_error("get_all_articles", e, {})
+            return []
 
     def close(self) -> None:
         """

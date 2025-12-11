@@ -742,6 +742,20 @@ def generate_image(artist_name: Artist, article_id: int):
     """
     Generate an image using the xAI Aurora API.
     """
+    # Map artist enum values to their classes
+    artist_classes = {
+        Artist.SPECTRA_VERITAS: SpectraVeritas,
+    }
+
+    # Get the artist class
+    artist_class = artist_classes.get(artist_name)
+    if not artist_class:
+        available_artists = [a.value for a in Artist]
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Artist '{artist_name.value}' not found. Available artists: {available_artists}",
+        )
+
     article = database.get_article_by_id(article_id)
     if not article:
         raise HTTPException(
@@ -749,10 +763,20 @@ def generate_image(artist_name: Artist, article_id: int):
             detail=f"Article with ID {article_id} not found",
         )
 
-    artist_instance = SpectraVeritas()
-    # Use title for image prompt (max 1024 chars for xAI)
-    prompt = f"Editorial illustration for: {article['title']}"
-    image_result = artist_instance.generate_image(context="", prompt=prompt)
+    bullet_points = article.get("bullet_points")
+    if not bullet_points:
+        return {
+            "image_url": None,
+            "error": f"Article {article_id} has no bullet points. Generate bullet points first using PATCH /article/{article_id}/bullet-points",
+            "article_id": article_id,
+        }
+
+    # Create artist instance dynamically
+    artist_instance = artist_class()
+    image_result = artist_instance.generate_image(
+        title=article["title"],
+        bullet_points=bullet_points,
+    )
 
     # Save to database if successful
     if image_result.get("image_url"):
@@ -770,6 +794,9 @@ def generate_image(artist_name: Artist, article_id: int):
                 medium=image_result.get("medium"),
                 aesthetic=image_result.get("aesthetic"),
                 title=article["title"],
+                artist_name=image_result.get("artist"),
+                snippet=image_result.get("snippet"),
+                transcript_id=article.get("transcript_id"),
                 article_id=article_id,
             )
             image_result["art_id"] = art_id
@@ -1478,3 +1505,33 @@ def generate_article_bullet_points(article_id: int):
         )
 
     return {"article_id": article_id, "bullet_points": result["bullet_points"]}
+
+
+@app.post("/bullet-points/generate/batch/{amount_of_articles}")
+def generate_all_bullet_points(amount_of_articles: int):
+    """Generate bullet points for all articles that don't have them."""
+    articles = database.get_all_articles()
+    journalist = AureliusStone()
+
+    results = {"processed": 0, "skipped": 0, "errors": []}
+
+    for article in articles:
+        # Stop if we've processed enough
+        if results["processed"] >= amount_of_articles:
+            break
+
+        # Skip if already has bullet points
+        if article.get("bullet_points"):
+            results["skipped"] += 1
+            continue
+
+        result = journalist.generate_bullet_points(article["content"])
+
+        if result.get("error"):
+            results["errors"].append({"id": article["id"], "error": result["error"]})
+            continue
+
+        database.update_article_bullet_points(article["id"], result["bullet_points"])
+        results["processed"] += 1
+
+    return results
