@@ -68,7 +68,9 @@ class BaseJournalist(BaseCreator):
             base_path, "article_types", selected_article_type.value
         )
         slant_content = self._load_attribute_context(base_path, "slant", self.SLANT)
-        style_content = self._load_attribute_context(base_path, "style", self.STYLE)
+        style_content = self._load_attribute_context(
+            base_path, "style/writing", self.STYLE
+        )
 
         return (
             f"Tone Context ({selected_tone.value}):\n{tone_content}\n\n"
@@ -176,7 +178,7 @@ Write a full article that would be suitable for publication."""
             + "\n"
             + article_content
         )
-        message = "Now write a bullet point summary of the article content. Keep the summary under 1000 characters."
+        message = "Now write a bullet point summary of the article content. Keep the summary under 850 characters."
         logger.info(f"Context: {context}")
         logger.info(f"Message: {message}")
 
