@@ -862,6 +862,26 @@ def bulk_generate_images(
             transcript_id = row[3]
 
             try:
+                # Double-check this article doesn't already have art (race condition protection)
+                cursor.execute(
+                    "SELECT id FROM art WHERE article_id = ? LIMIT 1",
+                    (article_id,),
+                )
+                existing_art = cursor.fetchone()
+                if existing_art:
+                    logger.info(
+                        f"Skipping article {article_id} - already has art (ID: {existing_art[0]})"
+                    )
+                    results.append(
+                        {
+                            "article_id": article_id,
+                            "status": "skipped",
+                            "reason": "already has art",
+                            "existing_art_id": existing_art[0],
+                        }
+                    )
+                    continue
+
                 logger.info(f"Generating image for article ID {article_id}: {title}")
 
                 # Generate image
