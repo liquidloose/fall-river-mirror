@@ -1,5 +1,5 @@
 from enum import Enum
-from typing import Optional
+from typing import Optional, Dict, Any
 from pydantic import BaseModel
 
 
@@ -40,6 +40,12 @@ class Tone(str, Enum):
 
 class Journalist(str, Enum):
     AURELIUS_STONE = "Aurelius Stone"
+
+
+class ImageModel(str, Enum):
+    FULL = "gpt-image-1"
+    MINI = "gpt-image-1-mini"
+    GROK = "grok-2-image"
 
 
 # Request/Response models
