@@ -80,6 +80,33 @@ class Database:
             self.logger.error(f"Failed to create table '{table_name}': {str(e)}")
             raise
 
+    def _add_column_if_not_exists(
+        self, table_name: str, column_name: str, column_type: str
+    ) -> None:
+        """
+        Add a column to a table if it doesn't already exist.
+
+        Args:
+            table_name: Name of the table
+            column_name: Name of the column to add
+            column_type: SQL type of the column (e.g., 'TEXT', 'INTEGER')
+        """
+        try:
+            self.cursor.execute(f"PRAGMA table_info({table_name})")
+            columns = [row[1] for row in self.cursor.fetchall()]
+            if column_name not in columns:
+                self.cursor.execute(
+                    f"ALTER TABLE {table_name} ADD COLUMN {column_name} {column_type}"
+                )
+                self.conn.commit()
+                self.logger.info(
+                    f"Added column '{column_name}' to table '{table_name}'"
+                )
+        except Exception as e:
+            self.logger.error(
+                f"Failed to add column '{column_name}' to '{table_name}': {str(e)}"
+            )
+
     def _create_all_tables(self) -> None:
         """
         Create all required tables for the application.
@@ -91,6 +118,7 @@ class Database:
         - articles: News articles with foreign key relationships
         - tones: Available tones for articles
         - article_types: Available article types
+        - art: AI-generated artwork
         """
         self.logger.info("Creating/verifying all database tables...")
 
@@ -140,10 +168,13 @@ class Database:
             "date TEXT, "  # Article publication date
             "tone TEXT, "  # Article tone
             "article_type TEXT, "  # Article type
+            "bullet_points TEXT, "  # Bullet point summary
             "FOREIGN KEY(committee) REFERENCES committees(id), "
             "FOREIGN KEY(journalist_id) REFERENCES journalists(id), "
             "FOREIGN KEY(transcript_id) REFERENCES transcripts(id)",
         )
+        # Migration: add bullet_points column if it doesn't exist
+        self._add_column_if_not_exists("articles", "bullet_points", "TEXT")
 
         # Tones table - stores available tones for articles
         self._create_table(
@@ -168,6 +199,31 @@ class Database:
             "youtube_id TEXT UNIQUE NOT NULL, "  # YouTube video ID
             "transcript_available INTEGER DEFAULT 0",  # Boolean: 0=false, 1=true
         )
+
+        # Art table - stores AI-generated artwork
+        self._create_table(
+            "art",
+            "id INTEGER PRIMARY KEY AUTOINCREMENT, "
+            "artist_name TEXT, "  # Name of the AI artist
+            "title TEXT, "  # Artwork title
+            "prompt TEXT, "  # Generation prompt
+            "medium TEXT, "  # e.g., "digital", "watercolor"
+            "aesthetic TEXT, "  # e.g., "surrealist", "minimalist"
+            "image_url TEXT, "  # Original URL from xAI
+            "image_data BLOB, "  # Actual image binary data
+            "snippet TEXT, "  # AI-generated short summary for image prompt
+            "transcript_id INTEGER, "  # If linked to a transcript
+            "article_id INTEGER, "  # If linked to an article
+            "created_date TEXT, "  # When artwork was generated
+            "FOREIGN KEY(transcript_id) REFERENCES transcripts(id), "
+            "FOREIGN KEY(article_id) REFERENCES articles(id)",
+        )
+        # Migration: add artist_name column if it doesn't exist (replaces artist_id)
+        self._add_column_if_not_exists("art", "artist_name", "TEXT")
+        # Migration: add snippet column if it doesn't exist
+        self._add_column_if_not_exists("art", "snippet", "TEXT")
+        # Migration: add model column if it doesn't exist
+        self._add_column_if_not_exists("art", "model", "TEXT")
 
         self.tables_created = True
         self.logger.info("All tables created/verified successfully")
@@ -198,6 +254,7 @@ class Database:
                     "tones",
                     "article_types",
                     "video_queue",
+                    "art",
                 ]
                 table_counts = {}
 
@@ -330,6 +387,7 @@ class Database:
                     "tones",
                     "article_types",
                     "video_queue",
+                    "art",
                 ]
 
                 missing_tables = [
@@ -620,6 +678,147 @@ class Database:
             self._log_error("add_article", e, operation_details)
             raise
 
+    def get_article_by_id(self, article_id: int) -> Optional[dict]:
+        """
+        Retrieve an article by its ID.
+
+        Args:
+            article_id: The unique identifier of the article
+
+        Returns:
+            Dict with article data or None if not found
+        """
+        self._log_operation("get_article_by_id", {"article_id": article_id})
+
+        try:
+            self.cursor.execute(
+                "SELECT id, committee, youtube_id, journalist_id, title, content, transcript_id, date, tone, article_type, bullet_points FROM articles WHERE id = ?",
+                (article_id,),
+            )
+            result = self.cursor.fetchone()
+
+            if result:
+                return {
+                    "id": result[0],
+                    "committee": result[1],
+                    "youtube_id": result[2],
+                    "journalist_id": result[3],
+                    "title": result[4],
+                    "content": result[5],
+                    "transcript_id": result[6],
+                    "date": result[7],
+                    "tone": result[8],
+                    "article_type": result[9],
+                    "bullet_points": result[10],
+                }
+            return None
+        except Exception as e:
+            self._log_error("get_article_by_id", e, {"article_id": article_id})
+            return None
+
+    def update_article_bullet_points(self, article_id: int, bullet_points: str) -> bool:
+        """
+        Update bullet points for an existing article.
+
+        Args:
+            article_id: The unique identifier of the article
+            bullet_points: The bullet point summary text
+
+        Returns:
+            True if update succeeded, False otherwise
+        """
+        self._log_operation(
+            "update_article_bullet_points",
+            {"article_id": article_id, "bullet_points_len": len(bullet_points)},
+        )
+
+        try:
+            self.cursor.execute(
+                "UPDATE articles SET bullet_points = ? WHERE id = ?",
+                (bullet_points, article_id),
+            )
+            self.conn.commit()
+            updated = self.cursor.rowcount > 0
+            if updated:
+                self.logger.info(f"Updated bullet points for article ID: {article_id}")
+            else:
+                self.logger.warning(f"No article found with ID: {article_id}")
+            return updated
+        except Exception as e:
+            self._log_error(
+                "update_article_bullet_points", e, {"article_id": article_id}
+            )
+            return False
+
+    def add_art(
+        self,
+        prompt: str,
+        image_url: str,
+        image_data: bytes,
+        medium: Optional[str] = None,
+        aesthetic: Optional[str] = None,
+        title: Optional[str] = None,
+        artist_name: Optional[str] = None,
+        snippet: Optional[str] = None,
+        transcript_id: Optional[int] = None,
+        article_id: Optional[int] = None,
+        model: Optional[str] = None,
+    ) -> int:
+        """
+        Add a new artwork to the database.
+
+        Args:
+            prompt: The generation prompt used
+            image_url: Original URL from xAI
+            image_data: The actual image binary data
+            medium: Artistic medium (e.g., "digital")
+            aesthetic: Aesthetic style (e.g., "surrealist")
+            title: Artwork title (optional)
+            artist_name: Name of the AI artist (optional)
+            snippet: AI-generated short summary for image prompt (optional)
+            transcript_id: ID of linked transcript (optional)
+            article_id: ID of linked article (optional)
+            model: Image generation model used (optional)
+
+        Returns:
+            int: The ID of the newly created art record
+        """
+        operation_details = {
+            "prompt": prompt[:100],  # Truncate for logging
+            "image_url": image_url,
+            "article_id": article_id,
+            "artist_name": artist_name,
+            "model": model,
+        }
+        self._log_operation("add_art", operation_details)
+
+        try:
+            created_date = datetime.now().isoformat()
+            self.cursor.execute(
+                "INSERT INTO art (artist_name, title, prompt, medium, aesthetic, image_url, image_data, snippet, transcript_id, article_id, created_date, model) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+                (
+                    artist_name,
+                    title,
+                    prompt,
+                    medium,
+                    aesthetic,
+                    image_url,
+                    image_data,
+                    snippet,
+                    transcript_id,
+                    article_id,
+                    created_date,
+                    model,
+                ),
+            )
+            self.conn.commit()
+            art_id = self.cursor.lastrowid
+            self.logger.info(f"Added art (ID: {art_id})")
+            return art_id
+        except Exception as e:
+            self._log_error("add_art", e, operation_details)
+            raise
+
     def add_committee(
         self, name: str, description: Optional[str], created_date: Optional[str]
     ) -> None:
@@ -778,6 +977,41 @@ class Database:
             self._log_error("get_transcript_by_id", e, {"transcript_id": transcript_id})
             return None
 
+    def get_all_articles(self) -> List[dict]:
+        """
+        Retrieve all articles from the database.
+
+        Returns:
+            List of dictionaries containing article data.
+            Each dictionary contains: (id, committee, youtube_id, journalist_id, title, content, transcript_id, date, tone, article_type, bullet_points)
+        """
+        self._log_operation("get_all_articles", {})
+        try:
+            self.cursor.execute(
+                "SELECT id, committee, youtube_id, journalist_id, title, content, "
+                "transcript_id, date, tone, article_type, bullet_points FROM articles"
+            )
+            results = self.cursor.fetchall()
+            return [
+                {
+                    "id": row[0],
+                    "committee": row[1],
+                    "youtube_id": row[2],
+                    "journalist_id": row[3],
+                    "title": row[4],
+                    "content": row[5],
+                    "transcript_id": row[6],
+                    "date": row[7],
+                    "tone": row[8],
+                    "article_type": row[9],
+                    "bullet_points": row[10],
+                }
+                for row in results
+            ]
+        except Exception as e:
+            self._log_error("get_all_articles", e, {})
+            return []
+
     def close(self) -> None:
         """
         Close the database connection.
@@ -855,3 +1089,74 @@ class Database:
         except Exception as e:
             self._log_error("delete_transcript_by_id", e, operation_details)
             raise
+
+    def delete_art_by_id(self, art_id: int) -> bool:
+        """
+        Delete an art record by its ID.
+
+        Args:
+            art_id: The ID of the art record to delete
+
+        Returns:
+            bool: True if art was deleted, False if not found
+
+        Raises:
+            Exception: If database operation fails
+        """
+        operation_details = {"art_id": art_id}
+        self._log_operation("delete_art_by_id", operation_details)
+
+        try:
+            # First check if art exists
+            self.cursor.execute("SELECT id FROM art WHERE id = ?", (art_id,))
+            if not self.cursor.fetchone():
+                self.logger.warning(f"Art with ID {art_id} not found")
+                return False
+
+            # Delete the art record
+            self.cursor.execute("DELETE FROM art WHERE id = ?", (art_id,))
+            self.conn.commit()
+
+            # Check if deletion was successful
+            rows_affected = self.cursor.rowcount
+            if rows_affected > 0:
+                self.logger.info(f"Successfully deleted art with ID {art_id}")
+                return True
+            else:
+                self.logger.warning(f"No art was deleted for ID {art_id}")
+                return False
+
+        except Exception as e:
+            self._log_error("delete_art_by_id", e, operation_details)
+            raise
+
+    def get_art_by_id(self, art_id: int) -> Optional[dict]:
+        """Retrieve an art record by its ID."""
+        self._log_operation("get_art_by_id", {"art_id": art_id})
+
+        try:
+            self.cursor.execute(
+                "SELECT id, artist_name, title, prompt, medium, aesthetic, image_data, snippet, transcript_id, article_id, created_date, model FROM art WHERE id = ?",
+                (art_id,),
+            )
+            result = self.cursor.fetchone()
+
+            if result:
+                return {
+                    "id": result[0],
+                    "artist_name": result[1],
+                    "title": result[2],
+                    "prompt": result[3],
+                    "medium": result[4],
+                    "aesthetic": result[5],
+                    "image_data": result[6],
+                    "snippet": result[7],
+                    "transcript_id": result[8],
+                    "article_id": result[9],
+                    "created_date": result[10],
+                    "model": result[11],
+                }
+            return None
+        except Exception as e:
+            self._log_error("get_art_by_id", e, {"art_id": art_id})
+            return None

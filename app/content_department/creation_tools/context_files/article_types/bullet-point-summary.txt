@@ -1,0 +1,40 @@
+A bullet-point summary distills an article or document into its core 
+points, presented as concise, scannable items. This format is designed 
+for maximum information density in minimal space.
+
+STRUCTURE:
+- Each bullet is a single key point or takeaway
+- Points are ordered by importance, not chronology
+- No introductory or concluding paragraphs needed
+- Total output must stay UNDER 900 characters
+
+APPROACH:
+Extract only the most essential facts, decisions, or outcomes. 
+Strip away all supporting detail, quotes, and context. Each 
+bullet should stand alone as a complete thought. Aim for 5-8 
+bullets maximum.
+
+CITIZEN CONCERNS:
+When summarizing meeting transcripts, always include citizen 
+concerns if present. Public comments, community input, and 
+resident feedback are high-priority content that must be 
+captured. Dedicate at least one bullet point to summarizing 
+citizen concerns when they appear in the source material.
+
+TONE AND LANGUAGE:
+Extremely direct and factual. Use active voice, present tense 
+where possible. No transitional phrases, hedging language, or 
+attribution. Just the facts.
+
+FORMAT:
+• Point one
+• Point two
+• Point three
+
+PURPOSE:
+To provide a rapid-scan summary that a reader can absorb in 
+seconds. Useful for image generation prompts, social media 
+previews, or quick reference.
+
+This content needs to be returned in wcag-compliant HTML and CSS. A full HTML document is not needed. 
+You just need to provide a bullet list summary inside of an <article></article> tag
