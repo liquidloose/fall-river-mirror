@@ -34,6 +34,7 @@ class XAIImageQuery:
         prompt: str,
         medium: str = None,
         aesthetic: str = None,
+        model: str = None,  # Accepted for interface consistency, ignored (always uses grok-2-image)
     ) -> dict:
         """
         Generate an image using the xAI grok-2-image model.
