@@ -7,7 +7,7 @@ from xai_sdk import Client
 from xai_sdk.chat import user, system
 
 
-class XAIProcessor:
+class XAITextQuery:
     """
     A processor class for handling xAI (x.AI) API interactions.
 
@@ -77,8 +77,6 @@ class XAIProcessor:
             chat.append(system(context))
             chat.append(user(message))
 
-            # Generate response from the AI model
-            response = chat.sample()
             # Generate response from the AI model
             response = chat.sample()
 
