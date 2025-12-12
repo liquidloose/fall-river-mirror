@@ -5,6 +5,7 @@ from typing import Dict, Any, Optional
 from ..creation_tools.base_creator import BaseCreator
 from ..creation_tools.openai_image_query import OpenAIImageQuery
 from ..creation_tools.xai_text_query import XAITextQuery
+from app.content_department.creation_tools.xai_image_query import XAIImageQuery
 
 logger = logging.getLogger(__name__)
 
@@ -104,7 +105,9 @@ class BaseArtist(BaseCreator):
             logger.warning(f"Snippet generation error: {str(e)}")
             return bullet_points[:300]
 
-    def generate_image(self, title: str, bullet_points: str = "") -> Dict[str, Any]:
+    def generate_image(
+        self, title: str, bullet_points: str = "", model: str = "gpt-image-1-mini"
+    ) -> Dict[str, Any]:
         """
         Generate an editorial illustration for an article.
 
@@ -136,13 +139,18 @@ class BaseArtist(BaseCreator):
             f"Follow these style requirements strictly."
         )
 
-        openai_image_query = OpenAIImageQuery()
+        # Choose image client based on model
+        if model == "grok-2-image":
+            image_query = XAIImageQuery()
+        else:
+            image_query = OpenAIImageQuery()
 
         try:
-            response = openai_image_query.generate_image(
+            response = image_query.generate_image(
                 prompt=full_prompt,
                 medium=medium["name"],
                 aesthetic=aesthetic["name"],
+                model=model,  # Only used by OpenAI, ignored by xAI
             )
 
             if "error" in response:
