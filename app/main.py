@@ -1617,6 +1617,215 @@ def generate_all_bullet_points(amount_of_articles: int):
     return results
 
 
+@app.post("/image/generate/batch/{amount}")
+def bulk_generate_images(
+    amount: int,
+    artist_name: Artist = Artist.SPECTRA_VERITAS,
+    model: ImageModel = ImageModel.MINI,
+) -> Dict[str, Any]:
+    """
+    Bulk generate images for articles that have bullet points but no existing art.
+
+    This endpoint:
+    1. Queries articles with bullet_points that don't already have art
+    2. Generates images for each article using the specified artist and model
+    3. Saves all images to the art table
+
+    Args:
+        amount: Maximum number of images to generate
+        artist_name: AI artist to use (default: Spectra Veritas)
+        model: Image model to use (default: gpt-image-1-mini)
+
+    Returns:
+        Dict containing:
+            - success: Overall operation status
+            - message: Human-readable summary
+            - images_generated: Count of successfully created images
+            - images_failed: Count of failed image generations
+            - results: List of per-article results
+    """
+    try:
+        if not database:
+            raise HTTPException(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail="Database not available",
+            )
+
+        logger.info(
+            f"Starting bulk image generation: {amount} images, "
+            f"artist={artist_name.value}, model={model.value}"
+        )
+
+        # Create artist instance (currently only Spectra Veritas is available)
+        artist_instance = SpectraVeritas()
+
+        # Query articles that have bullet_points but no existing art
+        cursor = database.cursor
+        cursor.execute(
+            """SELECT a.id, a.title, a.bullet_points, a.transcript_id
+               FROM articles a
+               LEFT JOIN art ON a.id = art.article_id
+               WHERE a.bullet_points IS NOT NULL 
+                 AND a.bullet_points != ''
+                 AND art.id IS NULL
+               LIMIT ?""",
+            (amount,),
+        )
+        articles = cursor.fetchall()
+
+        if not articles:
+            return {
+                "success": True,
+                "message": "No articles found that need images (all have art or lack bullet_points)",
+                "images_generated": 0,
+                "images_failed": 0,
+                "results": [],
+            }
+
+        logger.info(f"Found {len(articles)} articles to process")
+
+        results = []
+        images_generated = 0
+        images_failed = 0
+
+        for row in articles:
+            article_id = row[0]
+            title = row[1]
+            bullet_points = row[2]
+            transcript_id = row[3]
+
+            try:
+                logger.info(f"Generating image for article ID {article_id}: {title}")
+
+                # Generate image
+                image_result = artist_instance.generate_image(
+                    title=title,
+                    bullet_points=bullet_points,
+                    model=model.value,
+                )
+
+                if image_result.get("error"):
+                    images_failed += 1
+                    results.append(
+                        {
+                            "article_id": article_id,
+                            "status": "failed",
+                            "error": image_result["error"],
+                        }
+                    )
+                    logger.error(
+                        f"Failed to generate image for article {article_id}: {image_result['error']}"
+                    )
+                    continue
+
+                # Save to database if successful
+                if image_result.get("image_url"):
+                    import requests
+                    import base64
+
+                    image_url = image_result["image_url"]
+
+                    # Handle base64 data URLs (from gpt-image-1)
+                    if image_url.startswith("data:image"):
+                        header, base64_data = image_url.split(",", 1)
+                        image_data = base64.b64decode(base64_data)
+
+                        art_id = database.add_art(
+                            prompt=image_result["prompt_used"],
+                            image_url=None,
+                            image_data=image_data,
+                            medium=image_result.get("medium"),
+                            aesthetic=image_result.get("aesthetic"),
+                            title=title,
+                            artist_name=image_result.get("artist"),
+                            snippet=image_result.get("snippet"),
+                            transcript_id=transcript_id,
+                            article_id=article_id,
+                            model=model.value,
+                        )
+                    else:
+                        # Handle regular URLs (from other providers)
+                        response = requests.get(image_url)
+
+                        if response.status_code == 200:
+                            art_id = database.add_art(
+                                prompt=image_result["prompt_used"],
+                                image_url=image_url,
+                                image_data=response.content,
+                                medium=image_result.get("medium"),
+                                aesthetic=image_result.get("aesthetic"),
+                                title=title,
+                                artist_name=image_result.get("artist"),
+                                snippet=image_result.get("snippet"),
+                                transcript_id=transcript_id,
+                                article_id=article_id,
+                                model=model.value,
+                            )
+                        else:
+                            images_failed += 1
+                            results.append(
+                                {
+                                    "article_id": article_id,
+                                    "status": "failed",
+                                    "error": f"Failed to download image: {response.status_code}",
+                                }
+                            )
+                            continue
+
+                    images_generated += 1
+                    results.append(
+                        {
+                            "article_id": article_id,
+                            "status": "success",
+                            "art_id": art_id,
+                            "title": title,
+                        }
+                    )
+                    logger.info(
+                        f"Successfully generated image for article {article_id} (art_id: {art_id})"
+                    )
+                else:
+                    images_failed += 1
+                    results.append(
+                        {
+                            "article_id": article_id,
+                            "status": "failed",
+                            "error": "No image URL returned",
+                        }
+                    )
+
+            except Exception as e:
+                images_failed += 1
+                error_msg = str(e)
+                results.append(
+                    {"article_id": article_id, "status": "failed", "error": error_msg}
+                )
+                logger.error(
+                    f"Failed to generate image for article {article_id}: {error_msg}"
+                )
+
+        logger.info(
+            f"Bulk image generation complete: {images_generated} succeeded, {images_failed} failed"
+        )
+
+        return {
+            "success": True,
+            "message": f"Processed {len(articles)} articles",
+            "images_generated": images_generated,
+            "images_failed": images_failed,
+            "results": results,
+        }
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Bulk image generation failed: {str(e)}", exc_info=True)
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Bulk image generation failed: {str(e)}",
+        )
+
+
 @app.get("/art/{art_id}/image")
 def get_art_image(art_id: int):
     """Serve the image for an art record."""
