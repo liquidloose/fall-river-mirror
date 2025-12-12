@@ -3,7 +3,7 @@ import random
 import logging
 from typing import Dict, Any, Optional
 from ..creation_tools.base_creator import BaseCreator
-from ..creation_tools.xai_image_query import XAIImageQuery
+from ..creation_tools.openai_image_query import OpenAIImageQuery
 from ..creation_tools.xai_text_query import XAITextQuery
 
 logger = logging.getLogger(__name__)
@@ -136,10 +136,10 @@ class BaseArtist(BaseCreator):
             f"Follow these style requirements strictly."
         )
 
-        xai_image_query = XAIImageQuery()
+        openai_image_query = OpenAIImageQuery()
 
         try:
-            response = xai_image_query.generate_image(
+            response = openai_image_query.generate_image(
                 prompt=full_prompt,
                 medium=medium["name"],
                 aesthetic=aesthetic["name"],
