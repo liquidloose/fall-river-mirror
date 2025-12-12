@@ -178,7 +178,7 @@ Write a full article that would be suitable for publication."""
             + "\n"
             + article_content
         )
-        message = "Now write a bullet point summary of the article content. Keep the summary under 850 characters."
+        message = "Now write a bullet point summary of the article content. Keep the summary under 850 characters. If there are any citizen concerns, public comments, or community feedback mentioned, include them as a dedicated bullet point."
         logger.info(f"Context: {context}")
         logger.info(f"Message: {message}")
 
