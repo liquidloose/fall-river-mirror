@@ -35,6 +35,7 @@ class OpenAIImageQuery:
         prompt: str,
         medium: str = None,
         aesthetic: str = None,
+        model: str = "gpt-image-1-mini",  # Add this parameter
     ) -> dict:
         """
         Generate an image using the OpenAI GPT-5.1 Responses API.
@@ -63,22 +64,15 @@ class OpenAIImageQuery:
             logger.info(f"FULL PROMPT: {prompt}")
             logger.info(f"=== END PROMPT ===")
 
-            response = client.responses.create(
-                model="gpt-5.1",
-                input=prompt,
-                tools=[{"type": "image_generation"}],
+            response = client.images.generate(
+                model=model,  # Use the parameter instead of hardcoded
+                prompt=prompt,
+                n=1,
             )
 
             # Extract the base64-encoded image data
-            image_data = [
-                output.result
-                for output in response.output
-                if output.type == "image_generation_call"
-            ]
-
-            if image_data:
-                image_base64 = image_data[0]
-                # Return as data URL for direct use in img tags
+            if response.data:
+                image_base64 = response.data[0].b64_json
                 image_url = f"data:image/png;base64,{image_base64}"
 
                 return {
@@ -92,4 +86,3 @@ class OpenAIImageQuery:
 
         except Exception as e:
             return {"error": f"Failed to generate image from OpenAI: {str(e)}"}
-
