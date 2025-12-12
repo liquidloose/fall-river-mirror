@@ -22131,3 +22131,483 @@ Here is the article content that you will be summarizing:
 2025-12-11 20:19:04,367 - urllib3.connectionpool - DEBUG - https://imgen.x.ai:443 "GET /xai-imgen/xai-tmp-imgen-4012b40f-955f-431f-bf48-3f2f994fec8a.jpeg HTTP/1.1" 200 93093
 2025-12-11 20:19:04,396 - Database_app/data/fr-mirror - INFO - Database operation: add_art - Details: {'prompt': 'Create an editorial illustration for: Fall River Hero Surprised After 52 Years of Service. Content: ', 'image_url': 'https://imgen.x.ai/xai-imgen/xai-tmp-imgen-4012b40f-955f-431f-bf48-3f2f994fec8a.jpeg', 'article_id': 2, 'artist_name': 'Spectra Veritas'}
 2025-12-11 20:19:04,400 - Database_app/data/fr-mirror - INFO - Added art (ID: 17)
+2025-12-11 22:59:21,019 - Database_app/data/fr-mirror - INFO - Initializing database: app/data/fr-mirror.db
+2025-12-11 22:59:21,020 - Database_app/data/fr-mirror - INFO - Successfully connected to database: app/data/fr-mirror.db
+2025-12-11 22:59:21,020 - Database_app/data/fr-mirror - INFO - Creating/verifying all database tables...
+2025-12-11 22:59:21,020 - Database_app/data/fr-mirror - INFO - Table 'transcripts' created/verified successfully
+2025-12-11 22:59:21,021 - Database_app/data/fr-mirror - INFO - Table 'journalists' created/verified successfully
+2025-12-11 22:59:21,021 - Database_app/data/fr-mirror - INFO - Table 'articles' created/verified successfully
+2025-12-11 22:59:21,021 - Database_app/data/fr-mirror - INFO - Table 'tones' created/verified successfully
+2025-12-11 22:59:21,021 - Database_app/data/fr-mirror - INFO - Table 'categories' created/verified successfully
+2025-12-11 22:59:21,021 - Database_app/data/fr-mirror - INFO - Table 'video_queue' created/verified successfully
+2025-12-11 22:59:21,022 - Database_app/data/fr-mirror - INFO - Table 'art' created/verified successfully
+2025-12-11 22:59:21,022 - Database_app/data/fr-mirror - INFO - All tables created/verified successfully
+2025-12-11 22:59:21,022 - Database_app/data/fr-mirror - INFO - Database initialization completed
+2025-12-11 22:59:21,022 - app.main - INFO - Database initialized successfully in main.py
+2025-12-11 22:59:21,022 - app.data.enum_manager - INFO - Starting database enum synchronization...
+2025-12-11 22:59:21,022 - app.data.enum_manager - INFO - Synchronization query made for Tone
+2025-12-11 22:59:21,022 - app.data.enum_manager - INFO - No missing values found for tones - database is in sync
+2025-12-11 22:59:21,022 - app.data.enum_manager - INFO - Synchronization query made for ArticleType
+2025-12-11 22:59:21,023 - app.data.enum_manager - INFO - No missing values found for categories - database is in sync
+2025-12-11 22:59:21,023 - app.main - INFO - Database sync completed: <app.data.enum_manager.DatabaseSync object at 0x7fb467a72810>
+2025-12-11 22:59:21,023 - app.data.journalist_manager - INFO - Successfully updated journalist: Aurelius Stone
+2025-12-11 22:59:21,023 - app.main - INFO - Journalist initialization completed
+2025-12-11 22:59:21,024 - app.main - INFO - FastAPI app initialized!
+2025-12-11 22:59:21,024 - app.data.transcript_manager - DEBUG - Loaded proxy_username from env: akrds...
+2025-12-11 22:59:21,024 - app.data.transcript_manager - DEBUG - Loaded proxy_password from env: ***set***
+2025-12-11 22:59:36,464 - Database_app/data/fr-mirror - INFO - Initializing database: app/data/fr-mirror.db
+2025-12-11 22:59:36,464 - Database_app/data/fr-mirror - INFO - Successfully connected to database: app/data/fr-mirror.db
+2025-12-11 22:59:36,465 - Database_app/data/fr-mirror - INFO - Creating/verifying all database tables...
+2025-12-11 22:59:36,465 - Database_app/data/fr-mirror - INFO - Table 'transcripts' created/verified successfully
+2025-12-11 22:59:36,465 - Database_app/data/fr-mirror - INFO - Table 'journalists' created/verified successfully
+2025-12-11 22:59:36,465 - Database_app/data/fr-mirror - INFO - Table 'articles' created/verified successfully
+2025-12-11 22:59:36,465 - Database_app/data/fr-mirror - INFO - Table 'tones' created/verified successfully
+2025-12-11 22:59:36,466 - Database_app/data/fr-mirror - INFO - Table 'categories' created/verified successfully
+2025-12-11 22:59:36,466 - Database_app/data/fr-mirror - INFO - Table 'video_queue' created/verified successfully
+2025-12-11 22:59:36,466 - Database_app/data/fr-mirror - INFO - Table 'art' created/verified successfully
+2025-12-11 22:59:36,466 - Database_app/data/fr-mirror - INFO - All tables created/verified successfully
+2025-12-11 22:59:36,466 - Database_app/data/fr-mirror - INFO - Database initialization completed
+2025-12-11 22:59:36,466 - app.main - INFO - Database initialized successfully in main.py
+2025-12-11 22:59:36,466 - app.data.enum_manager - INFO - Starting database enum synchronization...
+2025-12-11 22:59:36,466 - app.data.enum_manager - INFO - Synchronization query made for Tone
+2025-12-11 22:59:36,466 - app.data.enum_manager - INFO - No missing values found for tones - database is in sync
+2025-12-11 22:59:36,466 - app.data.enum_manager - INFO - Synchronization query made for ArticleType
+2025-12-11 22:59:36,467 - app.data.enum_manager - INFO - No missing values found for categories - database is in sync
+2025-12-11 22:59:36,467 - app.main - INFO - Database sync completed: <app.data.enum_manager.DatabaseSync object at 0x7fd819f64950>
+2025-12-11 22:59:36,467 - app.data.journalist_manager - INFO - Successfully updated journalist: Aurelius Stone
+2025-12-11 22:59:36,467 - app.main - INFO - Journalist initialization completed
+2025-12-11 22:59:36,468 - app.main - INFO - FastAPI app initialized!
+2025-12-11 22:59:36,468 - app.data.transcript_manager - DEBUG - Loaded proxy_username from env: akrds...
+2025-12-11 22:59:36,468 - app.data.transcript_manager - DEBUG - Loaded proxy_password from env: ***set***
+2025-12-11 22:59:53,226 - Database_app/data/fr-mirror - INFO - Initializing database: app/data/fr-mirror.db
+2025-12-11 22:59:53,226 - Database_app/data/fr-mirror - INFO - Successfully connected to database: app/data/fr-mirror.db
+2025-12-11 22:59:53,226 - Database_app/data/fr-mirror - INFO - Creating/verifying all database tables...
+2025-12-11 22:59:53,227 - Database_app/data/fr-mirror - INFO - Table 'transcripts' created/verified successfully
+2025-12-11 22:59:53,227 - Database_app/data/fr-mirror - INFO - Table 'journalists' created/verified successfully
+2025-12-11 22:59:53,227 - Database_app/data/fr-mirror - INFO - Table 'articles' created/verified successfully
+2025-12-11 22:59:53,227 - Database_app/data/fr-mirror - INFO - Table 'tones' created/verified successfully
+2025-12-11 22:59:53,227 - Database_app/data/fr-mirror - INFO - Table 'categories' created/verified successfully
+2025-12-11 22:59:53,227 - Database_app/data/fr-mirror - INFO - Table 'video_queue' created/verified successfully
+2025-12-11 22:59:53,228 - Database_app/data/fr-mirror - INFO - Table 'art' created/verified successfully
+2025-12-11 22:59:53,228 - Database_app/data/fr-mirror - INFO - All tables created/verified successfully
+2025-12-11 22:59:53,228 - Database_app/data/fr-mirror - INFO - Database initialization completed
+2025-12-11 22:59:53,228 - app.main - INFO - Database initialized successfully in main.py
+2025-12-11 22:59:53,228 - app.data.enum_manager - INFO - Starting database enum synchronization...
+2025-12-11 22:59:53,228 - app.data.enum_manager - INFO - Synchronization query made for Tone
+2025-12-11 22:59:53,228 - app.data.enum_manager - INFO - No missing values found for tones - database is in sync
+2025-12-11 22:59:53,228 - app.data.enum_manager - INFO - Synchronization query made for ArticleType
+2025-12-11 22:59:53,229 - app.data.enum_manager - INFO - No missing values found for categories - database is in sync
+2025-12-11 22:59:53,229 - app.main - INFO - Database sync completed: <app.data.enum_manager.DatabaseSync object at 0x7f4015305d90>
+2025-12-11 22:59:53,229 - app.data.journalist_manager - INFO - Successfully updated journalist: Aurelius Stone
+2025-12-11 22:59:53,229 - app.main - INFO - Journalist initialization completed
+2025-12-11 22:59:53,230 - app.main - INFO - FastAPI app initialized!
+2025-12-11 22:59:53,230 - app.data.transcript_manager - DEBUG - Loaded proxy_username from env: akrds...
+2025-12-11 22:59:53,230 - app.data.transcript_manager - DEBUG - Loaded proxy_password from env: ***set***
+2025-12-11 23:01:25,167 - Database_app/data/fr-mirror - INFO - Initializing database: app/data/fr-mirror.db
+2025-12-11 23:01:25,168 - Database_app/data/fr-mirror - INFO - Successfully connected to database: app/data/fr-mirror.db
+2025-12-11 23:01:25,168 - Database_app/data/fr-mirror - INFO - Creating/verifying all database tables...
+2025-12-11 23:01:25,168 - Database_app/data/fr-mirror - INFO - Table 'transcripts' created/verified successfully
+2025-12-11 23:01:25,168 - Database_app/data/fr-mirror - INFO - Table 'journalists' created/verified successfully
+2025-12-11 23:01:25,169 - Database_app/data/fr-mirror - INFO - Table 'articles' created/verified successfully
+2025-12-11 23:01:25,169 - Database_app/data/fr-mirror - INFO - Table 'tones' created/verified successfully
+2025-12-11 23:01:25,169 - Database_app/data/fr-mirror - INFO - Table 'categories' created/verified successfully
+2025-12-11 23:01:25,169 - Database_app/data/fr-mirror - INFO - Table 'video_queue' created/verified successfully
+2025-12-11 23:01:25,169 - Database_app/data/fr-mirror - INFO - Table 'art' created/verified successfully
+2025-12-11 23:01:25,169 - Database_app/data/fr-mirror - INFO - All tables created/verified successfully
+2025-12-11 23:01:25,170 - Database_app/data/fr-mirror - INFO - Database initialization completed
+2025-12-11 23:01:25,170 - app.main - INFO - Database initialized successfully in main.py
+2025-12-11 23:01:25,170 - app.data.enum_manager - INFO - Starting database enum synchronization...
+2025-12-11 23:01:25,170 - app.data.enum_manager - INFO - Synchronization query made for Tone
+2025-12-11 23:01:25,170 - app.data.enum_manager - INFO - No missing values found for tones - database is in sync
+2025-12-11 23:01:25,170 - app.data.enum_manager - INFO - Synchronization query made for ArticleType
+2025-12-11 23:01:25,170 - app.data.enum_manager - INFO - No missing values found for categories - database is in sync
+2025-12-11 23:01:25,170 - app.main - INFO - Database sync completed: <app.data.enum_manager.DatabaseSync object at 0x7ff5c7371e80>
+2025-12-11 23:01:25,171 - app.data.journalist_manager - INFO - Successfully updated journalist: Aurelius Stone
+2025-12-11 23:01:25,171 - app.main - INFO - Journalist initialization completed
+2025-12-11 23:01:25,171 - app.main - INFO - FastAPI app initialized!
+2025-12-11 23:01:25,171 - app.data.transcript_manager - DEBUG - Loaded proxy_username from env: akrds...
+2025-12-11 23:01:25,171 - app.data.transcript_manager - DEBUG - Loaded proxy_password from env: ***set***
+2025-12-11 23:05:43,687 - Database_app/data/fr-mirror - INFO - Initializing database: app/data/fr-mirror.db
+2025-12-11 23:05:43,688 - Database_app/data/fr-mirror - INFO - Successfully connected to database: app/data/fr-mirror.db
+2025-12-11 23:05:43,688 - Database_app/data/fr-mirror - INFO - Creating/verifying all database tables...
+2025-12-11 23:05:43,689 - Database_app/data/fr-mirror - INFO - Table 'transcripts' created/verified successfully
+2025-12-11 23:05:43,689 - Database_app/data/fr-mirror - INFO - Table 'journalists' created/verified successfully
+2025-12-11 23:05:43,689 - Database_app/data/fr-mirror - INFO - Table 'articles' created/verified successfully
+2025-12-11 23:05:43,689 - Database_app/data/fr-mirror - INFO - Table 'tones' created/verified successfully
+2025-12-11 23:05:43,690 - Database_app/data/fr-mirror - INFO - Table 'categories' created/verified successfully
+2025-12-11 23:05:43,690 - Database_app/data/fr-mirror - INFO - Table 'video_queue' created/verified successfully
+2025-12-11 23:05:43,690 - Database_app/data/fr-mirror - INFO - Table 'art' created/verified successfully
+2025-12-11 23:05:43,690 - Database_app/data/fr-mirror - INFO - All tables created/verified successfully
+2025-12-11 23:05:43,690 - Database_app/data/fr-mirror - INFO - Database initialization completed
+2025-12-11 23:05:43,691 - app.main - INFO - Database initialized successfully in main.py
+2025-12-11 23:05:43,691 - app.data.enum_manager - INFO - Starting database enum synchronization...
+2025-12-11 23:05:43,691 - app.data.enum_manager - INFO - Synchronization query made for Tone
+2025-12-11 23:05:43,691 - app.data.enum_manager - INFO - No missing values found for tones - database is in sync
+2025-12-11 23:05:43,691 - app.data.enum_manager - INFO - Synchronization query made for ArticleType
+2025-12-11 23:05:43,692 - app.data.enum_manager - INFO - No missing values found for categories - database is in sync
+2025-12-11 23:05:43,692 - app.main - INFO - Database sync completed: <app.data.enum_manager.DatabaseSync object at 0x7f4b2dd61370>
+2025-12-11 23:05:43,692 - app.data.journalist_manager - INFO - Successfully updated journalist: Aurelius Stone
+2025-12-11 23:05:43,692 - app.main - INFO - Journalist initialization completed
+2025-12-11 23:05:43,693 - app.main - INFO - FastAPI app initialized!
+2025-12-11 23:05:43,693 - app.data.transcript_manager - DEBUG - Loaded proxy_username from env: akrds...
+2025-12-11 23:05:43,693 - app.data.transcript_manager - DEBUG - Loaded proxy_password from env: ***set***
+2025-12-11 23:05:50,077 - Database_app/data/fr-mirror - INFO - Initializing database: app/data/fr-mirror.db
+2025-12-11 23:05:50,077 - Database_app/data/fr-mirror - INFO - Successfully connected to database: app/data/fr-mirror.db
+2025-12-11 23:05:50,078 - Database_app/data/fr-mirror - INFO - Creating/verifying all database tables...
+2025-12-11 23:05:50,078 - Database_app/data/fr-mirror - INFO - Table 'transcripts' created/verified successfully
+2025-12-11 23:05:50,078 - Database_app/data/fr-mirror - INFO - Table 'journalists' created/verified successfully
+2025-12-11 23:05:50,078 - Database_app/data/fr-mirror - INFO - Table 'articles' created/verified successfully
+2025-12-11 23:05:50,078 - Database_app/data/fr-mirror - INFO - Table 'tones' created/verified successfully
+2025-12-11 23:05:50,079 - Database_app/data/fr-mirror - INFO - Table 'categories' created/verified successfully
+2025-12-11 23:05:50,079 - Database_app/data/fr-mirror - INFO - Table 'video_queue' created/verified successfully
+2025-12-11 23:05:50,079 - Database_app/data/fr-mirror - INFO - Table 'art' created/verified successfully
+2025-12-11 23:05:50,079 - Database_app/data/fr-mirror - INFO - All tables created/verified successfully
+2025-12-11 23:05:50,079 - Database_app/data/fr-mirror - INFO - Database initialization completed
+2025-12-11 23:05:50,079 - app.main - INFO - Database initialized successfully in main.py
+2025-12-11 23:05:50,079 - app.data.enum_manager - INFO - Starting database enum synchronization...
+2025-12-11 23:05:50,080 - app.data.enum_manager - INFO - Synchronization query made for Tone
+2025-12-11 23:05:50,080 - app.data.enum_manager - INFO - No missing values found for tones - database is in sync
+2025-12-11 23:05:50,080 - app.data.enum_manager - INFO - Synchronization query made for ArticleType
+2025-12-11 23:05:50,080 - app.data.enum_manager - INFO - No missing values found for categories - database is in sync
+2025-12-11 23:05:50,080 - app.main - INFO - Database sync completed: <app.data.enum_manager.DatabaseSync object at 0x7f20d1237380>
+2025-12-11 23:05:50,080 - app.data.journalist_manager - INFO - Successfully updated journalist: Aurelius Stone
+2025-12-11 23:05:50,080 - app.main - INFO - Journalist initialization completed
+2025-12-11 23:05:50,081 - app.main - INFO - FastAPI app initialized!
+2025-12-11 23:05:50,081 - app.data.transcript_manager - DEBUG - Loaded proxy_username from env: akrds...
+2025-12-11 23:05:50,081 - app.data.transcript_manager - DEBUG - Loaded proxy_password from env: ***set***
+2025-12-11 23:06:23,021 - Database_app/data/fr-mirror - INFO - Initializing database: app/data/fr-mirror.db
+2025-12-11 23:06:23,021 - Database_app/data/fr-mirror - INFO - Successfully connected to database: app/data/fr-mirror.db
+2025-12-11 23:06:23,021 - Database_app/data/fr-mirror - INFO - Creating/verifying all database tables...
+2025-12-11 23:06:23,022 - Database_app/data/fr-mirror - INFO - Table 'transcripts' created/verified successfully
+2025-12-11 23:06:23,022 - Database_app/data/fr-mirror - INFO - Table 'journalists' created/verified successfully
+2025-12-11 23:06:23,022 - Database_app/data/fr-mirror - INFO - Table 'articles' created/verified successfully
+2025-12-11 23:06:23,022 - Database_app/data/fr-mirror - INFO - Table 'tones' created/verified successfully
+2025-12-11 23:06:23,022 - Database_app/data/fr-mirror - INFO - Table 'categories' created/verified successfully
+2025-12-11 23:06:23,022 - Database_app/data/fr-mirror - INFO - Table 'video_queue' created/verified successfully
+2025-12-11 23:06:23,023 - Database_app/data/fr-mirror - INFO - Table 'art' created/verified successfully
+2025-12-11 23:06:23,023 - Database_app/data/fr-mirror - INFO - All tables created/verified successfully
+2025-12-11 23:06:23,023 - Database_app/data/fr-mirror - INFO - Database initialization completed
+2025-12-11 23:06:23,023 - app.main - INFO - Database initialized successfully in main.py
+2025-12-11 23:06:23,023 - app.data.enum_manager - INFO - Starting database enum synchronization...
+2025-12-11 23:06:23,023 - app.data.enum_manager - INFO - Synchronization query made for Tone
+2025-12-11 23:06:23,023 - app.data.enum_manager - INFO - No missing values found for tones - database is in sync
+2025-12-11 23:06:23,023 - app.data.enum_manager - INFO - Synchronization query made for ArticleType
+2025-12-11 23:06:23,024 - app.data.enum_manager - INFO - No missing values found for categories - database is in sync
+2025-12-11 23:06:23,024 - app.main - INFO - Database sync completed: <app.data.enum_manager.DatabaseSync object at 0x7f71fb1d98b0>
+2025-12-11 23:06:23,024 - app.data.journalist_manager - INFO - Successfully updated journalist: Aurelius Stone
+2025-12-11 23:06:23,024 - app.main - INFO - Journalist initialization completed
+2025-12-11 23:06:23,025 - app.main - INFO - FastAPI app initialized!
+2025-12-11 23:06:23,025 - app.data.transcript_manager - DEBUG - Loaded proxy_username from env: akrds...
+2025-12-11 23:06:23,025 - app.data.transcript_manager - DEBUG - Loaded proxy_password from env: ***set***
+2025-12-11 23:06:26,323 - Database_app/data/fr-mirror - INFO - Initializing database: app/data/fr-mirror.db
+2025-12-11 23:06:26,323 - Database_app/data/fr-mirror - INFO - Successfully connected to database: app/data/fr-mirror.db
+2025-12-11 23:06:26,323 - Database_app/data/fr-mirror - INFO - Creating/verifying all database tables...
+2025-12-11 23:06:26,324 - Database_app/data/fr-mirror - INFO - Table 'transcripts' created/verified successfully
+2025-12-11 23:06:26,324 - Database_app/data/fr-mirror - INFO - Table 'journalists' created/verified successfully
+2025-12-11 23:06:26,324 - Database_app/data/fr-mirror - INFO - Table 'articles' created/verified successfully
+2025-12-11 23:06:26,324 - Database_app/data/fr-mirror - INFO - Table 'tones' created/verified successfully
+2025-12-11 23:06:26,324 - Database_app/data/fr-mirror - INFO - Table 'categories' created/verified successfully
+2025-12-11 23:06:26,325 - Database_app/data/fr-mirror - INFO - Table 'video_queue' created/verified successfully
+2025-12-11 23:06:26,325 - Database_app/data/fr-mirror - INFO - Table 'art' created/verified successfully
+2025-12-11 23:06:26,325 - Database_app/data/fr-mirror - INFO - All tables created/verified successfully
+2025-12-11 23:06:26,325 - Database_app/data/fr-mirror - INFO - Database initialization completed
+2025-12-11 23:06:26,325 - app.main - INFO - Database initialized successfully in main.py
+2025-12-11 23:06:26,325 - app.data.enum_manager - INFO - Starting database enum synchronization...
+2025-12-11 23:06:26,325 - app.data.enum_manager - INFO - Synchronization query made for Tone
+2025-12-11 23:06:26,325 - app.data.enum_manager - INFO - No missing values found for tones - database is in sync
+2025-12-11 23:06:26,326 - app.data.enum_manager - INFO - Synchronization query made for ArticleType
+2025-12-11 23:06:26,326 - app.data.enum_manager - INFO - No missing values found for categories - database is in sync
+2025-12-11 23:06:26,326 - app.main - INFO - Database sync completed: <app.data.enum_manager.DatabaseSync object at 0x7fa4df66f380>
+2025-12-11 23:06:26,326 - app.data.journalist_manager - INFO - Successfully updated journalist: Aurelius Stone
+2025-12-11 23:06:26,326 - app.main - INFO - Journalist initialization completed
+2025-12-11 23:06:26,327 - app.main - INFO - FastAPI app initialized!
+2025-12-11 23:06:26,327 - app.data.transcript_manager - DEBUG - Loaded proxy_username from env: akrds...
+2025-12-11 23:06:26,327 - app.data.transcript_manager - DEBUG - Loaded proxy_password from env: ***set***
+2025-12-11 23:06:32,220 - Database_app/data/fr-mirror - INFO - Initializing database: app/data/fr-mirror.db
+2025-12-11 23:06:32,220 - Database_app/data/fr-mirror - INFO - Successfully connected to database: app/data/fr-mirror.db
+2025-12-11 23:06:32,220 - Database_app/data/fr-mirror - INFO - Creating/verifying all database tables...
+2025-12-11 23:06:32,220 - Database_app/data/fr-mirror - INFO - Table 'transcripts' created/verified successfully
+2025-12-11 23:06:32,221 - Database_app/data/fr-mirror - INFO - Table 'journalists' created/verified successfully
+2025-12-11 23:06:32,221 - Database_app/data/fr-mirror - INFO - Table 'articles' created/verified successfully
+2025-12-11 23:06:32,221 - Database_app/data/fr-mirror - INFO - Table 'tones' created/verified successfully
+2025-12-11 23:06:32,221 - Database_app/data/fr-mirror - INFO - Table 'categories' created/verified successfully
+2025-12-11 23:06:32,221 - Database_app/data/fr-mirror - INFO - Table 'video_queue' created/verified successfully
+2025-12-11 23:06:32,221 - Database_app/data/fr-mirror - INFO - Table 'art' created/verified successfully
+2025-12-11 23:06:32,221 - Database_app/data/fr-mirror - INFO - All tables created/verified successfully
+2025-12-11 23:06:32,221 - Database_app/data/fr-mirror - INFO - Database initialization completed
+2025-12-11 23:06:32,222 - app.main - INFO - Database initialized successfully in main.py
+2025-12-11 23:06:32,222 - app.data.enum_manager - INFO - Starting database enum synchronization...
+2025-12-11 23:06:32,222 - app.data.enum_manager - INFO - Synchronization query made for Tone
+2025-12-11 23:06:32,222 - app.data.enum_manager - INFO - No missing values found for tones - database is in sync
+2025-12-11 23:06:32,222 - app.data.enum_manager - INFO - Synchronization query made for ArticleType
+2025-12-11 23:06:32,222 - app.data.enum_manager - INFO - No missing values found for categories - database is in sync
+2025-12-11 23:06:32,222 - app.main - INFO - Database sync completed: <app.data.enum_manager.DatabaseSync object at 0x7f3430c59d30>
+2025-12-11 23:06:32,223 - app.data.journalist_manager - INFO - Successfully updated journalist: Aurelius Stone
+2025-12-11 23:06:32,223 - app.main - INFO - Journalist initialization completed
+2025-12-11 23:06:32,223 - app.main - INFO - FastAPI app initialized!
+2025-12-11 23:06:32,223 - app.data.transcript_manager - DEBUG - Loaded proxy_username from env: akrds...
+2025-12-11 23:06:32,223 - app.data.transcript_manager - DEBUG - Loaded proxy_password from env: ***set***
+2025-12-11 23:06:48,180 - Database_app/data/fr-mirror - INFO - Database operation: get_article_by_id - Details: {'article_id': 2}
+2025-12-11 23:07:06,308 - app.content_department.creation_tools.xai_image_query - INFO - === XAI IMAGE PROMPT (1031 chars) ===
+2025-12-11 23:07:06,308 - app.content_department.creation_tools.xai_image_query - INFO - FULL PROMPT: Create an editorial illustration for: Fall River Hero Surprised After 52 Years of Service. Content: Elderly man beaming with surprise, holding custom-engraved baseball bat, surrounded by cheering crowd, mayor, and officials at vibrant Boys and Girls Club event; heartwarming, celebratory mood with banners and youth.. Style requirements: Medium: Clean, decisive lines with graphic clarity. High contrast black and white. Cross-hatching and stippling for tone. Bold, confident strokes with flowing calligraphic quality and sharp definition. Aesthetic: Stripped to essentials. Generous negative space and restrained palette. Clean geometry and purposeful simplicity. Every element intentional. Quiet power through reduction and precise placement. Art style: Visible brushstrokes, emphasis on light and movement. Captures 
+fleeting moments and atmospheric effects. Soft edges, vibrant 
+colors, everyday subjects. Focus on perception over precise 
+representation. Light dances across surfaces. Follow these style requirements strictly.
+2025-12-11 23:07:06,308 - app.content_department.creation_tools.xai_image_query - INFO - === END PROMPT ===
+2025-12-11 23:07:48,925 - Database_app/data/fr-mirror - INFO - Initializing database: app/data/fr-mirror.db
+2025-12-11 23:07:48,925 - Database_app/data/fr-mirror - INFO - Successfully connected to database: app/data/fr-mirror.db
+2025-12-11 23:07:48,925 - Database_app/data/fr-mirror - INFO - Creating/verifying all database tables...
+2025-12-11 23:07:48,926 - Database_app/data/fr-mirror - INFO - Table 'transcripts' created/verified successfully
+2025-12-11 23:07:48,926 - Database_app/data/fr-mirror - INFO - Table 'journalists' created/verified successfully
+2025-12-11 23:07:48,926 - Database_app/data/fr-mirror - INFO - Table 'articles' created/verified successfully
+2025-12-11 23:07:48,926 - Database_app/data/fr-mirror - INFO - Table 'tones' created/verified successfully
+2025-12-11 23:07:48,926 - Database_app/data/fr-mirror - INFO - Table 'categories' created/verified successfully
+2025-12-11 23:07:48,927 - Database_app/data/fr-mirror - INFO - Table 'video_queue' created/verified successfully
+2025-12-11 23:07:48,927 - Database_app/data/fr-mirror - INFO - Table 'art' created/verified successfully
+2025-12-11 23:07:48,927 - Database_app/data/fr-mirror - INFO - All tables created/verified successfully
+2025-12-11 23:07:48,927 - Database_app/data/fr-mirror - INFO - Database initialization completed
+2025-12-11 23:07:48,927 - app.main - INFO - Database initialized successfully in main.py
+2025-12-11 23:07:48,927 - app.data.enum_manager - INFO - Starting database enum synchronization...
+2025-12-11 23:07:48,927 - app.data.enum_manager - INFO - Synchronization query made for Tone
+2025-12-11 23:07:48,927 - app.data.enum_manager - INFO - No missing values found for tones - database is in sync
+2025-12-11 23:07:48,928 - app.data.enum_manager - INFO - Synchronization query made for ArticleType
+2025-12-11 23:07:48,928 - app.data.enum_manager - INFO - No missing values found for categories - database is in sync
+2025-12-11 23:07:48,928 - app.main - INFO - Database sync completed: <app.data.enum_manager.DatabaseSync object at 0x7f39c2891310>
+2025-12-11 23:07:48,928 - app.data.journalist_manager - INFO - Successfully updated journalist: Aurelius Stone
+2025-12-11 23:07:48,928 - app.main - INFO - Journalist initialization completed
+2025-12-11 23:07:48,929 - app.main - INFO - FastAPI app initialized!
+2025-12-11 23:07:48,929 - app.data.transcript_manager - DEBUG - Loaded proxy_username from env: akrds...
+2025-12-11 23:07:48,929 - app.data.transcript_manager - DEBUG - Loaded proxy_password from env: ***set***
+2025-12-11 23:07:49,343 - Database_app/data/fr-mirror - INFO - Database operation: get_article_by_id - Details: {'article_id': 2}
+2025-12-11 23:08:04,865 - app.content_department.creation_tools.xai_image_query - INFO - === XAI IMAGE PROMPT (1132 chars) ===
+2025-12-11 23:08:04,865 - app.content_department.creation_tools.xai_image_query - INFO - FULL PROMPT: Create an editorial illustration for: Fall River Hero Surprised After 52 Years of Service. Content: Elderly man in community center, beaming with surprise, holding custom-engraved baseball bat award. Surrounded by cheering youth, mayor, and officials. Heartwarming celebration of lifelong mentorship, warm lighting, joyful atmosphere.. Style requirements: Medium: Raw, textured marks with dramatic tonal range. Smudged gradients and sharp edges. Grainy paper texture visible. Bold darks and lifted highlights create striking contrast and gestural energy. Aesthetic: Dreamlike imagery with unexpected juxtapositions. Reality bends 
+and transforms. Distorted scale, symbolic elements, sense of 
+mystery. Combines disparate objects in impossible but logical 
+ways. Reveals hidden truths through the unconscious mind. Art style: Bold colors, graphic lines, commercial aesthetic. Mass culture 
+references, ironic commentary. Flat color blocks, halftone 
+dots, repetition. Blurs high art and popular culture. Playful, 
+accessible, sometimes satirical. Follow these style requirements strictly.Keep the prompt length under 1024 characters.
+2025-12-11 23:08:04,865 - app.content_department.creation_tools.xai_image_query - INFO - === END PROMPT ===
+2025-12-11 23:08:34,894 - Database_app/data/fr-mirror - INFO - Database operation: get_article_by_id - Details: {'article_id': 2}
+2025-12-11 23:08:53,413 - app.content_department.creation_tools.xai_image_query - INFO - === XAI IMAGE PROMPT (1091 chars) ===
+2025-12-11 23:08:53,413 - app.content_department.creation_tools.xai_image_query - INFO - FULL PROMPT: Create an editorial illustration for: Fall River Hero Surprised After 52 Years of Service. Content: Elderly man, John Sulio, beaming with surprise, holding custom-engraved baseball bat award at Boys and Girls Club event. Mayor and officials applauding, youth smiling in background. Heartwarming, celebratory mood with community banners and warm lighting.. Style requirements: Medium: Raw, textured marks with dramatic tonal range. Smudged gradients and sharp edges. Grainy paper texture visible. Bold darks and lifted highlights create striking contrast and gestural energy. Aesthetic: Nostalgic warmth with faded edges. Sepia and muted earth tones. Aged paper texture and retro typography. Timeworn charm evoking mid-century memories and analog authenticity. Art style: Hyperreal detail indistinguishable from photography. Precise 
+rendering of textures, reflections, shadows. Technical mastery 
+creates uncanny realism. Sharp focus, accurate proportions, 
+lifelike lighting. Reality captured perfectly. Follow these style requirements strictly.Keep the prompt length under 1024 characters.
+2025-12-11 23:08:53,414 - app.content_department.creation_tools.xai_image_query - INFO - === END PROMPT ===
+2025-12-11 23:09:13,678 - Database_app/data/fr-mirror - INFO - Initializing database: app/data/fr-mirror.db
+2025-12-11 23:09:13,679 - Database_app/data/fr-mirror - INFO - Successfully connected to database: app/data/fr-mirror.db
+2025-12-11 23:09:13,679 - Database_app/data/fr-mirror - INFO - Creating/verifying all database tables...
+2025-12-11 23:09:13,679 - Database_app/data/fr-mirror - INFO - Table 'transcripts' created/verified successfully
+2025-12-11 23:09:13,680 - Database_app/data/fr-mirror - INFO - Table 'journalists' created/verified successfully
+2025-12-11 23:09:13,680 - Database_app/data/fr-mirror - INFO - Table 'articles' created/verified successfully
+2025-12-11 23:09:13,680 - Database_app/data/fr-mirror - INFO - Table 'tones' created/verified successfully
+2025-12-11 23:09:13,680 - Database_app/data/fr-mirror - INFO - Table 'categories' created/verified successfully
+2025-12-11 23:09:13,680 - Database_app/data/fr-mirror - INFO - Table 'video_queue' created/verified successfully
+2025-12-11 23:09:13,680 - Database_app/data/fr-mirror - INFO - Table 'art' created/verified successfully
+2025-12-11 23:09:13,681 - Database_app/data/fr-mirror - INFO - All tables created/verified successfully
+2025-12-11 23:09:13,681 - Database_app/data/fr-mirror - INFO - Database initialization completed
+2025-12-11 23:09:13,681 - app.main - INFO - Database initialized successfully in main.py
+2025-12-11 23:09:13,681 - app.data.enum_manager - INFO - Starting database enum synchronization...
+2025-12-11 23:09:13,681 - app.data.enum_manager - INFO - Synchronization query made for Tone
+2025-12-11 23:09:13,681 - app.data.enum_manager - INFO - No missing values found for tones - database is in sync
+2025-12-11 23:09:13,681 - app.data.enum_manager - INFO - Synchronization query made for ArticleType
+2025-12-11 23:09:13,681 - app.data.enum_manager - INFO - No missing values found for categories - database is in sync
+2025-12-11 23:09:13,681 - app.main - INFO - Database sync completed: <app.data.enum_manager.DatabaseSync object at 0x7f66ff8c14c0>
+2025-12-11 23:09:13,682 - app.data.journalist_manager - INFO - Successfully updated journalist: Aurelius Stone
+2025-12-11 23:09:13,682 - app.main - INFO - Journalist initialization completed
+2025-12-11 23:09:13,682 - app.main - INFO - FastAPI app initialized!
+2025-12-11 23:09:13,683 - app.data.transcript_manager - DEBUG - Loaded proxy_username from env: akrds...
+2025-12-11 23:09:13,683 - app.data.transcript_manager - DEBUG - Loaded proxy_password from env: ***set***
+2025-12-11 23:12:08,196 - Database_app/data/fr-mirror - INFO - Database operation: get_article_by_id - Details: {'article_id': 13}
+2025-12-11 23:12:26,536 - app.content_department.creation_tools.xai_image_query - INFO - === XAI IMAGE PROMPT (731 chars) ===
+2025-12-11 23:12:26,536 - app.content_department.creation_tools.xai_image_query - INFO - FULL PROMPT: Create an editorial illustration for: Fall River Council Clashes on Charter Reforms, Appointments, Safety. Content: City council chamber: councilors at long table voting on documents, charts of amendments and budgets projected, resident speaking at podium, formal atmosphere of debate and decisions.. Style requirements: Medium: Clean, decisive lines with graphic clarity. High contrast black and white. Cross-hatching for tone, bold strokes. Aesthetic: Nostalgic warmth with faded edges. Sepia and muted earth tones. Aged paper texture, timeworn analog charm. Art style: Non-representational forms, shapes, colors. Pure visual elements: line, texture, composition. Open to interpretation. Follow these style requirements strictly.
+2025-12-11 23:12:26,537 - app.content_department.creation_tools.xai_image_query - INFO - === END PROMPT ===
+2025-12-11 23:12:37,734 - urllib3.connectionpool - DEBUG - Starting new HTTPS connection (1): imgen.x.ai:443
+2025-12-11 23:12:38,003 - urllib3.connectionpool - DEBUG - https://imgen.x.ai:443 "GET /xai-imgen/xai-tmp-imgen-b90bf4e9-754a-4aaf-86cb-752f6f804bc7.jpeg HTTP/1.1" 200 116668
+2025-12-11 23:12:38,033 - Database_app/data/fr-mirror - INFO - Database operation: add_art - Details: {'prompt': 'Create an editorial illustration for: Fall River Council Clashes on Charter Reforms, Appointments, S', 'image_url': 'https://imgen.x.ai/xai-imgen/xai-tmp-imgen-b90bf4e9-754a-4aaf-86cb-752f6f804bc7.jpeg', 'article_id': 13, 'artist_name': 'Spectra Veritas'}
+2025-12-11 23:12:38,037 - Database_app/data/fr-mirror - INFO - Added art (ID: 18)
+2025-12-11 23:15:05,735 - Database_app/data/fr-mirror - INFO - Initializing database: app/data/fr-mirror.db
+2025-12-11 23:15:05,736 - Database_app/data/fr-mirror - INFO - Successfully connected to database: app/data/fr-mirror.db
+2025-12-11 23:15:05,736 - Database_app/data/fr-mirror - INFO - Creating/verifying all database tables...
+2025-12-11 23:15:05,736 - Database_app/data/fr-mirror - INFO - Table 'transcripts' created/verified successfully
+2025-12-11 23:15:05,737 - Database_app/data/fr-mirror - INFO - Table 'journalists' created/verified successfully
+2025-12-11 23:15:05,737 - Database_app/data/fr-mirror - INFO - Table 'articles' created/verified successfully
+2025-12-11 23:15:05,738 - Database_app/data/fr-mirror - INFO - Table 'tones' created/verified successfully
+2025-12-11 23:15:05,738 - Database_app/data/fr-mirror - INFO - Table 'categories' created/verified successfully
+2025-12-11 23:15:05,739 - Database_app/data/fr-mirror - INFO - Table 'video_queue' created/verified successfully
+2025-12-11 23:15:05,739 - Database_app/data/fr-mirror - INFO - Table 'art' created/verified successfully
+2025-12-11 23:15:05,739 - Database_app/data/fr-mirror - INFO - All tables created/verified successfully
+2025-12-11 23:15:05,740 - Database_app/data/fr-mirror - INFO - Database initialization completed
+2025-12-11 23:15:05,740 - app.main - INFO - Database initialized successfully in main.py
+2025-12-11 23:15:05,740 - app.data.enum_manager - INFO - Starting database enum synchronization...
+2025-12-11 23:15:05,740 - app.data.enum_manager - INFO - Synchronization query made for Tone
+2025-12-11 23:15:05,741 - app.data.enum_manager - INFO - No missing values found for tones - database is in sync
+2025-12-11 23:15:05,741 - app.data.enum_manager - INFO - Synchronization query made for ArticleType
+2025-12-11 23:15:05,741 - app.data.enum_manager - INFO - No missing values found for categories - database is in sync
+2025-12-11 23:15:05,741 - app.main - INFO - Database sync completed: <app.data.enum_manager.DatabaseSync object at 0x7fab470f9d30>
+2025-12-11 23:15:05,742 - app.data.journalist_manager - INFO - Successfully updated journalist: Aurelius Stone
+2025-12-11 23:15:05,742 - app.main - INFO - Journalist initialization completed
+2025-12-11 23:15:05,743 - app.main - INFO - FastAPI app initialized!
+2025-12-11 23:15:05,744 - app.data.transcript_manager - DEBUG - Loaded proxy_username from env: akrds...
+2025-12-11 23:15:05,744 - app.data.transcript_manager - DEBUG - Loaded proxy_password from env: ***set***
+2025-12-11 23:15:18,271 - Database_app/data/fr-mirror - INFO - Initializing database: app/data/fr-mirror.db
+2025-12-11 23:15:18,271 - Database_app/data/fr-mirror - INFO - Successfully connected to database: app/data/fr-mirror.db
+2025-12-11 23:15:18,271 - Database_app/data/fr-mirror - INFO - Creating/verifying all database tables...
+2025-12-11 23:15:18,272 - Database_app/data/fr-mirror - INFO - Table 'transcripts' created/verified successfully
+2025-12-11 23:15:18,272 - Database_app/data/fr-mirror - INFO - Table 'journalists' created/verified successfully
+2025-12-11 23:15:18,272 - Database_app/data/fr-mirror - INFO - Table 'articles' created/verified successfully
+2025-12-11 23:15:18,272 - Database_app/data/fr-mirror - INFO - Table 'tones' created/verified successfully
+2025-12-11 23:15:18,273 - Database_app/data/fr-mirror - INFO - Table 'categories' created/verified successfully
+2025-12-11 23:15:18,273 - Database_app/data/fr-mirror - INFO - Table 'video_queue' created/verified successfully
+2025-12-11 23:15:18,273 - Database_app/data/fr-mirror - INFO - Table 'art' created/verified successfully
+2025-12-11 23:15:18,273 - Database_app/data/fr-mirror - INFO - All tables created/verified successfully
+2025-12-11 23:15:18,274 - Database_app/data/fr-mirror - INFO - Database initialization completed
+2025-12-11 23:15:18,274 - app.main - INFO - Database initialized successfully in main.py
+2025-12-11 23:15:18,274 - app.data.enum_manager - INFO - Starting database enum synchronization...
+2025-12-11 23:15:18,274 - app.data.enum_manager - INFO - Synchronization query made for Tone
+2025-12-11 23:15:18,274 - app.data.enum_manager - INFO - No missing values found for tones - database is in sync
+2025-12-11 23:15:18,274 - app.data.enum_manager - INFO - Synchronization query made for ArticleType
+2025-12-11 23:15:18,275 - app.data.enum_manager - INFO - No missing values found for categories - database is in sync
+2025-12-11 23:15:18,275 - app.main - INFO - Database sync completed: <app.data.enum_manager.DatabaseSync object at 0x7faf7879da30>
+2025-12-11 23:15:18,275 - app.data.journalist_manager - INFO - Successfully updated journalist: Aurelius Stone
+2025-12-11 23:15:18,276 - app.main - INFO - Journalist initialization completed
+2025-12-11 23:15:18,276 - app.main - INFO - FastAPI app initialized!
+2025-12-11 23:15:18,276 - app.data.transcript_manager - DEBUG - Loaded proxy_username from env: akrds...
+2025-12-11 23:15:18,276 - app.data.transcript_manager - DEBUG - Loaded proxy_password from env: ***set***
+2025-12-11 23:15:25,196 - Database_app/data/fr-mirror - INFO - Database operation: get_article_by_id - Details: {'article_id': 13}
+2025-12-11 23:15:44,501 - app.content_department.creation_tools.xai_image_query - INFO - === XAI IMAGE PROMPT (853 chars) ===
+2025-12-11 23:15:44,501 - app.content_department.creation_tools.xai_image_query - INFO - FULL PROMPT: Create an editorial illustration for: Fall River Council Clashes on Charter Reforms, Appointments, Safety. Content: A formal city council chamber: councilors at a long table debating reports, voting on appointments and budgets; rejected papers scattered, resident speaking at podium; charts of amendments and water projects on screens; tense, bureaucratic mood with city seals and gavels.. Style requirements: Medium: acrylic: Vibrant, fast-drying layers with crisp edges. Bold color blocking, sharp geometric forms. Modern, punchy palette. Aesthetic: surrealist: Dreamlike imagery with unexpected juxtapositions. Reality bends. Distorted scale, symbolic elements, mystery. Art style: photorealistic: Hyperreal detail indistinguishable from photography. Precise textures, reflections, shadows. Reality captured. Follow these style requirements strictly.
+2025-12-11 23:15:44,502 - app.content_department.creation_tools.xai_image_query - INFO - === END PROMPT ===
+2025-12-11 23:15:55,189 - urllib3.connectionpool - DEBUG - Starting new HTTPS connection (1): imgen.x.ai:443
+2025-12-11 23:15:55,404 - urllib3.connectionpool - DEBUG - https://imgen.x.ai:443 "GET /xai-imgen/xai-tmp-imgen-c55d357b-b033-4dc7-bf66-6950756903d9.jpeg HTTP/1.1" 200 126520
+2025-12-11 23:15:55,438 - Database_app/data/fr-mirror - INFO - Database operation: add_art - Details: {'prompt': 'Create an editorial illustration for: Fall River Council Clashes on Charter Reforms, Appointments, S', 'image_url': 'https://imgen.x.ai/xai-imgen/xai-tmp-imgen-c55d357b-b033-4dc7-bf66-6950756903d9.jpeg', 'article_id': 13, 'artist_name': 'Spectra Veritas'}
+2025-12-11 23:15:55,443 - Database_app/data/fr-mirror - INFO - Added art (ID: 19)
+2025-12-11 23:20:11,553 - Database_app/data/fr-mirror - INFO - Database operation: get_article_by_id - Details: {'article_id': 13}
+2025-12-11 23:20:35,068 - app.content_department.creation_tools.xai_image_query - INFO - === XAI IMAGE PROMPT (806 chars) ===
+2025-12-11 23:20:35,068 - app.content_department.creation_tools.xai_image_query - INFO - FULL PROMPT: Create an editorial illustration for: Fall River Council Clashes on Charter Reforms, Appointments, Safety. Content: City council chamber in session: councilors at a long table with documents, voting on amendments and appointments; some thumbs up, others down; resident speaking passionately; formal, tense atmosphere with city seal and gavel.. Style requirements: Medium: acrylic: Vibrant, fast-drying layers with crisp edges. Bold color blocking, sharp geometric forms. Modern, punchy palette. Aesthetic: minimalist: Stripped to essentials. Generous negative space, restrained palette. Clean geometry, purposeful simplicity. Art style: abstract: Non-representational forms, shapes, colors. Pure visual elements: line, texture, composition. Open to interpretation. Follow these style requirements strictly.
+2025-12-11 23:20:35,069 - app.content_department.creation_tools.xai_image_query - INFO - === END PROMPT ===
+2025-12-11 23:20:46,860 - urllib3.connectionpool - DEBUG - Starting new HTTPS connection (1): imgen.x.ai:443
+2025-12-11 23:20:47,155 - urllib3.connectionpool - DEBUG - https://imgen.x.ai:443 "GET /xai-imgen/xai-tmp-imgen-186904a8-954a-470b-9472-49e1f44f050a.jpeg HTTP/1.1" 200 138317
+2025-12-11 23:20:47,190 - Database_app/data/fr-mirror - INFO - Database operation: add_art - Details: {'prompt': 'Create an editorial illustration for: Fall River Council Clashes on Charter Reforms, Appointments, S', 'image_url': 'https://imgen.x.ai/xai-imgen/xai-tmp-imgen-186904a8-954a-470b-9472-49e1f44f050a.jpeg', 'article_id': 13, 'artist_name': 'Spectra Veritas'}
+2025-12-11 23:20:47,211 - Database_app/data/fr-mirror - INFO - Added art (ID: 20)
+2025-12-11 23:34:24,890 - Database_app/data/fr-mirror - INFO - Initializing database: app/data/fr-mirror.db
+2025-12-11 23:34:24,891 - Database_app/data/fr-mirror - INFO - Successfully connected to database: app/data/fr-mirror.db
+2025-12-11 23:34:24,891 - Database_app/data/fr-mirror - INFO - Creating/verifying all database tables...
+2025-12-11 23:34:24,892 - Database_app/data/fr-mirror - INFO - Table 'transcripts' created/verified successfully
+2025-12-11 23:34:24,892 - Database_app/data/fr-mirror - INFO - Table 'journalists' created/verified successfully
+2025-12-11 23:34:24,893 - Database_app/data/fr-mirror - INFO - Table 'articles' created/verified successfully
+2025-12-11 23:34:24,894 - Database_app/data/fr-mirror - INFO - Table 'tones' created/verified successfully
+2025-12-11 23:34:24,894 - Database_app/data/fr-mirror - INFO - Table 'categories' created/verified successfully
+2025-12-11 23:34:24,894 - Database_app/data/fr-mirror - INFO - Table 'video_queue' created/verified successfully
+2025-12-11 23:34:24,895 - Database_app/data/fr-mirror - INFO - Table 'art' created/verified successfully
+2025-12-11 23:34:24,895 - Database_app/data/fr-mirror - INFO - All tables created/verified successfully
+2025-12-11 23:34:24,896 - Database_app/data/fr-mirror - INFO - Database initialization completed
+2025-12-11 23:34:24,896 - app.main - INFO - Database initialized successfully in main.py
+2025-12-11 23:34:24,896 - app.data.enum_manager - INFO - Starting database enum synchronization...
+2025-12-11 23:34:24,896 - app.data.enum_manager - INFO - Synchronization query made for Tone
+2025-12-11 23:34:24,897 - app.data.enum_manager - INFO - No missing values found for tones - database is in sync
+2025-12-11 23:34:24,897 - app.data.enum_manager - INFO - Synchronization query made for ArticleType
+2025-12-11 23:34:24,897 - app.data.enum_manager - INFO - No missing values found for categories - database is in sync
+2025-12-11 23:34:24,897 - app.main - INFO - Database sync completed: <app.data.enum_manager.DatabaseSync object at 0x7fe0a723cf20>
+2025-12-11 23:34:24,898 - app.data.journalist_manager - INFO - Successfully updated journalist: Aurelius Stone
+2025-12-11 23:34:24,898 - app.main - INFO - Journalist initialization completed
+2025-12-11 23:34:24,899 - app.main - INFO - FastAPI app initialized!
+2025-12-11 23:34:24,899 - app.data.transcript_manager - DEBUG - Loaded proxy_username from env: akrds...
+2025-12-11 23:34:24,900 - app.data.transcript_manager - DEBUG - Loaded proxy_password from env: ***set***
+2025-12-11 23:34:39,958 - Database_app/data/fr-mirror - INFO - Initializing database: app/data/fr-mirror.db
+2025-12-11 23:34:39,958 - Database_app/data/fr-mirror - INFO - Successfully connected to database: app/data/fr-mirror.db
+2025-12-11 23:34:39,958 - Database_app/data/fr-mirror - INFO - Creating/verifying all database tables...
+2025-12-11 23:34:39,959 - Database_app/data/fr-mirror - INFO - Table 'transcripts' created/verified successfully
+2025-12-11 23:34:39,959 - Database_app/data/fr-mirror - INFO - Table 'journalists' created/verified successfully
+2025-12-11 23:34:39,959 - Database_app/data/fr-mirror - INFO - Table 'articles' created/verified successfully
+2025-12-11 23:34:39,959 - Database_app/data/fr-mirror - INFO - Table 'tones' created/verified successfully
+2025-12-11 23:34:39,960 - Database_app/data/fr-mirror - INFO - Table 'categories' created/verified successfully
+2025-12-11 23:34:39,960 - Database_app/data/fr-mirror - INFO - Table 'video_queue' created/verified successfully
+2025-12-11 23:34:39,960 - Database_app/data/fr-mirror - INFO - Table 'art' created/verified successfully
+2025-12-11 23:34:39,960 - Database_app/data/fr-mirror - INFO - All tables created/verified successfully
+2025-12-11 23:34:39,961 - Database_app/data/fr-mirror - INFO - Database initialization completed
+2025-12-11 23:34:39,961 - app.main - INFO - Database initialized successfully in main.py
+2025-12-11 23:34:39,961 - app.data.enum_manager - INFO - Starting database enum synchronization...
+2025-12-11 23:34:39,961 - app.data.enum_manager - INFO - Synchronization query made for Tone
+2025-12-11 23:34:39,961 - app.data.enum_manager - INFO - No missing values found for tones - database is in sync
+2025-12-11 23:34:39,961 - app.data.enum_manager - INFO - Synchronization query made for ArticleType
+2025-12-11 23:34:39,961 - app.data.enum_manager - INFO - No missing values found for categories - database is in sync
+2025-12-11 23:34:39,961 - app.main - INFO - Database sync completed: <app.data.enum_manager.DatabaseSync object at 0x7f57b2211250>
+2025-12-11 23:34:39,962 - app.data.journalist_manager - INFO - Successfully updated journalist: Aurelius Stone
+2025-12-11 23:34:39,962 - app.main - INFO - Journalist initialization completed
+2025-12-11 23:34:39,963 - app.main - INFO - FastAPI app initialized!
+2025-12-11 23:34:39,963 - app.data.transcript_manager - DEBUG - Loaded proxy_username from env: akrds...
+2025-12-11 23:34:39,963 - app.data.transcript_manager - DEBUG - Loaded proxy_password from env: ***set***
+2025-12-11 23:34:56,409 - Database_app/data/fr-mirror - INFO - Initializing database: app/data/fr-mirror.db
+2025-12-11 23:34:56,410 - Database_app/data/fr-mirror - INFO - Successfully connected to database: app/data/fr-mirror.db
+2025-12-11 23:34:56,410 - Database_app/data/fr-mirror - INFO - Creating/verifying all database tables...
+2025-12-11 23:34:56,410 - Database_app/data/fr-mirror - INFO - Table 'transcripts' created/verified successfully
+2025-12-11 23:34:56,410 - Database_app/data/fr-mirror - INFO - Table 'journalists' created/verified successfully
+2025-12-11 23:34:56,410 - Database_app/data/fr-mirror - INFO - Table 'articles' created/verified successfully
+2025-12-11 23:34:56,411 - Database_app/data/fr-mirror - INFO - Table 'tones' created/verified successfully
+2025-12-11 23:34:56,411 - Database_app/data/fr-mirror - INFO - Table 'categories' created/verified successfully
+2025-12-11 23:34:56,411 - Database_app/data/fr-mirror - INFO - Table 'video_queue' created/verified successfully
+2025-12-11 23:34:56,411 - Database_app/data/fr-mirror - INFO - Table 'art' created/verified successfully
+2025-12-11 23:34:56,412 - Database_app/data/fr-mirror - INFO - All tables created/verified successfully
+2025-12-11 23:34:56,412 - Database_app/data/fr-mirror - INFO - Database initialization completed
+2025-12-11 23:34:56,412 - app.main - INFO - Database initialized successfully in main.py
+2025-12-11 23:34:56,412 - app.data.enum_manager - INFO - Starting database enum synchronization...
+2025-12-11 23:34:56,412 - app.data.enum_manager - INFO - Synchronization query made for Tone
+2025-12-11 23:34:56,412 - app.data.enum_manager - INFO - No missing values found for tones - database is in sync
+2025-12-11 23:34:56,412 - app.data.enum_manager - INFO - Synchronization query made for ArticleType
+2025-12-11 23:34:56,412 - app.data.enum_manager - INFO - No missing values found for categories - database is in sync
+2025-12-11 23:34:56,412 - app.main - INFO - Database sync completed: <app.data.enum_manager.DatabaseSync object at 0x7fa80c7f3380>
+2025-12-11 23:34:56,413 - app.data.journalist_manager - INFO - Successfully updated journalist: Aurelius Stone
+2025-12-11 23:34:56,413 - app.main - INFO - Journalist initialization completed
+2025-12-11 23:34:56,413 - app.main - INFO - FastAPI app initialized!
+2025-12-11 23:34:56,414 - app.data.transcript_manager - DEBUG - Loaded proxy_username from env: akrds...
+2025-12-11 23:34:56,414 - app.data.transcript_manager - DEBUG - Loaded proxy_password from env: ***set***
+2025-12-11 23:35:20,469 - Database_app/data/fr-mirror - INFO - Initializing database: app/data/fr-mirror.db
+2025-12-11 23:35:20,469 - Database_app/data/fr-mirror - INFO - Successfully connected to database: app/data/fr-mirror.db
+2025-12-11 23:35:20,469 - Database_app/data/fr-mirror - INFO - Creating/verifying all database tables...
+2025-12-11 23:35:20,470 - Database_app/data/fr-mirror - INFO - Table 'transcripts' created/verified successfully
+2025-12-11 23:35:20,470 - Database_app/data/fr-mirror - INFO - Table 'journalists' created/verified successfully
+2025-12-11 23:35:20,470 - Database_app/data/fr-mirror - INFO - Table 'articles' created/verified successfully
+2025-12-11 23:35:20,470 - Database_app/data/fr-mirror - INFO - Table 'tones' created/verified successfully
+2025-12-11 23:35:20,470 - Database_app/data/fr-mirror - INFO - Table 'categories' created/verified successfully
+2025-12-11 23:35:20,470 - Database_app/data/fr-mirror - INFO - Table 'video_queue' created/verified successfully
+2025-12-11 23:35:20,470 - Database_app/data/fr-mirror - INFO - Table 'art' created/verified successfully
+2025-12-11 23:35:20,471 - Database_app/data/fr-mirror - INFO - All tables created/verified successfully
+2025-12-11 23:35:20,471 - Database_app/data/fr-mirror - INFO - Database initialization completed
+2025-12-11 23:35:20,471 - app.main - INFO - Database initialized successfully in main.py
+2025-12-11 23:35:20,471 - app.data.enum_manager - INFO - Starting database enum synchronization...
+2025-12-11 23:35:20,471 - app.data.enum_manager - INFO - Synchronization query made for Tone
+2025-12-11 23:35:20,471 - app.data.enum_manager - INFO - No missing values found for tones - database is in sync
+2025-12-11 23:35:20,471 - app.data.enum_manager - INFO - Synchronization query made for ArticleType
+2025-12-11 23:35:20,471 - app.data.enum_manager - INFO - No missing values found for categories - database is in sync
+2025-12-11 23:35:20,471 - app.main - INFO - Database sync completed: <app.data.enum_manager.DatabaseSync object at 0x7f01623b7380>
+2025-12-11 23:35:20,472 - app.data.journalist_manager - INFO - Successfully updated journalist: Aurelius Stone
+2025-12-11 23:35:20,472 - app.main - INFO - Journalist initialization completed
+2025-12-11 23:35:20,472 - app.main - INFO - FastAPI app initialized!
+2025-12-11 23:35:20,472 - app.data.transcript_manager - DEBUG - Loaded proxy_username from env: akrds...
+2025-12-11 23:35:20,473 - app.data.transcript_manager - DEBUG - Loaded proxy_password from env: ***set***
+2025-12-11 23:35:37,855 - Database_app/data/fr-mirror - INFO - Database operation: get_article_by_id - Details: {'article_id': 13}
+2025-12-11 23:35:54,735 - app.content_department.creation_tools.xai_image_query - INFO - === XAI IMAGE PROMPT (812 chars) ===
+2025-12-11 23:35:54,736 - app.content_department.creation_tools.xai_image_query - INFO - FULL PROMPT: Create an editorial illustration for: Fall River Council Clashes on Charter Reforms, Appointments, Safety. Content: City council chamber in Fall River: councilors at desks voting on reports and appointments, some rejections shown by raised hands; concerned resident at podium urging charter rewrite; tense, official mood with documents, flags, and subtle division.. Style requirements: Medium: collage: Layered fragments and torn paper edges. Mixed textures, visible seams. Disparate materials unified visually. Aesthetic: gothic: Dark romantic drama with ornate decay. Deep purples, blacks, blood reds. Cathedral shadows, intricate filigree. Art style: pop_art: Bold colors, graphic lines, commercial aesthetic. Flat color blocks, halftone dots. Playful and accessible. Follow these style requirements strictly.
+2025-12-11 23:35:54,736 - app.content_department.creation_tools.xai_image_query - INFO - === END PROMPT ===
+2025-12-11 23:36:05,748 - urllib3.connectionpool - DEBUG - Starting new HTTPS connection (1): imgen.x.ai:443
+2025-12-11 23:36:06,050 - urllib3.connectionpool - DEBUG - https://imgen.x.ai:443 "GET /xai-imgen/xai-tmp-imgen-a9a8dac9-a796-4d1a-a69d-1cae0fc68471.jpeg HTTP/1.1" 200 151458
+2025-12-11 23:36:06,090 - Database_app/data/fr-mirror - INFO - Database operation: add_art - Details: {'prompt': 'Create an editorial illustration for: Fall River Council Clashes on Charter Reforms, Appointments, S', 'image_url': 'https://imgen.x.ai/xai-imgen/xai-tmp-imgen-a9a8dac9-a796-4d1a-a69d-1cae0fc68471.jpeg', 'article_id': 13, 'artist_name': 'Spectra Veritas'}
+2025-12-11 23:36:06,095 - Database_app/data/fr-mirror - INFO - Added art (ID: 21)
+2025-12-12 00:12:44,187 - Database_app/data/fr-mirror - INFO - Database operation: get_article_by_id - Details: {'article_id': 13}
+2025-12-12 00:13:00,754 - app.content_department.creation_tools.xai_image_query - INFO - === XAI IMAGE PROMPT (714 chars) ===
+2025-12-12 00:13:00,754 - app.content_department.creation_tools.xai_image_query - INFO - FULL PROMPT: Create an editorial illustration for: Fall River Council Clashes on Charter Reforms, Appointments, Safety. Content: City council chamber in Fall River: councilors at desks voting on documents, charts of water projects and charters; one resident gesturing emphatically in criticism; mood of formal debate with underlying tension and civic frustration.. Style requirements: Medium: ink: Clean, decisive lines with graphic clarity. High contrast black and white. Cross-hatching for tone, bold strokes. Aesthetic: editorial_neutralist: Clean, balanced layout cues with understated polish. Art style: political_cartoon_style: Clear outlines and symbolism with light caricature. Follow these style requirements strictly.
+2025-12-12 00:13:00,754 - app.content_department.creation_tools.xai_image_query - INFO - === END PROMPT ===
+2025-12-12 00:13:12,054 - urllib3.connectionpool - DEBUG - Starting new HTTPS connection (1): imgen.x.ai:443
+2025-12-12 00:13:12,310 - urllib3.connectionpool - DEBUG - https://imgen.x.ai:443 "GET /xai-imgen/xai-tmp-imgen-800a0c72-de60-48a0-9654-b0635bf76207.jpeg HTTP/1.1" 200 142804
+2025-12-12 00:13:12,347 - Database_app/data/fr-mirror - INFO - Database operation: add_art - Details: {'prompt': 'Create an editorial illustration for: Fall River Council Clashes on Charter Reforms, Appointments, S', 'image_url': 'https://imgen.x.ai/xai-imgen/xai-tmp-imgen-800a0c72-de60-48a0-9654-b0635bf76207.jpeg', 'article_id': 13, 'artist_name': 'Spectra Veritas'}
+2025-12-12 00:13:12,352 - Database_app/data/fr-mirror - INFO - Added art (ID: 22)
+2025-12-12 00:14:23,800 - Database_app/data/fr-mirror - INFO - Database operation: get_article_by_id - Details: {'article_id': 13}
+2025-12-12 00:14:42,041 - app.content_department.creation_tools.xai_image_query - INFO - === XAI IMAGE PROMPT (672 chars) ===
+2025-12-12 00:14:42,041 - app.content_department.creation_tools.xai_image_query - INFO - FULL PROMPT: Create an editorial illustration for: Fall River Council Clashes on Charter Reforms, Appointments, Safety. Content: City council chamber in Fall River: councilors at dais voting on reports and appointments, documents scattered, resident at podium urging charter rewrite, tense mood of debate and civic discontent.. Style requirements: Medium: collage: Layered fragments and torn paper edges. Mixed textures, visible seams. Disparate materials unified visually. Aesthetic: quiet_reference: Encyclopedic calm with zero drama or stylistic flair. Art style: political_cartoon_style: Clear outlines and symbolism with light caricature. Follow these style requirements strictly.
+2025-12-12 00:14:42,042 - app.content_department.creation_tools.xai_image_query - INFO - === END PROMPT ===
+2025-12-12 00:14:52,829 - urllib3.connectionpool - DEBUG - Starting new HTTPS connection (1): imgen.x.ai:443
+2025-12-12 00:14:53,042 - urllib3.connectionpool - DEBUG - https://imgen.x.ai:443 "GET /xai-imgen/xai-tmp-imgen-e1bc086d-1014-439e-a74f-1f2a2ef35bc5.jpeg HTTP/1.1" 200 156972
+2025-12-12 00:14:53,091 - Database_app/data/fr-mirror - INFO - Database operation: add_art - Details: {'prompt': 'Create an editorial illustration for: Fall River Council Clashes on Charter Reforms, Appointments, S', 'image_url': 'https://imgen.x.ai/xai-imgen/xai-tmp-imgen-e1bc086d-1014-439e-a74f-1f2a2ef35bc5.jpeg', 'article_id': 13, 'artist_name': 'Spectra Veritas'}
+2025-12-12 00:14:53,096 - Database_app/data/fr-mirror - INFO - Added art (ID: 23)

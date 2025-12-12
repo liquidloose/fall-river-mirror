@@ -37,7 +37,7 @@ class BaseArtist(BaseCreator):
             "description": self.get_description(),
         }
 
-    def get_random_trait(self, trait_type: str) -> str:
+    def get_random_trait(self, trait_type: str) -> Dict[str, str]:
         """
         Pick a random trait from a context folder.
 
@@ -45,19 +45,29 @@ class BaseArtist(BaseCreator):
             trait_type: Folder name (e.g., "medium", "aesthetic", "style/art")
 
         Returns:
-            Random trait name (filename without .txt)
+            Dict with 'name' (filename without .txt) and 'description' (file contents)
         """
         base_path = "./app/content_department/creation_tools/context_files"
         folder = os.path.join(base_path, trait_type)
         try:
             files = [
-                f.replace(".txt", "")
+                f
                 for f in os.listdir(folder)
                 if f.endswith(".txt") and f != "readme.txt"
             ]
-            return random.choice(files) if files else trait_type
+            if not files:
+                return {"name": trait_type, "description": ""}
+
+            chosen_file = random.choice(files)
+            name = chosen_file.replace(".txt", "")
+
+            file_path = os.path.join(folder, chosen_file)
+            with open(file_path, "r") as f:
+                description = f.read().strip()
+
+            return {"name": name, "description": description}
         except FileNotFoundError:
-            return trait_type
+            return {"name": trait_type, "description": ""}
 
     def generate_snippet(self, bullet_points: str) -> str:
         """
@@ -76,7 +86,7 @@ class BaseArtist(BaseCreator):
 
         try:
             response = xai_text_query.get_response(
-                context="You are a concise summarizer. Create a very brief visual description suitable for an image generation prompt. Focus on key visual elements, themes, and mood. Maximum 250 characters. Return ONLY the summary text, no explanations.",
+                context="You are a concise summarizer. Create a very brief visual description suitable for an image generation prompt. Focus on key visual elements, themes, and mood. If citizen concerns or community sentiment are mentioned, reflect that tension or emotion in the visual mood. Maximum 250 characters. Return ONLY the summary text, no explanations.",
                 message=f"Summarize these bullet points into a brief visual description:\n\n{bullet_points}",
             )
 
@@ -115,11 +125,14 @@ class BaseArtist(BaseCreator):
         # Generate a short snippet from bullet points to stay under 1024 char limit
         snippet = self.generate_snippet(bullet_points) if bullet_points else ""
 
-        # Build prompt with explicit style instructions
+        # Build prompt with explicit style instructions using trait descriptions
         full_prompt = (
             f"Create an editorial illustration for: {title}. "
             f"Content: {snippet}. "
-            f"Style requirements: Use {medium} medium, {aesthetic} aesthetic, {style} art style. "
+            f"Style requirements: "
+            f"Medium: {medium['name']}: {medium['description']} "
+            f"Aesthetic: {aesthetic['name']}: {aesthetic['description']} "
+            f"Art style: {style['name']}: {style['description']} "
             f"Follow these style requirements strictly."
         )
 
@@ -128,8 +141,8 @@ class BaseArtist(BaseCreator):
         try:
             response = xai_image_query.generate_image(
                 prompt=full_prompt,
-                medium=medium,
-                aesthetic=aesthetic,
+                medium=medium["name"],
+                aesthetic=aesthetic["name"],
             )
 
             if "error" in response:
@@ -140,9 +153,9 @@ class BaseArtist(BaseCreator):
                 "prompt_used": full_prompt,
                 "snippet": snippet,
                 "artist": personality["name"],
-                "medium": medium,
-                "aesthetic": aesthetic,
-                "style": style,
+                "medium": medium["name"],
+                "aesthetic": aesthetic["name"],
+                "style": style["name"],
             }
 
         except Exception as e:
