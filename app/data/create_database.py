@@ -222,6 +222,8 @@ class Database:
         self._add_column_if_not_exists("art", "artist_name", "TEXT")
         # Migration: add snippet column if it doesn't exist
         self._add_column_if_not_exists("art", "snippet", "TEXT")
+        # Migration: add model column if it doesn't exist
+        self._add_column_if_not_exists("art", "model", "TEXT")
 
         self.tables_created = True
         self.logger.info("All tables created/verified successfully")
@@ -760,6 +762,7 @@ class Database:
         snippet: Optional[str] = None,
         transcript_id: Optional[int] = None,
         article_id: Optional[int] = None,
+        model: Optional[str] = None,
     ) -> int:
         """
         Add a new artwork to the database.
@@ -775,6 +778,7 @@ class Database:
             snippet: AI-generated short summary for image prompt (optional)
             transcript_id: ID of linked transcript (optional)
             article_id: ID of linked article (optional)
+            model: Image generation model used (optional)
 
         Returns:
             int: The ID of the newly created art record
@@ -784,13 +788,14 @@ class Database:
             "image_url": image_url,
             "article_id": article_id,
             "artist_name": artist_name,
+            "model": model,
         }
         self._log_operation("add_art", operation_details)
 
         try:
             created_date = datetime.now().isoformat()
             self.cursor.execute(
-                "INSERT INTO art (artist_name, title, prompt, medium, aesthetic, image_url, image_data, snippet, transcript_id, article_id, created_date) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+                "INSERT INTO art (artist_name, title, prompt, medium, aesthetic, image_url, image_data, snippet, transcript_id, article_id, created_date, model) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
                 (
                     artist_name,
                     title,
@@ -803,6 +808,7 @@ class Database:
                     transcript_id,
                     article_id,
                     created_date,
+                    model,
                 ),
             )
             self.conn.commit()
@@ -1083,3 +1089,74 @@ class Database:
         except Exception as e:
             self._log_error("delete_transcript_by_id", e, operation_details)
             raise
+
+    def delete_art_by_id(self, art_id: int) -> bool:
+        """
+        Delete an art record by its ID.
+
+        Args:
+            art_id: The ID of the art record to delete
+
+        Returns:
+            bool: True if art was deleted, False if not found
+
+        Raises:
+            Exception: If database operation fails
+        """
+        operation_details = {"art_id": art_id}
+        self._log_operation("delete_art_by_id", operation_details)
+
+        try:
+            # First check if art exists
+            self.cursor.execute("SELECT id FROM art WHERE id = ?", (art_id,))
+            if not self.cursor.fetchone():
+                self.logger.warning(f"Art with ID {art_id} not found")
+                return False
+
+            # Delete the art record
+            self.cursor.execute("DELETE FROM art WHERE id = ?", (art_id,))
+            self.conn.commit()
+
+            # Check if deletion was successful
+            rows_affected = self.cursor.rowcount
+            if rows_affected > 0:
+                self.logger.info(f"Successfully deleted art with ID {art_id}")
+                return True
+            else:
+                self.logger.warning(f"No art was deleted for ID {art_id}")
+                return False
+
+        except Exception as e:
+            self._log_error("delete_art_by_id", e, operation_details)
+            raise
+
+    def get_art_by_id(self, art_id: int) -> Optional[dict]:
+        """Retrieve an art record by its ID."""
+        self._log_operation("get_art_by_id", {"art_id": art_id})
+
+        try:
+            self.cursor.execute(
+                "SELECT id, artist_name, title, prompt, medium, aesthetic, image_data, snippet, transcript_id, article_id, created_date, model FROM art WHERE id = ?",
+                (art_id,),
+            )
+            result = self.cursor.fetchone()
+
+            if result:
+                return {
+                    "id": result[0],
+                    "artist_name": result[1],
+                    "title": result[2],
+                    "prompt": result[3],
+                    "medium": result[4],
+                    "aesthetic": result[5],
+                    "image_data": result[6],
+                    "snippet": result[7],
+                    "transcript_id": result[8],
+                    "article_id": result[9],
+                    "created_date": result[10],
+                    "model": result[11],
+                }
+            return None
+        except Exception as e:
+            self._log_error("get_art_by_id", e, {"art_id": art_id})
+            return None

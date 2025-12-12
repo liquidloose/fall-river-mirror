@@ -18,7 +18,7 @@ except ImportError:
 
 # Third-party imports
 from fastapi import APIRouter, FastAPI, HTTPException, status, Body
-from fastapi.responses import JSONResponse
+from fastapi.responses import JSONResponse, Response
 
 # Local imports
 from app import TranscriptManager, ArticleGenerator
@@ -29,6 +29,7 @@ from app.data.enum_classes import (
     Tone,
     Journalist,
     Artist,
+    ImageModel,
     CreateArticleRequest,
     UpdateArticleRequest,
     PartialUpdateRequest,
@@ -180,6 +181,52 @@ def delete_transcript_endpoint(transcript_id: int) -> Dict[str, Any]:
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Failed to delete transcript: {str(e)}",
+        )
+
+
+@app.delete("/art/delete/{art_id}")
+def delete_art_endpoint(art_id: int) -> Dict[str, Any]:
+    """
+    Delete an art record by its ID.
+
+    Args:
+        art_id: The ID of the art record to delete
+
+    Returns:
+        Dict containing success status and message
+
+    Raises:
+        HTTPException: If art not found or database operation fails
+    """
+    try:
+        if not database:
+            raise HTTPException(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail="Database not available",
+            )
+
+        success = database.delete_art_by_id(art_id)
+
+        if success:
+            logger.info(f"Successfully deleted art with ID {art_id}")
+            return {
+                "success": True,
+                "message": f"Art with ID {art_id} deleted successfully",
+                "art_id": art_id,
+            }
+        else:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail=f"Art with ID {art_id} not found",
+            )
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Failed to delete art {art_id}: {str(e)}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to delete art: {str(e)}",
         )
 
 
@@ -738,7 +785,11 @@ def get_journalist_profile(journalist_name: Journalist):
 
 
 @app.post("/image/generate/{artist_name}/{article_id}")
-def generate_image(artist_name: Artist, article_id: int):
+def generate_image(
+    artist_name: Artist,
+    article_id: int,
+    model: ImageModel = ImageModel.MINI,
+):
     """
     Generate an image using the xAI Aurora API.
     """
@@ -776,21 +827,28 @@ def generate_image(artist_name: Artist, article_id: int):
     image_result = artist_instance.generate_image(
         title=article["title"],
         bullet_points=bullet_points,
+        model=model.value,
     )
 
     # Save to database if successful
     if image_result.get("image_url"):
         import requests
+        import base64
 
         # Download the image
         image_url = image_result["image_url"]
-        response = requests.get(image_url)
 
-        if response.status_code == 200:
+        # Handle base64 data URLs (from gpt-image-1)
+        if image_url.startswith("data:image"):
+            # Extract base64 data from data URL
+            # Format: data:image/png;base64,<base64_data>
+            header, base64_data = image_url.split(",", 1)
+            image_data = base64.b64decode(base64_data)
+
             art_id = database.add_art(
                 prompt=image_result["prompt_used"],
-                image_url=image_url,
-                image_data=response.content,
+                image_url=None,  # Changed from image_url - don't store the huge base64 string
+                image_data=image_data,
                 medium=image_result.get("medium"),
                 aesthetic=image_result.get("aesthetic"),
                 title=article["title"],
@@ -798,10 +856,32 @@ def generate_image(artist_name: Artist, article_id: int):
                 snippet=image_result.get("snippet"),
                 transcript_id=article.get("transcript_id"),
                 article_id=article_id,
+                model=model.value,
             )
             image_result["art_id"] = art_id
         else:
-            image_result["error"] = f"Failed to download image: {response.status_code}"
+            # Handle regular URLs (from other providers)
+            response = requests.get(image_url)
+
+            if response.status_code == 200:
+                art_id = database.add_art(
+                    prompt=image_result["prompt_used"],
+                    image_url=image_url,
+                    image_data=response.content,
+                    medium=image_result.get("medium"),
+                    aesthetic=image_result.get("aesthetic"),
+                    title=article["title"],
+                    artist_name=image_result.get("artist"),
+                    snippet=image_result.get("snippet"),
+                    transcript_id=article.get("transcript_id"),
+                    article_id=article_id,
+                    model=model.value,
+                )
+                image_result["art_id"] = art_id
+            else:
+                image_result["error"] = (
+                    f"Failed to download image: {response.status_code}"
+                )
 
     return image_result
 
@@ -1535,3 +1615,16 @@ def generate_all_bullet_points(amount_of_articles: int):
         results["processed"] += 1
 
     return results
+
+
+@app.get("/art/{art_id}/image")
+def get_art_image(art_id: int):
+    """Serve the image for an art record."""
+    art = database.get_art_by_id(art_id)
+    if not art or not art.get("image_data"):
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Image for art ID {art_id} not found",
+        )
+
+    return Response(content=art["image_data"], media_type="image/png")
