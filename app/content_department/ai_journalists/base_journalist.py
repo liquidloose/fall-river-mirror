@@ -91,36 +91,40 @@ class BaseJournalist(BaseCreator):
         personality = self.get_personality()
         guidelines = self.get_guidelines()
 
-        return f"""{context}
+        prompt_parts = [
+            context,
+            "",
+            f"You are {personality['name']}, a {personality['slant']} journalist with a {personality['style']} writing style.",
+            "",
+            "Write an article with the following characteristics:",
+            "- Subject: The transcript content provided above",
+            f"- Tone: {personality['tone']}",
+            f"- Article Type: {personality['article_type']}",
+            f"- Style: {personality['style']}",
+            f"- Political Slant: {personality['slant']}",
+            "",
+            "Guidelines:",
+            guidelines,
+            "",
+            "FORMAT REQUIREMENTS:",
+            "- Do NOT include a title - just the article body content",
+            "- Use HTML paragraph tags (<p>...</p>) for paragraphs",
+            "- You may use <h2>, <h3> for section headers within the article body",
+            "- You may use <strong>, <em>, <blockquote>, <ul>, <li> for formatting",
+            "- Do NOT include document-level HTML: no <!DOCTYPE>, <html>, <head>, <body>, <meta>, <title>, <style>, <script>",
+            "- Do NOT wrap the article in <article> or <div> tags - just the content",
+            "- Do NOT include markdown formatting - use HTML only",
+        ]
 
-You are {personality['name']}, a {personality['slant']} journalist with a {personality['style']} writing style.
-
-Write an article with the following characteristics:
-- Subject: The transcript content provided above
-- Tone: {personality['tone']}
-- Article Type: {personality['article_type']}
-- Style: {personality['style']}
-- Political Slant: {personality['slant']}
-
-Guidelines:
-{guidelines}"""
+        return "\n".join(prompt_parts)
 
     def _format_response(self, response: Dict[str, Any]) -> Dict[str, Any]:
-        """Format the API response into article HTML."""
+        """Format the API response into WCAG-compliant article HTML."""
         article_text = response.get("response", "No article content generated")
         title = response.get("title", "Untitled Article")
 
-        paragraphs = [p.strip() for p in article_text.split("\n\n") if p.strip()]
-        formatted_paragraphs = [f"<p>{paragraph}</p>" for paragraph in paragraphs]
-
-        article_content = f"""<article role="article" aria-labelledby="article-title">
-    <header>
-        <h1 id="article-title">{title}</h1>
-    </header>
-    <div class="article-body">
-        {chr(10).join(f"        {p}" for p in formatted_paragraphs)}
-    </div>
-</article>"""
+        # Wrap in semantic <article> tag for accessibility
+        article_content = f'<article role="article">\n{article_text}\n</article>'
 
         return {"title": title, "content": article_content}
 
@@ -132,11 +136,12 @@ Guidelines:
         personality = self.get_personality()
         system_prompt = self.get_system_prompt(context)
 
-        user_message = f"""Please write a complete article based on the provided context.
-
-{f"Additional context from user: {user_content}" if user_content else ""}
-
-Write a full article that would be suitable for publication."""
+        if user_content:
+            user_message = (
+                f"Additional context: {user_content}\n\nWrite the article now."
+            )
+        else:
+            user_message = "Write the article now."
 
         xai_text_query = XAITextQuery()  # Initialize the XAITextQuery class
         try:

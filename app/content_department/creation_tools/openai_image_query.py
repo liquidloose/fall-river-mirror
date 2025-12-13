@@ -35,7 +35,8 @@ class OpenAIImageQuery:
         prompt: str,
         medium: str = None,
         aesthetic: str = None,
-        model: str = "gpt-image-1-mini",  # Add this parameter
+        model: str = "gpt-image-1-mini",
+        size: str = "1536x1024",  # Landscape aspect ratio for featured images
     ) -> dict:
         """
         Generate an image using the OpenAI GPT-5.1 Responses API.
@@ -47,6 +48,10 @@ class OpenAIImageQuery:
             prompt (str): The image generation prompt describing what to create.
             medium (str, optional): The artistic medium (e.g., "digital", "watercolor").
             aesthetic (str, optional): The aesthetic style (e.g., "surrealist", "minimalist").
+            model (str): The OpenAI model to use (default: "gpt-image-1-mini").
+            size (str): Image dimensions. Options: "1024x1024" (square),
+                       "1536x1024" (landscape), "1024x1536" (portrait).
+                       Default: "1536x1024" for featured image use.
 
         Returns:
             dict: A dictionary containing either:
@@ -65,9 +70,10 @@ class OpenAIImageQuery:
             logger.info(f"=== END PROMPT ===")
 
             response = client.images.generate(
-                model=model,  # Use the parameter instead of hardcoded
+                model=model,
                 prompt=prompt,
                 n=1,
+                size=size,
             )
 
             # Extract the base64-encoded image data

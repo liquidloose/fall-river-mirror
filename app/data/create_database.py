@@ -750,6 +750,65 @@ class Database:
             )
             return False
 
+    def delete_article_by_id(self, article_id: int) -> bool:
+        """
+        Delete an article by its ID.
+
+        Args:
+            article_id: The ID of the article to delete
+
+        Returns:
+            bool: True if article was deleted, False if not found
+        """
+        operation_details = {"article_id": article_id}
+        self._log_operation("delete_article_by_id", operation_details)
+
+        try:
+            self.cursor.execute("SELECT id FROM articles WHERE id = ?", (article_id,))
+            if not self.cursor.fetchone():
+                self.logger.warning(f"Article with ID {article_id} not found")
+                return False
+
+            self.cursor.execute("DELETE FROM articles WHERE id = ?", (article_id,))
+            self.conn.commit()
+
+            if self.cursor.rowcount > 0:
+                self.logger.info(f"Successfully deleted article with ID {article_id}")
+                return True
+            else:
+                self.logger.warning(f"No article was deleted for ID {article_id}")
+                return False
+
+        except Exception as e:
+            self._log_error("delete_article_by_id", e, operation_details)
+            raise
+
+    def delete_art_by_article_id(self, article_id: int) -> int:
+        """
+        Delete all art records linked to an article.
+
+        Args:
+            article_id: The ID of the article whose art should be deleted
+
+        Returns:
+            int: Number of art records deleted
+        """
+        operation_details = {"article_id": article_id}
+        self._log_operation("delete_art_by_article_id", operation_details)
+
+        try:
+            self.cursor.execute("DELETE FROM art WHERE article_id = ?", (article_id,))
+            self.conn.commit()
+            deleted_count = self.cursor.rowcount
+            self.logger.info(
+                f"Deleted {deleted_count} art record(s) for article ID {article_id}"
+            )
+            return deleted_count
+
+        except Exception as e:
+            self._log_error("delete_art_by_article_id", e, operation_details)
+            raise
+
     def add_art(
         self,
         prompt: str,
@@ -1160,3 +1219,41 @@ class Database:
         except Exception as e:
             self._log_error("get_art_by_id", e, {"art_id": art_id})
             return None
+
+    def update_art_image(
+        self,
+        art_id: int,
+        prompt: str,
+        image_data: bytes,
+        medium: Optional[str] = None,
+        aesthetic: Optional[str] = None,
+        model: Optional[str] = None,
+    ) -> bool:
+        """Update an existing art record with a new regenerated image."""
+        operation_details = {
+            "art_id": art_id,
+            "prompt_length": len(prompt) if prompt else 0,
+            "image_data_size": len(image_data) if image_data else 0,
+            "medium": medium,
+            "aesthetic": aesthetic,
+            "model": model,
+        }
+        self._log_operation("update_art_image", operation_details)
+
+        try:
+            self.cursor.execute(
+                """UPDATE art 
+                   SET prompt = ?, image_data = ?, medium = ?, aesthetic = ?, model = ?
+                   WHERE id = ?""",
+                (prompt, image_data, medium, aesthetic, model, art_id),
+            )
+            self.conn.commit()
+            updated = self.cursor.rowcount > 0
+            if updated:
+                self.logger.info(f"Updated art image (ID: {art_id})")
+            else:
+                self.logger.warning(f"No art record found with ID: {art_id}")
+            return updated
+        except Exception as e:
+            self._log_error("update_art_image", e, operation_details)
+            return False
