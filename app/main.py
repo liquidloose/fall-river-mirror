@@ -94,6 +94,42 @@ article_generator = ArticleGenerator()
 # In-memory storage for demo purposes (replace with actual database operations)
 articles_db = {}
 
+
+# ===== HELPER FUNCTIONS =====
+
+
+def _decode_image_url(image_url: str) -> bytes:
+    """
+    Decode image data from either a base64 data URL or a regular URL.
+
+    Args:
+        image_url: Either a base64 data URL (data:image/...) or HTTP URL
+
+    Returns:
+        bytes: The raw image data
+
+    Raises:
+        HTTPException: If URL download fails
+    """
+    import base64
+    import requests
+
+    if image_url.startswith("data:image"):
+        # Handle base64 data URLs (from gpt-image-1)
+        # Format: data:image/png;base64,<base64_data>
+        header, base64_data = image_url.split(",", 1)
+        return base64.b64decode(base64_data)
+    else:
+        # Handle regular URLs (from other providers)
+        response = requests.get(image_url)
+        if response.status_code != 200:
+            raise HTTPException(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail=f"Failed to download image: {response.status_code}",
+            )
+        return response.content
+
+
 # ===== GET ENDPOINTS =====
 
 
@@ -184,7 +220,7 @@ def delete_transcript_endpoint(transcript_id: int) -> Dict[str, Any]:
         )
 
 
-@app.delete("/art/delete/{art_id}")
+@app.delete("/image/delete/{art_id}")
 def delete_art_endpoint(art_id: int) -> Dict[str, Any]:
     """
     Delete an art record by its ID.
@@ -227,6 +263,69 @@ def delete_art_endpoint(art_id: int) -> Dict[str, Any]:
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Failed to delete art: {str(e)}",
+        )
+
+
+@app.delete("/article/{article_id}")
+def delete_article_endpoint(article_id: int) -> Dict[str, Any]:
+    """
+    Delete an article and its corresponding image.
+
+    This endpoint deletes the article and any art records linked to it.
+
+    Args:
+        article_id: The ID of the article to delete
+
+    Returns:
+        Dict containing success status and deletion details
+
+    Raises:
+        HTTPException: If article not found or database operation fails
+    """
+    try:
+        if not database:
+            raise HTTPException(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail="Database not available",
+            )
+
+        # First check if article exists
+        article = database.get_article_by_id(article_id)
+        if not article:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail=f"Article with ID {article_id} not found",
+            )
+
+        # Delete any linked art records first
+        art_deleted_count = database.delete_art_by_article_id(article_id)
+
+        # Delete the article
+        success = database.delete_article_by_id(article_id)
+
+        if success:
+            logger.info(
+                f"Successfully deleted article {article_id} and {art_deleted_count} linked image(s)"
+            )
+            return {
+                "success": True,
+                "message": f"Article {article_id} and linked images deleted successfully",
+                "article_id": article_id,
+                "images_deleted": art_deleted_count,
+            }
+        else:
+            raise HTTPException(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail=f"Failed to delete article {article_id}",
+            )
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Failed to delete article {article_id}: {str(e)}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to delete article: {str(e)}",
         )
 
 
@@ -553,9 +652,18 @@ async def bulk_fetch_transcripts(
             f"Bulk transcript fetch complete: {transcripts_fetched} succeeded, {transcripts_failed} failed"
         )
 
+        # Build the message - explain if fewer videos were available than requested
+        if len(queue_items) < amount:
+            message = (
+                f"Processed {len(queue_items)} videos from queue "
+                f"(requested {amount}, but only {len(queue_items)} available with transcripts)"
+            )
+        else:
+            message = f"Processed {len(queue_items)} videos from queue"
+
         response = {
             "success": True,
-            "message": f"Processed {len(queue_items)} videos from queue",
+            "message": message,
             "transcripts_fetched": transcripts_fetched,
             "transcripts_failed": transcripts_failed,
             "results": results,
@@ -862,6 +970,22 @@ def bulk_generate_images(
             transcript_id = row[3]
 
             try:
+                # Check if art was already created (handles race conditions from concurrent requests)
+                cursor.execute("SELECT id FROM art WHERE article_id = ?", (article_id,))
+                existing_art = cursor.fetchone()
+                if existing_art:
+                    logger.info(
+                        f"Skipping article {article_id} - art already exists (id: {existing_art[0]})"
+                    )
+                    results.append(
+                        {
+                            "article_id": article_id,
+                            "status": "skipped",
+                            "reason": f"Art already exists (id: {existing_art[0]})",
+                        }
+                    )
+                    continue
+
                 logger.info(f"Generating image for article ID {article_id}: {title}")
 
                 # Generate image
@@ -887,57 +1011,32 @@ def bulk_generate_images(
 
                 # Save to database if successful
                 if image_result.get("image_url"):
-                    import requests
-                    import base64
-
-                    image_url = image_result["image_url"]
-
-                    # Handle base64 data URLs (from gpt-image-1)
-                    if image_url.startswith("data:image"):
-                        header, base64_data = image_url.split(",", 1)
-                        image_data = base64.b64decode(base64_data)
-
-                        art_id = database.add_art(
-                            prompt=image_result["prompt_used"],
-                            image_url=None,
-                            image_data=image_data,
-                            medium=image_result.get("medium"),
-                            aesthetic=image_result.get("aesthetic"),
-                            title=title,
-                            artist_name=image_result.get("artist"),
-                            snippet=image_result.get("snippet"),
-                            transcript_id=transcript_id,
-                            article_id=article_id,
-                            model=model.value,
+                    try:
+                        image_data = _decode_image_url(image_result["image_url"])
+                    except HTTPException as e:
+                        images_failed += 1
+                        results.append(
+                            {
+                                "article_id": article_id,
+                                "status": "failed",
+                                "error": e.detail,
+                            }
                         )
-                    else:
-                        # Handle regular URLs (from other providers)
-                        response = requests.get(image_url)
+                        continue
 
-                        if response.status_code == 200:
-                            art_id = database.add_art(
-                                prompt=image_result["prompt_used"],
-                                image_url=image_url,
-                                image_data=response.content,
-                                medium=image_result.get("medium"),
-                                aesthetic=image_result.get("aesthetic"),
-                                title=title,
-                                artist_name=image_result.get("artist"),
-                                snippet=image_result.get("snippet"),
-                                transcript_id=transcript_id,
-                                article_id=article_id,
-                                model=model.value,
-                            )
-                        else:
-                            images_failed += 1
-                            results.append(
-                                {
-                                    "article_id": article_id,
-                                    "status": "failed",
-                                    "error": f"Failed to download image: {response.status_code}",
-                                }
-                            )
-                            continue
+                    art_id = database.add_art(
+                        prompt=image_result["prompt_used"],
+                        image_url=None,
+                        image_data=image_data,
+                        medium=image_result.get("medium"),
+                        aesthetic=image_result.get("aesthetic"),
+                        title=title,
+                        artist_name=image_result.get("artist"),
+                        snippet=image_result.get("snippet"),
+                        transcript_id=transcript_id,
+                        article_id=article_id,
+                        model=model.value,
+                    )
 
                     images_generated += 1
                     results.append(
@@ -1023,6 +1122,18 @@ def generate_image(
             detail=f"Article with ID {article_id} not found",
         )
 
+    # Check if article already has art
+    cursor = database.cursor
+    cursor.execute("SELECT id FROM art WHERE article_id = ?", (article_id,))
+    existing_art = cursor.fetchone()
+    if existing_art:
+        return {
+            "image_url": None,
+            "error": f"Article {article_id} already has art (art_id: {existing_art[0]}). Use DELETE /art/delete/{existing_art[0]} first to regenerate.",
+            "article_id": article_id,
+            "existing_art_id": existing_art[0],
+        }
+
     bullet_points = article.get("bullet_points")
     if not bullet_points:
         return {
@@ -1041,22 +1152,11 @@ def generate_image(
 
     # Save to database if successful
     if image_result.get("image_url"):
-        import requests
-        import base64
-
-        # Download the image
-        image_url = image_result["image_url"]
-
-        # Handle base64 data URLs (from gpt-image-1)
-        if image_url.startswith("data:image"):
-            # Extract base64 data from data URL
-            # Format: data:image/png;base64,<base64_data>
-            header, base64_data = image_url.split(",", 1)
-            image_data = base64.b64decode(base64_data)
-
+        try:
+            image_data = _decode_image_url(image_result["image_url"])
             art_id = database.add_art(
                 prompt=image_result["prompt_used"],
-                image_url=None,  # Changed from image_url - don't store the huge base64 string
+                image_url=None,
                 image_data=image_data,
                 medium=image_result.get("medium"),
                 aesthetic=image_result.get("aesthetic"),
@@ -1068,29 +1168,8 @@ def generate_image(
                 model=model.value,
             )
             image_result["art_id"] = art_id
-        else:
-            # Handle regular URLs (from other providers)
-            response = requests.get(image_url)
-
-            if response.status_code == 200:
-                art_id = database.add_art(
-                    prompt=image_result["prompt_used"],
-                    image_url=image_url,
-                    image_data=response.content,
-                    medium=image_result.get("medium"),
-                    aesthetic=image_result.get("aesthetic"),
-                    title=article["title"],
-                    artist_name=image_result.get("artist"),
-                    snippet=image_result.get("snippet"),
-                    transcript_id=article.get("transcript_id"),
-                    article_id=article_id,
-                    model=model.value,
-                )
-                image_result["art_id"] = art_id
-            else:
-                image_result["error"] = (
-                    f"Failed to download image: {response.status_code}"
-                )
+        except HTTPException as e:
+            image_result["error"] = e.detail
 
     return image_result
 
@@ -1320,13 +1399,33 @@ async def bulk_generate_articles(
             f"journalist={journalist.value}, tone={tone.value}, type={article_type.value}"
         )
 
-        # Query transcripts table for existing transcripts
+        # Map journalist enum to class instances
+        journalist_classes = {
+            Journalist.AURELIUS_STONE: AureliusStone,
+        }
+
+        # Get journalist instance and ID first (needed for query)
+        journalist_class = journalist_classes.get(journalist)
+        if not journalist_class:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=f"Journalist '{journalist.value}' not implemented yet",
+            )
+        journalist_instance = journalist_class()
+        journalist_id = journalist_manager.get_journalist(
+            journalist_instance.FULL_NAME
+        )["id"]
+
+        # Query transcripts that don't already have articles from THIS journalist (oldest first)
         cursor = database.cursor
         cursor.execute(
-            """SELECT id, committee, youtube_id, content 
-               FROM transcripts 
+            """SELECT t.id, t.committee, t.youtube_id, t.content 
+               FROM transcripts t
+               LEFT JOIN articles a ON t.id = a.transcript_id AND a.journalist_id = ?
+               WHERE a.id IS NULL
+               ORDER BY t.id ASC
                LIMIT ?""",
-            (amount_of_articles,),
+            (journalist_id, amount_of_articles),
         )
         transcripts = cursor.fetchall()
 
@@ -1344,10 +1443,6 @@ async def bulk_generate_articles(
         results = []
         articles_generated = 0
         articles_failed = 0
-
-        # Get journalist instance and ID
-        journalist_instance = AureliusStone()
-        journalist_id = journalist_manager.get_journalist(aurelius.FULL_NAME)["id"]
 
         # Process each transcript
         for row in transcripts:
@@ -1619,6 +1714,83 @@ def get_queue_stats() -> Dict[str, Any]:
         )
 
 
+@app.get("/transcripts/pending/{journalist}")
+def get_pending_transcripts(journalist: Journalist) -> Dict[str, Any]:
+    """
+    Get transcripts that don't have an article from a specific journalist.
+
+    Args:
+        journalist: The journalist to check (from enum)
+
+    Returns:
+        Dict containing:
+            - count: Number of transcripts without articles from this journalist
+            - transcripts: List of transcript details (id, youtube_id, committee)
+    """
+    try:
+        if not database:
+            raise HTTPException(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail="Database not available",
+            )
+
+        # Map journalist enum to class
+        journalist_classes = {
+            Journalist.AURELIUS_STONE: AureliusStone,
+        }
+
+        journalist_class = journalist_classes.get(journalist)
+        if not journalist_class:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=f"Journalist '{journalist.value}' not implemented yet",
+            )
+
+        journalist_instance = journalist_class()
+        journalist_id = journalist_manager.get_journalist(
+            journalist_instance.FULL_NAME
+        )["id"]
+
+        cursor = database.cursor
+        cursor.execute(
+            """SELECT t.id, t.youtube_id, t.committee
+               FROM transcripts t 
+               LEFT JOIN articles a ON t.id = a.transcript_id AND a.journalist_id = ?
+               WHERE a.id IS NULL
+               ORDER BY t.id""",
+            (journalist_id,),
+        )
+        rows = cursor.fetchall()
+
+        meetings = [
+            {"transcript_id": row[0], "youtube_id": row[1], "meeting": row[2]}
+            for row in rows
+        ]
+
+        # Get total transcript count for context
+        cursor.execute("SELECT COUNT(*) FROM transcripts")
+        total_transcripts = cursor.fetchone()[0]
+        covered = total_transcripts - len(meetings)
+
+        return {
+            "journalist": journalist.value,
+            "summary": f"{journalist.value} has written articles for {covered} of {total_transcripts} meetings. {len(meetings)} meetings have no article from this journalist yet.",
+            "articles_written": covered,
+            "awaiting_article": len(meetings),
+            "total_meetings": total_transcripts,
+            "meetings_without_article": meetings,
+        }
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Failed to get pending transcripts: {str(e)}", exc_info=True)
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to get pending transcripts: {str(e)}",
+        )
+
+
 # ===== PUT ENDPOINTS =====
 
 
@@ -1796,6 +1968,143 @@ def generate_article_bullet_points(article_id: int):
     return {"article_id": article_id, "bullet_points": result["bullet_points"]}
 
 
+@app.patch("/image/{art_id}/regenerate")
+def regenerate_art_image(
+    art_id: int,
+    artist_name: Artist = Artist.SPECTRA_VERITAS,
+    model: ImageModel = ImageModel.MINI,
+) -> Dict[str, Any]:
+    """
+    Regenerate the image for an existing art record.
+
+    This endpoint regenerates the image using the AI artist, updating the art record
+    with a new image while preserving the article association.
+
+    Args:
+        art_id: The ID of the art record to regenerate
+        artist_name: AI artist to use (default: Spectra Veritas)
+        model: Image model to use (default: gpt-image-1-mini)
+
+    Returns:
+        Dict containing the updated art metadata
+
+    Raises:
+        HTTPException: If art not found, article not found, or article has no bullet points
+    """
+    try:
+        if not database:
+            raise HTTPException(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail="Database not available",
+            )
+
+        # Step 1: Get existing art record
+        art = database.get_art_by_id(art_id)
+        if not art:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail=f"Art with ID {art_id} not found",
+            )
+
+        # Step 2: Get linked article
+        article_id = art.get("article_id")
+        if not article_id:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=f"Art {art_id} has no linked article",
+            )
+
+        article = database.get_article_by_id(article_id)
+        if not article:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail=f"Linked article {article_id} not found",
+            )
+
+        # Step 3: Validate article has bullet_points
+        bullet_points = article.get("bullet_points")
+        if not bullet_points:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=f"Article {article_id} has no bullet points. Generate bullet points first using PATCH /article/{article_id}/bullet-points",
+            )
+
+        # Step 4: Create artist instance and generate new image
+        artist_classes = {
+            Artist.SPECTRA_VERITAS: SpectraVeritas,
+        }
+        artist_class = artist_classes.get(artist_name)
+        if not artist_class:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=f"Artist '{artist_name.value}' not implemented",
+            )
+
+        artist_instance = artist_class()
+        logger.info(f"Regenerating image for art ID {art_id} (article: {article_id})")
+
+        image_result = artist_instance.generate_image(
+            title=article["title"],
+            bullet_points=bullet_points,
+            model=model.value,
+        )
+
+        if image_result.get("error"):
+            raise HTTPException(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail=f"Image generation failed: {image_result['error']}",
+            )
+
+        # Step 5: Process the image and update the art record
+        if not image_result.get("image_url"):
+            raise HTTPException(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail="No image URL returned from generation",
+            )
+
+        image_data = _decode_image_url(image_result["image_url"])
+
+        # Update the art record
+        success = database.update_art_image(
+            art_id=art_id,
+            prompt=image_result["prompt_used"],
+            image_data=image_data,
+            medium=image_result.get("medium"),
+            aesthetic=image_result.get("aesthetic"),
+            model=model.value,
+        )
+
+        if not success:
+            raise HTTPException(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail="Failed to update art record",
+            )
+
+        logger.info(f"Successfully regenerated image for art ID {art_id}")
+
+        return {
+            "success": True,
+            "art_id": art_id,
+            "article_id": article_id,
+            "title": article["title"],
+            "model": model.value,
+            "medium": image_result.get("medium"),
+            "aesthetic": image_result.get("aesthetic"),
+            "prompt_used": image_result["prompt_used"],
+        }
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(
+            f"Failed to regenerate art image {art_id}: {str(e)}", exc_info=True
+        )
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to regenerate art image: {str(e)}",
+        )
+
+
 @app.post("/bullet-points/generate/batch/{amount_of_articles}")
 def generate_all_bullet_points(amount_of_articles: int):
     """Generate bullet points for all articles that don't have them."""
@@ -1826,7 +2135,7 @@ def generate_all_bullet_points(amount_of_articles: int):
     return results
 
 
-@app.get("/art/{art_id}/image")
+@app.get("/image/{art_id}")
 def get_art_image(art_id: int):
     """Serve the image for an art record."""
     art = database.get_art_by_id(art_id)
@@ -1837,3 +2146,87 @@ def get_art_image(art_id: int):
         )
 
     return Response(content=art["image_data"], media_type="image/png")
+
+
+@app.delete("/art/cleanup-duplicates")
+def cleanup_duplicate_art() -> Dict[str, Any]:
+    """
+    Find and delete duplicate art records for articles.
+    For each article with multiple art records, keeps the oldest one and deletes the rest.
+
+    Returns:
+        Dict containing cleanup results with counts and deleted art IDs
+    """
+    try:
+        if not database:
+            raise HTTPException(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail="Database not available",
+            )
+
+        cursor = database.cursor
+
+        # Find all article_ids that have multiple art records
+        cursor.execute(
+            """SELECT article_id, COUNT(*) as count
+               FROM art
+               WHERE article_id IS NOT NULL
+               GROUP BY article_id
+               HAVING COUNT(*) > 1"""
+        )
+        duplicates = cursor.fetchall()
+
+        if not duplicates:
+            return {
+                "success": True,
+                "message": "No duplicate art records found",
+                "articles_with_duplicates": 0,
+                "total_deleted": 0,
+                "deleted_art_ids": [],
+            }
+
+        deleted_art_ids = []
+        articles_processed = 0
+
+        for row in duplicates:
+            article_id = row[0]
+            count = row[1]
+
+            # Get all art records for this article, ordered by created_date (oldest first)
+            cursor.execute(
+                """SELECT id, created_date
+                   FROM art
+                   WHERE article_id = ?
+                   ORDER BY created_date ASC""",
+                (article_id,),
+            )
+            art_records = cursor.fetchall()
+
+            # Keep the first (oldest) one, delete the rest
+            if len(art_records) > 1:
+                # Skip the first one, delete all others
+                for art_record in art_records[1:]:
+                    art_id = art_record[0]
+                    success = database.delete_art_by_id(art_id)
+                    if success:
+                        deleted_art_ids.append(art_id)
+                        logger.info(
+                            f"Deleted duplicate art ID {art_id} for article {article_id}"
+                        )
+
+                articles_processed += 1
+
+        return {
+            "success": True,
+            "message": f"Cleaned up duplicates for {articles_processed} articles",
+            "articles_with_duplicates": articles_processed,
+            "total_deleted": len(deleted_art_ids),
+            "deleted_art_ids": deleted_art_ids,
+        }
+
+    except Exception as e:
+        logger.error(f"Failed to cleanup duplicate art: {str(e)}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to cleanup duplicate art: {str(e)}",
+        )

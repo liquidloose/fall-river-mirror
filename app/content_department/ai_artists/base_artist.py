@@ -130,8 +130,19 @@ class BaseArtist(BaseCreator):
 
         # Build prompt with explicit style instructions using trait descriptions
         full_prompt = (
-            f"Create an editorial illustration for: {title}. "
+            f"Create an editorial illustration about: {title}. "
             f"Content: {snippet}. "
+            f"IMPORTANT: Do NOT render the article title, headlines, or large text blocks in the image. "
+            f"Small incidental words or signs that serve the visual composition are acceptable. "
+            f"FOCUS ON TOPICS: Visualize the actual topics, issues, and subjects being discussed "
+            f"(buildings, infrastructure, community concerns, events, etc.) rather than showing people "
+            f"sitting in a meeting room. Prefer city streets, neighborhoods, buildings, and community "
+            f"settings over council chambers or meeting rooms. Only show councilors or officials if "
+            f"they are the central subject of the story itself. Don't show councilors sitting at a desk while in the community. "
+            f"VISUAL VARIETY: Since these images will be displayed side by side, ensure each image has "
+            f"a unique composition, perspective, color palette, and visual approach. Vary between close-ups, "
+            f"wide shots, different angles, day/night scenes, and diverse focal points to avoid repetitive "
+            f"or similar-looking images. "
             f"Style requirements: "
             f"Medium: {medium['name']}: {medium['description']} "
             f"Aesthetic: {aesthetic['name']}: {aesthetic['description']} "
