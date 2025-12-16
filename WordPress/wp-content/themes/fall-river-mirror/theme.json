@@ -1,9 +1,46 @@
 {
 	"settings": {
 		"appearanceTools": true,
+		"color": {
+			"palette": []
+		},
+		"custom": {
+			"border-radius": {
+				"large": "12px",
+				"medium": "8px",
+				"rounded": "999px",
+				"small": "4px",
+				"x-large": "16px"
+			}
+		},
 		"layout": {
-			"contentSize": "620px",
-			"wideSize": "1000px"
+			"contentSize": "80%",
+			"wideSize": "65vw"
+		},
+		"shadow": {
+			"defaultPresets": true,
+			"presets": [
+				{
+					"name": "Subtle",
+					"shadow": "0 2px 4px rgba(0, 0, 0, 0.1)",
+					"slug": "subtle"
+				},
+				{
+					"name": "Medium",
+					"shadow": "0 4px 6px rgba(0, 0, 0, 0.15)",
+					"slug": "medium"
+				},
+				{
+					"name": "Rivedge Box Shadow",
+					"shadow": "0 6px 12px rgba(0, 0, 0, 0.2)",
+					"slug": "rivedge"
+				},
+				{
+					"name": "Strong",
+					"shadow": "0 10px 20px rgba(0, 0, 0, 0.25)",
+					"slug": "strong"
+				}
+			]
 		},
 		"spacing": {
 			"units": [
@@ -26,6 +63,69 @@
 		},
 		"useRootPaddingAwareAlignments": true
 	},
+	"styles": {
+		"blocks": {
+			"core/column": {
+				"border": {
+					"radius": "0px"
+				}
+			},
+			"core/columns": {
+				"border": {
+					"radius": "0px"
+				}
+			},
+			"core/image": {
+				"border": {
+					"bottom": {
+						"style": "none",
+						"width": "0px"
+					},
+					"color": null,
+					"left": {
+						"style": "none",
+						"width": "0px"
+					},
+					"radius": "0px",
+					"right": {
+						"style": "none",
+						"width": "0px"
+					},
+					"style": null,
+					"top": {
+						"style": "none",
+						"width": "0px"
+					},
+					"width": null
+				},
+				"shadow": "6px 6px 9px rgba(0, 0, 0, 0.2)"
+			},
+			"core/post-featured-image": {
+				"border": {
+					"radius": "0px"
+				},
+				"shadow": "6px 6px 9px rgba(0, 0, 0, 0.2)"
+			}
+		},
+		"elements": {
+			"caption": {
+				"typography": {
+					"fontFamily": "var(--wp--preset--font-family--roboto-mono)"
+				}
+			},
+			"heading": {
+				"typography": {
+					"fontFamily": "var(--wp--preset--font-family--roboto-mono)"
+				}
+			}
+		},
+		"spacing": {
+			"blockGap": "0px"
+		},
+		"typography": {
+			"fontFamily": "var(--wp--preset--font-family--roboto-mono)"
+		}
+	},
 	"templateParts": [
 		{
 			"area": "header",
@@ -37,5 +137,5 @@
 		}
 	],
 	"version": 3,
-	"$schema": "https://schemas.wp.org/wp/6.8/theme.json"
+	"$schema": "https://schemas.wp.org/wp/6.7/theme.json"
 }

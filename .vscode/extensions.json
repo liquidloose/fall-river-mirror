@@ -3,6 +3,7 @@
         "ms-vscode-remote.vscode-remote-extensionpack",
         "ms-python.python",
         "ms-python.black-formatter",
-        "alexcvzz.vscode-sqlite"
+        "alexcvzz.vscode-sqlite",
+        "johnbillion.vscode-wordpress-hooks"
     ]
 }
