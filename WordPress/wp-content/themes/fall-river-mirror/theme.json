@@ -1,8 +1,51 @@
 {
+	"$schema": "https://schemas.wp.org/wp/6.9/theme.json",
+	"version": 3,
 	"settings": {
 		"appearanceTools": true,
 		"color": {
-			"palette": []
+			"palette": [
+				{
+					"color": "#000000",
+					"name": "Headline Black",
+					"slug": "headline-black"
+				},
+				{
+					"color": "#1a1a1a",
+					"name": "Body Text",
+					"slug": "body-text"
+				},
+				{
+					"color": "#faf9f6",
+					"name": "Paper",
+					"slug": "paper"
+				},
+				{
+					"color": "#1e3a8a",
+					"name": "Newspaper Blue",
+					"slug": "newspaper-blue"
+				},
+				{
+					"color": "#991b1b",
+					"name": "Newspaper Red",
+					"slug": "newspaper-red"
+				},
+				{
+					"color": "#374151",
+					"name": "Gray",
+					"slug": "gray"
+				},
+				{
+					"color": "#9ca3af",
+					"name": "Light Gray",
+					"slug": "light-gray"
+				},
+				{
+					"color": "#eeeeee",
+					"name": "Very Light Gray",
+					"slug": "very-light-gray"
+				}
+			]
 		},
 		"custom": {
 			"border-radius": {
@@ -14,8 +57,8 @@
 			}
 		},
 		"layout": {
-			"contentSize": "80%",
-			"wideSize": "65vw"
+			"contentSize": "1200px",
+			"wideSize": "95vw"
 		},
 		"shadow": {
 			"defaultPresets": true,
@@ -58,6 +101,180 @@
 					"fontFamily": "-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen-Sans, Ubuntu, Cantarell, 'Helvetica Neue', sans-serif",
 					"name": "System Font",
 					"slug": "system-font"
+				},
+				{
+					"fontFace": [
+						{
+							"fontFamily": "\"IM Fell English\"",
+							"fontStyle": "normal",
+							"fontWeight": "400",
+							"src": [
+								"file:./assets/fonts/im-fell-english/im-fell-english-400-normal.woff2"
+							]
+						},
+						{
+							"fontFamily": "\"IM Fell English\"",
+							"fontStyle": "italic",
+							"fontWeight": "400",
+							"src": [
+								"file:./assets/fonts/im-fell-english/im-fell-english-400-italic.woff2"
+							]
+						}
+					],
+					"fontFamily": "\"IM Fell English\", serif",
+					"name": "IM Fell English",
+					"slug": "im-fell-english"
+				},
+				{
+					"fontFace": [
+						{
+							"fontFamily": "Roboto",
+							"fontStyle": "normal",
+							"fontWeight": "100",
+							"src": [
+								"file:./assets/fonts/roboto/roboto-100-normal.woff2"
+							]
+						},
+						{
+							"fontFamily": "Roboto",
+							"fontStyle": "normal",
+							"fontWeight": "200",
+							"src": [
+								"file:./assets/fonts/roboto/roboto-200-normal.woff2"
+							]
+						},
+						{
+							"fontFamily": "Roboto",
+							"fontStyle": "normal",
+							"fontWeight": "300",
+							"src": [
+								"file:./assets/fonts/roboto/roboto-300-normal.woff2"
+							]
+						},
+						{
+							"fontFamily": "Roboto",
+							"fontStyle": "normal",
+							"fontWeight": "400",
+							"src": [
+								"file:./assets/fonts/roboto/roboto-400-normal.woff2"
+							]
+						},
+						{
+							"fontFamily": "Roboto",
+							"fontStyle": "normal",
+							"fontWeight": "500",
+							"src": [
+								"file:./assets/fonts/roboto/roboto-500-normal.woff2"
+							]
+						},
+						{
+							"fontFamily": "Roboto",
+							"fontStyle": "normal",
+							"fontWeight": "600",
+							"src": [
+								"file:./assets/fonts/roboto/roboto-600-normal.woff2"
+							]
+						},
+						{
+							"fontFamily": "Roboto",
+							"fontStyle": "normal",
+							"fontWeight": "700",
+							"src": [
+								"file:./assets/fonts/roboto/roboto-700-normal.woff2"
+							]
+						},
+						{
+							"fontFamily": "Roboto",
+							"fontStyle": "normal",
+							"fontWeight": "800",
+							"src": [
+								"file:./assets/fonts/roboto/roboto-800-normal.woff2"
+							]
+						},
+						{
+							"fontFamily": "Roboto",
+							"fontStyle": "normal",
+							"fontWeight": "900",
+							"src": [
+								"file:./assets/fonts/roboto/roboto-900-normal.woff2"
+							]
+						},
+						{
+							"fontFamily": "Roboto",
+							"fontStyle": "italic",
+							"fontWeight": "100",
+							"src": [
+								"file:./assets/fonts/roboto/roboto-100-italic.woff2"
+							]
+						},
+						{
+							"fontFamily": "Roboto",
+							"fontStyle": "italic",
+							"fontWeight": "200",
+							"src": [
+								"file:./assets/fonts/roboto/roboto-200-italic.woff2"
+							]
+						},
+						{
+							"fontFamily": "Roboto",
+							"fontStyle": "italic",
+							"fontWeight": "300",
+							"src": [
+								"file:./assets/fonts/roboto/roboto-300-italic.woff2"
+							]
+						},
+						{
+							"fontFamily": "Roboto",
+							"fontStyle": "italic",
+							"fontWeight": "400",
+							"src": [
+								"file:./assets/fonts/roboto/roboto-400-italic.woff2"
+							]
+						},
+						{
+							"fontFamily": "Roboto",
+							"fontStyle": "italic",
+							"fontWeight": "500",
+							"src": [
+								"file:./assets/fonts/roboto/roboto-500-italic.woff2"
+							]
+						},
+						{
+							"fontFamily": "Roboto",
+							"fontStyle": "italic",
+							"fontWeight": "600",
+							"src": [
+								"file:./assets/fonts/roboto/roboto-600-italic.woff2"
+							]
+						},
+						{
+							"fontFamily": "Roboto",
+							"fontStyle": "italic",
+							"fontWeight": "700",
+							"src": [
+								"file:./assets/fonts/roboto/roboto-700-italic.woff2"
+							]
+						},
+						{
+							"fontFamily": "Roboto",
+							"fontStyle": "italic",
+							"fontWeight": "800",
+							"src": [
+								"file:./assets/fonts/roboto/roboto-800-italic.woff2"
+							]
+						},
+						{
+							"fontFamily": "Roboto",
+							"fontStyle": "italic",
+							"fontWeight": "900",
+							"src": [
+								"file:./assets/fonts/roboto/roboto-900-italic.woff2"
+							]
+						}
+					],
+					"fontFamily": "Roboto, sans-serif",
+					"name": "Roboto",
+					"slug": "roboto"
 				}
 			]
 		},
@@ -100,6 +317,14 @@
 				},
 				"shadow": "6px 6px 9px rgba(0, 0, 0, 0.2)"
 			},
+			"core/paragraph": {
+				"spacing": {
+					"padding": {
+						"left": "0",
+						"right": "0"
+					}
+				}
+			},
 			"core/post-featured-image": {
 				"border": {
 					"radius": "0px"
@@ -123,7 +348,7 @@
 			"blockGap": "0px"
 		},
 		"typography": {
-			"fontFamily": "var(--wp--preset--font-family--roboto-mono)"
+			"fontFamily": "var(--wp--preset--font-family--roboto)"
 		}
 	},
 	"templateParts": [
@@ -135,7 +360,5 @@
 			"area": "footer",
 			"name": "footer"
 		}
-	],
-	"version": 3,
-	"$schema": "https://schemas.wp.org/wp/6.7/theme.json"
+	]
 }

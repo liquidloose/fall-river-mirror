@@ -32,10 +32,13 @@
         // Use local state for meta - we'll save it manually
         const [meta, setMeta] = useState({});
         const [isInitialized, setIsInitialized] = useState(false);
+        const [isLoading, setIsLoading] = useState(true);
 
         // Initialize meta with saved values from REST API when component loads
         useEffect(function () {
             if (!postId || isInitialized) return;
+            
+            setIsLoading(true);
 
             // Fetch the post with meta fields from REST API to initialize
             // console.log('Initializing meta for post:', postId);
@@ -43,8 +46,17 @@
                 path: '/wp/v2/journalist/' + postId + '?context=edit'
             }).then(function (post) {
                 // console.log('Fetched post meta:', post.meta);
-                // Extract meta fields
-                const metaFields = {};
+                // Extract meta fields and ensure all expected fields are initialized
+                const metaFields = {
+                    _journalist_first_name: '',
+                    _journalist_last_name: '',
+                    _journalist_email: '',
+                    _journalist_phone: '',
+                    _journalist_title: '',
+                    _journalist_twitter: '',
+                    _journalist_linkedin: '',
+                    _journalist_bio_short: ''
+                };
                 if (post.meta) {
                     Object.keys(post.meta).forEach(function (key) {
                         if (key.startsWith('_journalist_')) {
@@ -55,11 +67,13 @@
                 // console.log('Setting initial meta:', metaFields);
                 setMeta(metaFields);
                 setIsInitialized(true);
+                setIsLoading(false);
             }).catch(function (error) {
                 console.error('Error fetching journalist meta:', error);
                 setIsInitialized(true);
+                setIsLoading(false);
             });
-        }, [postId]);
+        }, [postId, isInitialized]);
 
         // Hook into save to save meta via REST API
         const isSaving = useSelect(function (select) {
@@ -110,7 +124,16 @@
                         path: '/wp/v2/journalist/' + postId + '?context=edit'
                     }).then(function (post) {
                         // console.log('Refreshed post meta:', JSON.stringify(post.meta, null, 2));
-                        const metaFields = {};
+                        const metaFields = {
+                            _journalist_first_name: '',
+                            _journalist_last_name: '',
+                            _journalist_email: '',
+                            _journalist_phone: '',
+                            _journalist_title: '',
+                            _journalist_twitter: '',
+                            _journalist_linkedin: '',
+                            _journalist_bio_short: ''
+                        };
                         if (post.meta) {
                             Object.keys(post.meta).forEach(function (key) {
                                 if (key.startsWith('_journalist_')) {
@@ -127,6 +150,19 @@
             }
         }, [isSaving, wasSaving, postId, pendingMeta]);
 
+        // Show loading state while fetching initial data
+        if (isLoading) {
+            return wp.element.createElement(
+                PluginDocumentSettingPanel,
+                {
+                    name: 'journalist-information',
+                    title: __('Journalist Information', 'fall-river-mirror'),
+                    className: 'journalist-meta-panel'
+                },
+                wp.element.createElement('p', {}, __('Loading...', 'fall-river-mirror'))
+            );
+        }
+
         return wp.element.createElement(
             PluginDocumentSettingPanel,
             {
@@ -135,6 +171,16 @@
                 className: 'journalist-meta-panel'
             },
             // Name field removed - using post title instead
+            wp.element.createElement(TextControl, {
+                label: __('First Name', 'fall-river-mirror'),
+                value: (meta && meta._journalist_first_name) || '',
+                onChange: (value) => setMeta({ ...(meta || {}), _journalist_first_name: value || '' })
+            }),
+            wp.element.createElement(TextControl, {
+                label: __('Last Name', 'fall-river-mirror'),
+                value: (meta && meta._journalist_last_name) || '',
+                onChange: (value) => setMeta({ ...(meta || {}), _journalist_last_name: value || '' })
+            }),
             wp.element.createElement(TextControl, {
                 label: __('Email', 'fall-river-mirror'),
                 type: 'email',
@@ -166,6 +212,7 @@
                 placeholder: 'https://linkedin.com/in/...'
             }),
             wp.element.createElement(TextareaControl, {
+                __nextHasNoMarginBottom: true,
                 label: __('Short Bio', 'fall-river-mirror'),
                 value: (meta && meta._journalist_bio_short) || '',
                 onChange: (value) => setMeta({ ...(meta || {}), _journalist_bio_short: value || '' }),

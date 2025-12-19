@@ -31,6 +31,46 @@ add_action( 'rest_api_init', function () {
         'sanitize_callback' => 'sanitize_text_field',
         'description' => 'The status of the article (e.g., "publish", "draft"). Defaults to "draft".',
       ),
+      'journalists' => array(
+        'required' => false,
+        'sanitize_callback' => function( $value ) {
+          if ( is_array( $value ) ) {
+            return array_map( 'absint', $value );
+          }
+          return array();
+        },
+        'description' => 'Array of journalist post IDs.',
+      ),
+      'article_content' => array(
+        'required' => false,
+        'sanitize_callback' => 'wp_kses_post',
+        'description' => 'The article content.',
+      ),
+      'committee' => array(
+        'required' => false,
+        'sanitize_callback' => 'sanitize_text_field',
+        'description' => 'The committee name.',
+      ),
+      'youtube_id' => array(
+        'required' => false,
+        'sanitize_callback' => 'sanitize_text_field',
+        'description' => 'The YouTube video ID.',
+      ),
+      'bullet_points' => array(
+        'required' => false,
+        'sanitize_callback' => 'sanitize_textarea_field',
+        'description' => 'Bullet points or summary of the article.',
+      ),
+      'meeting_date' => array(
+        'required' => false,
+        'sanitize_callback' => 'sanitize_text_field',
+        'description' => 'The meeting date.',
+      ),
+      'view_count' => array(
+        'required' => false,
+        'sanitize_callback' => 'absint',
+        'description' => 'The view count for the associated video.',
+      ),
     ),
   ) );
 } );
@@ -48,7 +88,7 @@ function create_article_callback( WP_REST_Request $request ) {
   $title = $request->get_param( 'title' );
   $content = $request->get_param( 'content' );
   $status_param = $request->get_param( 'status' );
-  $status = !empty($status_param) ? $status_param : 'draft'; // Default to 'publish'
+  $status = !empty($status_param) ? $status_param : 'draft'; // Default to 'draft'
 
   // Basic validation to ensure title and content are not empty.
   if ( empty( $title ) ) {
@@ -75,6 +115,44 @@ function create_article_callback( WP_REST_Request $request ) {
     return $post_id; // Return the WP_Error object.
   }
 
+  // Save meta fields if provided
+  $journalists = $request->get_param( 'journalists' );
+  if ( ! empty( $journalists ) && is_array( $journalists ) ) {
+    $sanitized_journalists = array_map( 'absint', $journalists );
+    $sanitized_journalists = array_unique( $sanitized_journalists );
+    update_post_meta( $post_id, '_article_journalists', $sanitized_journalists );
+  }
+
+  $article_content = $request->get_param( 'article_content' );
+  if ( ! empty( $article_content ) ) {
+    update_post_meta( $post_id, '_article_content', wp_kses_post( $article_content ) );
+  }
+
+  $committee = $request->get_param( 'committee' );
+  if ( ! empty( $committee ) ) {
+    update_post_meta( $post_id, '_article_committee', sanitize_text_field( $committee ) );
+  }
+
+  $youtube_id = $request->get_param( 'youtube_id' );
+  if ( ! empty( $youtube_id ) ) {
+    update_post_meta( $post_id, '_article_youtube_id', sanitize_text_field( $youtube_id ) );
+  }
+
+  $bullet_points = $request->get_param( 'bullet_points' );
+  if ( ! empty( $bullet_points ) ) {
+    update_post_meta( $post_id, '_article_bullet_points', sanitize_textarea_field( $bullet_points ) );
+  }
+
+  $meeting_date = $request->get_param( 'meeting_date' );
+  if ( ! empty( $meeting_date ) ) {
+    update_post_meta( $post_id, '_article_meeting_date', sanitize_text_field( $meeting_date ) );
+  }
+
+  $view_count = $request->get_param( 'view_count' );
+  if ( ! empty( $view_count ) || $view_count === 0 ) {
+    update_post_meta( $post_id, '_article_view_count', absint( $view_count ) );
+  }
+
   // Prepare the response.
   $response_data = array(
       'id' => $post_id,
@@ -82,7 +160,16 @@ function create_article_callback( WP_REST_Request $request ) {
       'content' => get_post_field('post_content', $post_id),
       'status' => get_post_status( $post_id ),
       'link' => get_permalink( $post_id ),
-      'message' => 'Article created successfully.'
+      'message' => 'Article created successfully.',
+      'meta' => array(
+          'journalists' => get_post_meta( $post_id, '_article_journalists', true ),
+          'article_content' => get_post_meta( $post_id, '_article_content', true ),
+          'committee' => get_post_meta( $post_id, '_article_committee', true ),
+          'youtube_id' => get_post_meta( $post_id, '_article_youtube_id', true ),
+          'bullet_points' => get_post_meta( $post_id, '_article_bullet_points', true ),
+          'meeting_date' => get_post_meta( $post_id, '_article_meeting_date', true ),
+          'view_count' => get_post_meta( $post_id, '_article_view_count', true ),
+      )
   );
 
   // Return a success response with the new post data.

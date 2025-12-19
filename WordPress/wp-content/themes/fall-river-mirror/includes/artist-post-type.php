@@ -102,6 +102,24 @@ if (!function_exists('get_artist_custom_fields')) {
 function get_artist_custom_fields() {
     return array(
         // Note: 'name' field removed - using post title instead
+        'first_name' => array(
+            'label' => 'First Name',
+            'type' => 'text',
+            'sanitize' => 'sanitize_text_field',
+            'description' => '',
+        ),
+        'last_name' => array(
+            'label' => 'Last Name',
+            'type' => 'text',
+            'sanitize' => 'sanitize_text_field',
+            'description' => '',
+        ),
+        'title' => array(
+            'label' => 'Title/Position',
+            'type' => 'text',
+            'sanitize' => 'sanitize_text_field',
+            'description' => 'e.g., Photographer, Illustrator, etc.',
+        ),
         'email' => array(
             'label' => 'Email',
             'type' => 'email',
