@@ -107,6 +107,35 @@ class Database:
                 f"Failed to add column '{column_name}' to '{table_name}': {str(e)}"
             )
 
+    def _backfill_article_view_counts(self) -> None:
+        """
+        Backfill view_count for existing articles by matching youtube_id with transcripts.
+
+        This updates only articles that don't already have a view_count (where view_count IS NULL)
+        with the view_count from the corresponding transcript. This makes the function idempotent
+        and safe to run multiple times.
+        """
+        try:
+            self.cursor.execute(
+                """UPDATE articles 
+                SET view_count = (
+                    SELECT view_count 
+                    FROM transcripts 
+                    WHERE transcripts.youtube_id = articles.youtube_id
+                    LIMIT 1
+                ) 
+                WHERE articles.view_count IS NULL 
+                AND articles.youtube_id IN (SELECT youtube_id FROM transcripts)"""
+            )
+            updated_count = self.cursor.rowcount
+            self.conn.commit()
+            if updated_count > 0:
+                self.logger.info(
+                    f"Backfilled view_count for {updated_count} article(s)"
+                )
+        except Exception as e:
+            self.logger.error(f"Failed to backfill article view_counts: {str(e)}")
+
     def _create_all_tables(self) -> None:
         """
         Create all required tables for the application.
@@ -175,6 +204,10 @@ class Database:
         )
         # Migration: add bullet_points column if it doesn't exist
         self._add_column_if_not_exists("articles", "bullet_points", "TEXT")
+        # Migration: add view_count column if it doesn't exist
+        self._add_column_if_not_exists("articles", "view_count", "INTEGER")
+        # Backfill view_count for existing articles
+        self._backfill_article_view_counts()
 
         # Tones table - stores available tones for articles
         self._create_table(
@@ -655,8 +688,23 @@ class Database:
         self._log_operation("add_article", operation_details)
 
         try:
+            # Fetch view_count from transcript by youtube_id
+            view_count = None
+            try:
+                self.cursor.execute(
+                    "SELECT view_count FROM transcripts WHERE youtube_id = ? LIMIT 1",
+                    (youtube_id,),
+                )
+                result = self.cursor.fetchone()
+                if result:
+                    view_count = result[0]
+            except Exception as e:
+                self.logger.warning(
+                    f"Could not fetch view_count for youtube_id {youtube_id}: {str(e)}"
+                )
+
             self.cursor.execute(
-                "INSERT INTO articles (committee, youtube_id, journalist_id, title, content, transcript_id, date, tone, article_type) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)",
+                "INSERT INTO articles (committee, youtube_id, journalist_id, title, content, transcript_id, date, tone, article_type, view_count) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
                 (
                     committee,
                     youtube_id,
@@ -667,6 +715,7 @@ class Database:
                     date,
                     tone,
                     article_type,
+                    view_count,
                 ),
             )
             self.conn.commit()
@@ -692,7 +741,7 @@ class Database:
 
         try:
             self.cursor.execute(
-                "SELECT id, committee, youtube_id, journalist_id, title, content, transcript_id, date, tone, article_type, bullet_points FROM articles WHERE id = ?",
+                "SELECT id, committee, youtube_id, journalist_id, title, content, transcript_id, date, tone, article_type, bullet_points, view_count FROM articles WHERE id = ?",
                 (article_id,),
             )
             result = self.cursor.fetchone()
@@ -710,6 +759,7 @@ class Database:
                     "tone": result[8],
                     "article_type": result[9],
                     "bullet_points": result[10],
+                    "view_count": result[11],
                 }
             return None
         except Exception as e:
@@ -1042,13 +1092,13 @@ class Database:
 
         Returns:
             List of dictionaries containing article data.
-            Each dictionary contains: (id, committee, youtube_id, journalist_id, title, content, transcript_id, date, tone, article_type, bullet_points)
+            Each dictionary contains: (id, committee, youtube_id, journalist_id, title, content, transcript_id, date, tone, article_type, bullet_points, view_count)
         """
         self._log_operation("get_all_articles", {})
         try:
             self.cursor.execute(
                 "SELECT id, committee, youtube_id, journalist_id, title, content, "
-                "transcript_id, date, tone, article_type, bullet_points FROM articles"
+                "transcript_id, date, tone, article_type, bullet_points, view_count FROM articles"
             )
             results = self.cursor.fetchall()
             return [
@@ -1064,6 +1114,7 @@ class Database:
                     "tone": row[8],
                     "article_type": row[9],
                     "bullet_points": row[10],
+                    "view_count": row[11],
                 }
                 for row in results
             ]

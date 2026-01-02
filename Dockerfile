@@ -37,8 +37,14 @@ RUN cp /usr/local/etc/php/php.ini-development /usr/local/etc/php/php.ini
 # Keeps the host user and www-data as the same uid so Docker doesn't see
 # a different number and complain.
 # This ensures file permissions are consistent between the host and container.
-RUN groupmod -g 1000 www-data \
-    && usermod -u 1000 www-data \
+# Change group first, then user, then verify
+RUN if [ "$(id -g www-data)" != "1000" ]; then \
+    groupmod -g 1000 www-data; \
+    fi \
+    && if [ "$(id -u www-data)" != "1000" ]; then \
+    usermod -u 1000 www-data; \
+    fi \
     && usermod -g 1000 www-data \
+    && id www-data \
     && chown -R www-data:www-data /var/www \
-    && chmod g+s /var/www
+    && chmod -R 755 /var/www

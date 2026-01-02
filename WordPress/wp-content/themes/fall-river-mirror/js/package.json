@@ -1,0 +1,11 @@
+{
+  "name": "fall_river_mirror_gutenberg",
+  "version": "1.0.0",
+  "main": "editor.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "author": "River's Edge Web Development",
+  "license": "ISC",
+  "description": ""
+}
