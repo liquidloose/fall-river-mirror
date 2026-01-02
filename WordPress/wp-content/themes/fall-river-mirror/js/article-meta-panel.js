@@ -71,12 +71,16 @@
          * useState hooks manage component state:
          * - selectedJournalists: Array of journalist post IDs currently selected for this article
          * - allJournalists: Array of all available journalist posts (for the checkbox list)
+         * - selectedArtists: Array of artist post IDs currently selected for this article
+         * - allArtists: Array of all available artist posts (for the checkbox list)
          * - meta: Object containing all article meta field values (_article_content, _article_committee, etc.)
          * - isLoading: Boolean flag to show loading state while fetching data
          * - isInitialized: Boolean flag to prevent duplicate API calls
          */
         const [selectedJournalists, setSelectedJournalists] = useState([]);
         const [allJournalists, setAllJournalists] = useState([]);
+        const [selectedArtists, setSelectedArtists] = useState([]);
+        const [allArtists, setAllArtists] = useState([]);
         const [meta, setMeta] = useState({});
         const [isLoading, setIsLoading] = useState(true);
         const [isInitialized, setIsInitialized] = useState(false);
@@ -103,20 +107,31 @@
 
             setIsLoading(true);
 
-            // STEP 1: Fetch all available journalists
-            // This populates the checkbox list so users can select which journalists
+            // STEP 1: Fetch all available journalists and artists
+            // This populates the checkbox lists so users can see which journalists/artists
             // are associated with this article
-            apiFetch({
-                path: '/wp/v2/journalist?per_page=100&orderby=title&order=asc'
-            }).then(function (journalists) {
-                // Store all journalists in state for rendering checkboxes
-                setAllJournalists(journalists);
-
-                // STEP 2: Fetch current article data
-                // context=edit ensures we get all meta fields (not just public ones)
-                return apiFetch({
+            // Use context=edit to get meta fields (first_name, last_name)
+            Promise.all([
+                apiFetch({
+                    path: '/wp/v2/journalist?per_page=100&orderby=title&order=asc&context=edit'
+                }),
+                apiFetch({
+                    path: '/wp/v2/artist?per_page=100&orderby=title&order=asc&context=edit'
+                }),
+                apiFetch({
                     path: '/wp/v2/article/' + postId + '?context=edit'
-                });
+                })
+            ]).then(function (results) {
+                const journalists = results[0];
+                const artists = results[1];
+                const article = results[2];
+                
+                // Store all journalists and artists in state for rendering checkboxes
+                setAllJournalists(journalists);
+                setAllArtists(artists);
+
+                // Process article data
+                return article;
             }).then(function (article) {
                 /**
                  * EXTRACT JOURNALIST SELECTIONS
@@ -124,10 +139,63 @@
                  * The _article_journalists meta field stores an array of journalist post IDs.
                  * This extracts that array and ensures it's always an array (never null/undefined).
                  */
-                const journalists = article.meta && article.meta._article_journalists
-                    ? article.meta._article_journalists
-                    : [];
-                setSelectedJournalists(Array.isArray(journalists) ? journalists : []);
+                let journalists = [];
+                if (article.meta && article.meta._article_journalists) {
+                    journalists = article.meta._article_journalists;
+                }
+                // Ensure it's an array and convert strings to numbers if needed
+                if (!Array.isArray(journalists)) {
+                    if (typeof journalists === 'string' && journalists.length > 0) {
+                        // Try to parse as JSON array
+                        try {
+                            journalists = JSON.parse(journalists);
+                        } catch (e) {
+                            journalists = [];
+                        }
+                    } else {
+                        journalists = [];
+                    }
+                }
+                // Convert all values to integers
+                journalists = journalists.map(function(id) {
+                    return parseInt(id, 10);
+                }).filter(function(id) {
+                    return !isNaN(id) && id > 0;
+                });
+                console.log('Article meta panel - Loaded journalists:', journalists, 'from article.meta:', article.meta);
+                setSelectedJournalists(journalists);
+
+                /**
+                 * EXTRACT ARTIST SELECTIONS
+                 * 
+                 * The _article_artists meta field stores an array of artist post IDs.
+                 * This extracts that array and ensures it's always an array (never null/undefined).
+                 */
+                let artists = [];
+                if (article.meta && article.meta._article_artists) {
+                    artists = article.meta._article_artists;
+                }
+                // Ensure it's an array and convert strings to numbers if needed
+                if (!Array.isArray(artists)) {
+                    if (typeof artists === 'string' && artists.length > 0) {
+                        // Try to parse as JSON array
+                        try {
+                            artists = JSON.parse(artists);
+                        } catch (e) {
+                            artists = [];
+                        }
+                    } else {
+                        artists = [];
+                    }
+                }
+                // Convert all values to integers
+                artists = artists.map(function(id) {
+                    return parseInt(id, 10);
+                }).filter(function(id) {
+                    return !isNaN(id) && id > 0;
+                });
+                console.log('Article meta panel - Loaded artists:', artists, 'from article.meta:', article.meta);
+                setSelectedArtists(artists);
 
                 /**
                  * EXTRACT META FIELDS
@@ -203,6 +271,7 @@
                  * 
                  * POST to /wp/v2/article/{id} with meta object containing:
                  * - _article_journalists: Array of journalist IDs
+                 * - _article_artists: Array of artist IDs
                  * - _article_content: HTML content string
                  * - _article_committee: Committee name string
                  * - _article_youtube_id: YouTube video ID string
@@ -219,6 +288,7 @@
                     data: {
                         meta: {
                             _article_journalists: selectedJournalists,
+                            _article_artists: selectedArtists,
                             _article_content: (meta && meta._article_content) || '',
                             _article_committee: (meta && meta._article_committee) || '',
                             _article_youtube_id: (meta && meta._article_youtube_id) || '',
@@ -238,7 +308,7 @@
             }
             // Track previous save state for transition detection
             setWasSaving(isSaving);
-        }, [isSaving, postId, wasSaving, selectedJournalists, meta, isInitialized]);
+        }, [isSaving, postId, wasSaving, selectedJournalists, selectedArtists, meta, isInitialized]);
 
         /**
          * REFRESH AFTER SAVE
@@ -266,6 +336,31 @@
                             ? article.meta._article_journalists
                             : [];
                         setSelectedJournalists(Array.isArray(journalists) ? journalists : []);
+
+                        // Refresh artist selections
+                        let artists = [];
+                        if (article.meta && article.meta._article_artists) {
+                            artists = article.meta._article_artists;
+                        }
+                        // Ensure it's an array and convert strings to numbers if needed
+                        if (!Array.isArray(artists)) {
+                            if (typeof artists === 'string' && artists.length > 0) {
+                                try {
+                                    artists = JSON.parse(artists);
+                                } catch (e) {
+                                    artists = [];
+                                }
+                            } else {
+                                artists = [];
+                            }
+                        }
+                        // Convert all values to integers
+                        artists = artists.map(function(id) {
+                            return parseInt(id, 10);
+                        }).filter(function(id) {
+                            return !isNaN(id) && id > 0;
+                        });
+                        setSelectedArtists(artists);
 
                         // Refresh all meta fields from database
                         const metaFields = {};
@@ -350,12 +445,23 @@
                     // Map over all journalists and create a checkbox for each
                     allJournalists.map(function (journalist) {
                         const isChecked = selectedJournalists.indexOf(journalist.id) !== -1;
+                        // Construct journalist name from first_name and last_name, fallback to title
+                        const firstName = (journalist.meta && journalist.meta._journalist_first_name) || '';
+                        const lastName = (journalist.meta && journalist.meta._journalist_last_name) || '';
+                        let journalistName = '';
+                        if (firstName || lastName) {
+                            journalistName = (firstName + ' ' + lastName).trim();
+                        }
+                        if (!journalistName) {
+                            journalistName = journalist.title?.rendered || journalist.title?.raw || __('Unnamed Journalist', 'fall-river-mirror');
+                        }
                         return wp.element.createElement(CheckboxControl, {
                             key: journalist.id,
-                            label: journalist.title.rendered || journalist.title.raw,
+                            label: journalistName,
                             checked: isChecked,
-                            onChange: function (checked) {
-                                handleJournalistChange(journalist.id, checked);
+                            disabled: true,
+                            onChange: function () {
+                                // Read-only: no-op handler
                             }
                         });
                     })
@@ -365,6 +471,54 @@
             // Show message if no journalists exist
             panelChildren.push(
                 wp.element.createElement('p', { key: 'no-journalists' }, __('No journalists found.', 'fall-river-mirror'))
+            );
+        }
+
+        /**
+         * ARTISTS SECTION
+         * 
+         * Renders checkboxes for displaying artists associated with this article.
+         * Only shows if there are artists available in the system.
+         * 
+         * UI STRUCTURE:
+         * - Section title: "Artist(s)"
+         * - Checkbox for each artist (showing their name/title)
+         * - Checked state reflects selectedArtists array
+         * - All checkboxes are read-only (disabled)
+         */
+        if (allArtists.length > 0) {
+            panelChildren.push(
+                wp.element.createElement('div', { key: 'artists-section', style: { marginBottom: '16px' } },
+                    wp.element.createElement('strong', { style: { display: 'block', marginBottom: '8px' } }, __('Artist(s)', 'fall-river-mirror')),
+                    // Map over all artists and create a checkbox for each
+                    allArtists.map(function (artist) {
+                        const isChecked = selectedArtists.indexOf(artist.id) !== -1;
+                        // Construct artist name from first_name and last_name, fallback to title
+                        const firstName = (artist.meta && artist.meta._artist_first_name) || '';
+                        const lastName = (artist.meta && artist.meta._artist_last_name) || '';
+                        let artistName = '';
+                        if (firstName || lastName) {
+                            artistName = (firstName + ' ' + lastName).trim();
+                        }
+                        if (!artistName) {
+                            artistName = artist.title?.rendered || artist.title?.raw || __('Unnamed Artist', 'fall-river-mirror');
+                        }
+                        return wp.element.createElement(CheckboxControl, {
+                            key: artist.id,
+                            label: artistName,
+                            checked: isChecked,
+                            disabled: true,
+                            onChange: function () {
+                                // Read-only: no-op handler
+                            }
+                        });
+                    })
+                )
+            );
+        } else {
+            // Show message if no artists exist
+            panelChildren.push(
+                wp.element.createElement('p', { key: 'no-artists' }, __('No artists found.', 'fall-river-mirror'))
             );
         }
 

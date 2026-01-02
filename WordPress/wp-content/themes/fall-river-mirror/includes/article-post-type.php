@@ -158,6 +158,13 @@ function register_article_meta_fields() {
             }
             // Retrieve the value from database
             $journalists = get_post_meta($post_id, '_article_journalists', true);
+            // Handle serialized arrays (WordPress may serialize arrays in post meta)
+            if (is_string($journalists) && !empty($journalists)) {
+                $unserialized = maybe_unserialize($journalists);
+                if (is_array($unserialized)) {
+                    $journalists = $unserialized;
+                }
+            }
             // Ensure it's always an array
             return is_array($journalists) ? $journalists : array();
         },
@@ -181,6 +188,73 @@ function register_article_meta_fields() {
             // Return true on success, WP_Error on failure
             if ($result === false) {
                 return new WP_Error('update_failed', 'Failed to update journalists field', array('status' => 500));
+            }
+            return true;
+        }
+    ));
+
+    /**
+     * Register Article Artists Meta Field
+     * 
+     * This field stores an array of Artist post IDs associated with an Article.
+     * Special handling required for array type.
+     */
+    register_post_meta('article', '_article_artists', array(
+        'show_in_rest' => array(
+            'schema' => array(
+                'type'  => 'array',        // The field is an array
+                'items' => array(
+                    'type' => 'number',    // Each item is a number (post ID)
+                ),
+                'default' => array(),
+            ),
+        ),
+        'single' => true,                   // Store as single meta value
+        'type' => 'array',                  // PHP type: array
+        'auth_callback' => function() {     // Permission check
+            return current_user_can('edit_posts'); 
+        },
+        'get_callback' => function($object, $field_name, $request, $object_type) {
+            // $object can be WP_Post object or array with 'id' key depending on context
+            if (is_array($object) && isset($object['id'])) {
+                $post_id = $object['id'];
+            } elseif (is_object($object) && isset($object->ID)) {
+                $post_id = $object->ID;
+            } else {
+                return array();
+            }
+            // Retrieve the value from database
+            $artists = get_post_meta($post_id, '_article_artists', true);
+            // Handle serialized arrays (WordPress may serialize arrays in post meta)
+            if (is_string($artists) && !empty($artists)) {
+                $unserialized = maybe_unserialize($artists);
+                if (is_array($unserialized)) {
+                    $artists = $unserialized;
+                }
+            }
+            // Ensure it's always an array
+            return is_array($artists) ? $artists : array();
+        },
+        'update_callback' => function($value, $object, $field_name, $request, $object_type) {
+            // $object can be WP_Post object or array with 'id' key depending on context
+            if (is_array($object) && isset($object['id'])) {
+                $post_id = $object['id'];
+            } elseif (is_object($object) && isset($object->ID)) {
+                $post_id = $object->ID;
+            } else {
+                return new WP_Error('invalid_object', 'Invalid post object', array('status' => 400));
+            }
+            // Ensure value is an array
+            $artists = is_array($value) ? $value : array();
+            // Sanitize each ID to ensure they're integers
+            $sanitized_artists = array_map('absint', $artists);
+            // Remove duplicates
+            $sanitized_artists = array_unique($sanitized_artists);
+            // Save to database
+            $result = update_post_meta($post_id, '_article_artists', $sanitized_artists);
+            // Return true on success, WP_Error on failure
+            if ($result === false) {
+                return new WP_Error('update_failed', 'Failed to update artists field', array('status' => 500));
             }
             return true;
         }
@@ -312,4 +386,110 @@ function register_article_meta_fields() {
 }
 }
 add_action('init', 'register_article_meta_fields');
+
+// ============================================================================
+// ADMIN COLUMNS
+// ============================================================================
+
+/**
+ * Add Meeting Date column to Articles admin list
+ * 
+ * @hook manage_article_posts_columns
+ * @param array $columns Existing columns
+ * @return array Modified columns array
+ */
+if (!function_exists('add_article_meeting_date_column')) {
+function add_article_meeting_date_column($columns) {
+    // Insert Meeting Date column after Title
+    $new_columns = array();
+    foreach ($columns as $key => $value) {
+        $new_columns[$key] = $value;
+        if ($key === 'title') {
+            $new_columns['meeting_date'] = 'Meeting Date';
+        }
+    }
+    // If title column wasn't found, just append it
+    if (!isset($new_columns['meeting_date'])) {
+        $new_columns['meeting_date'] = 'Meeting Date';
+    }
+    return $new_columns;
+}
+}
+add_filter('manage_article_posts_columns', 'add_article_meeting_date_column');
+
+/**
+ * Display Meeting Date column content
+ * 
+ * @hook manage_article_posts_custom_column
+ * @param string $column Column name
+ * @param int $post_id Post ID
+ * @return void
+ */
+if (!function_exists('display_article_meeting_date_column')) {
+function display_article_meeting_date_column($column, $post_id) {
+    if ($column === 'meeting_date') {
+        $meeting_date = get_post_meta($post_id, '_article_meeting_date', true);
+        if (!empty($meeting_date)) {
+            // Format the date nicely (assuming it's stored as YYYY-MM-DD)
+            $date_obj = DateTime::createFromFormat('Y-m-d', $meeting_date);
+            if ($date_obj) {
+                echo esc_html($date_obj->format('M j, Y')); // e.g., "Nov 26, 2025"
+            } else {
+                // If not in expected format, display as-is
+                echo esc_html($meeting_date);
+            }
+        } else {
+            echo '<span style="color: #999;">—</span>';
+        }
+    }
+}
+}
+add_action('manage_article_posts_custom_column', 'display_article_meeting_date_column', 10, 2);
+
+/**
+ * Make Meeting Date column sortable
+ * 
+ * @hook manage_edit-article_sortable_columns
+ * @param array $columns Existing sortable columns
+ * @return array Modified sortable columns array
+ */
+if (!function_exists('make_article_meeting_date_sortable')) {
+function make_article_meeting_date_sortable($columns) {
+    $columns['meeting_date'] = 'meeting_date';
+    return $columns;
+}
+}
+add_filter('manage_edit-article_sortable_columns', 'make_article_meeting_date_sortable');
+
+/**
+ * Handle sorting by Meeting Date
+ * 
+ * @hook pre_get_posts
+ * @param WP_Query $query The WP_Query object
+ * @return void
+ */
+if (!function_exists('sort_articles_by_meeting_date')) {
+function sort_articles_by_meeting_date($query) {
+    // Only run in admin and for article post type
+    if (!is_admin() || !$query->is_main_query()) {
+        return;
+    }
+    
+    // Check if we're on the article post type list page
+    $screen = get_current_screen();
+    if (!$screen || $screen->post_type !== 'article') {
+        return;
+    }
+    
+    // Check if sorting by meeting_date
+    $orderby = $query->get('orderby');
+    if ($orderby === 'meeting_date') {
+        $query->set('meta_key', '_article_meeting_date');
+        $query->set('orderby', 'meta_value'); // Sort as string
+        // For date sorting, you might want to use 'meta_value_num' if dates are numeric
+        // But since dates are stored as YYYY-MM-DD strings, 'meta_value' works fine
+    }
+}
+}
+add_action('pre_get_posts', 'sort_articles_by_meeting_date');
 

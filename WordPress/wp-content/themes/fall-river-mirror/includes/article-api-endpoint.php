@@ -21,11 +21,6 @@ add_action( 'rest_api_init', function () {
         'sanitize_callback' => 'sanitize_text_field',
         'description' => 'The title of the article.',
       ),
-      'content' => array(
-        'required' => true,
-        'sanitize_callback' => 'wp_kses_post',
-        'description' => 'The content of the article.',
-      ),
       'status' => array(
         'required' => false,
         'sanitize_callback' => 'sanitize_text_field',
@@ -41,10 +36,15 @@ add_action( 'rest_api_init', function () {
         },
         'description' => 'Array of journalist post IDs.',
       ),
-      'article_content' => array(
+      'journalist_name' => array(
         'required' => false,
+        'sanitize_callback' => 'sanitize_text_field',
+        'description' => 'Journalist name (e.g., "Aurelius Stone") to match to existing journalist by first_name + last_name.',
+      ),
+      'article_content' => array(
+        'required' => true,
         'sanitize_callback' => 'wp_kses_post',
-        'description' => 'The article content.',
+        'description' => 'The article content (maps to _article_content custom field).',
       ),
       'committee' => array(
         'required' => false,
@@ -91,22 +91,23 @@ add_action( 'rest_api_init', function () {
 function create_article_callback( WP_REST_Request $request ) {
   // Retrieve parameters from the request body.
   $title = $request->get_param( 'title' );
-  $content = $request->get_param( 'content' );
+  $article_content = $request->get_param( 'article_content' );
   $status_param = $request->get_param( 'status' );
   $status = !empty($status_param) ? $status_param : 'draft'; // Default to 'draft'
 
-  // Basic validation to ensure title and content are not empty.
+  // Basic validation to ensure title and article_content are not empty.
   if ( empty( $title ) ) {
     return new WP_Error( 'no_title', 'A title is required to create an article.', array( 'status' => 400 ) );
   }
-  if ( empty( $content ) ) {
-    return new WP_Error( 'no_content', 'Content is required to create an article.', array( 'status' => 400 ) );
+  if ( empty( $article_content ) ) {
+    return new WP_Error( 'no_article_content', 'Article content is required to create an article.', array( 'status' => 400 ) );
   }
 
   // Prepare the post data for insertion.
+  // Note: article_content maps to _article_content custom field, not post_content
   $post_data = array(
     'post_title'    => $title,
-    'post_content'  => $content,
+    'post_content'  => '', // Leave post_content empty, article_content goes to custom field
     'post_type'     => 'article',
     'post_status'   => $status,
     'post_author'   => get_current_user_id(),
@@ -120,15 +121,76 @@ function create_article_callback( WP_REST_Request $request ) {
     return $post_id; // Return the WP_Error object.
   }
 
-  // Save meta fields if provided
+  // Handle journalist associations
+  $journalist_ids = array();
+  
+  // Support journalist IDs (array)
   $journalists = $request->get_param( 'journalists' );
   if ( ! empty( $journalists ) && is_array( $journalists ) ) {
-    $sanitized_journalists = array_map( 'absint', $journalists );
-    $sanitized_journalists = array_unique( $sanitized_journalists );
-    update_post_meta( $post_id, '_article_journalists', $sanitized_journalists );
+    $journalist_ids = array_map( 'absint', $journalists );
+  }
+  
+  // Support journalist name (string) - match to existing journalist
+  $journalist_name = $request->get_param( 'journalist_name' );
+  if ( ! empty( $journalist_name ) ) {
+    $name = trim( sanitize_text_field( $journalist_name ) );
+    $name_parts = preg_split( '/\s+/', $name );
+    
+    if ( count( $name_parts ) >= 2 ) {
+      $first_name = $name_parts[0];
+      $last_name = $name_parts[count( $name_parts ) - 1];
+      
+      // Query for journalist matching first_name and last_name
+      $journalist_query = new WP_Query( array(
+        'post_type' => 'journalist',
+        'posts_per_page' => 1,
+        'meta_query' => array(
+          'relation' => 'AND',
+          array(
+            'key' => '_journalist_first_name',
+            'value' => $first_name,
+            'compare' => '='
+          ),
+          array(
+            'key' => '_journalist_last_name',
+            'value' => $last_name,
+            'compare' => '='
+          )
+        )
+      ) );
+      
+      if ( $journalist_query->have_posts() ) {
+        $found_journalist_id = $journalist_query->posts[0]->ID;
+        $journalist_ids[] = $found_journalist_id;
+        error_log( 'Found journalist: ' . $name . ' (ID: ' . $found_journalist_id . ')' );
+      } else {
+        error_log( 'Journalist not found: ' . $name . ' (first: ' . $first_name . ', last: ' . $last_name . ')' );
+      }
+    }
+  }
+  
+  // Save unique journalist IDs
+  if ( ! empty( $journalist_ids ) ) {
+    $journalist_ids = array_unique( $journalist_ids );
+    $journalist_ids = array_values( $journalist_ids ); // Re-index array to ensure proper JSON encoding
+    // Ensure all values are integers
+    $journalist_ids = array_map( 'absint', $journalist_ids );
+    $journalist_ids = array_filter( $journalist_ids ); // Remove any zeros
+    $journalist_ids = array_values( $journalist_ids ); // Re-index again
+    
+    if ( ! empty( $journalist_ids ) ) {
+      $result = update_post_meta( $post_id, '_article_journalists', $journalist_ids );
+      error_log( 'Saved journalists to article ' . $post_id . ': ' . print_r( $journalist_ids, true ) . ' (result: ' . var_export( $result, true ) . ')' );
+      
+      // Verify it was saved correctly
+      $saved = get_post_meta( $post_id, '_article_journalists', true );
+      error_log( 'Verified saved journalists for article ' . $post_id . ': ' . print_r( $saved, true ) );
+    }
+  } else {
+    error_log( 'No journalist IDs to save for article ' . $post_id );
   }
 
-  $article_content = $request->get_param( 'article_content' );
+  // Save article_content to _article_content custom field
   if ( ! empty( $article_content ) ) {
     update_post_meta( $post_id, '_article_content', wp_kses_post( $article_content ) );
   }
@@ -305,13 +367,13 @@ function create_article_callback( WP_REST_Request $request ) {
       'link' => get_permalink( $post_id ),
       'message' => 'Article created successfully.',
       'meta' => array(
-          'journalists' => get_post_meta( $post_id, '_article_journalists', true ),
-          'article_content' => get_post_meta( $post_id, '_article_content', true ),
-          'committee' => get_post_meta( $post_id, '_article_committee', true ),
-          'youtube_id' => get_post_meta( $post_id, '_article_youtube_id', true ),
-          'bullet_points' => get_post_meta( $post_id, '_article_bullet_points', true ),
-          'meeting_date' => get_post_meta( $post_id, '_article_meeting_date', true ),
-          'view_count' => get_post_meta( $post_id, '_article_view_count', true ),
+          '_article_journalists' => get_post_meta( $post_id, '_article_journalists', true ),
+          '_article_content' => get_post_meta( $post_id, '_article_content', true ),
+          '_article_committee' => get_post_meta( $post_id, '_article_committee', true ),
+          '_article_youtube_id' => get_post_meta( $post_id, '_article_youtube_id', true ),
+          '_article_bullet_points' => get_post_meta( $post_id, '_article_bullet_points', true ),
+          '_article_meeting_date' => get_post_meta( $post_id, '_article_meeting_date', true ),
+          '_article_view_count' => get_post_meta( $post_id, '_article_view_count', true ),
       )
   );
 

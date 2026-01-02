@@ -2,7 +2,7 @@
 /**
  * Title: header
  * Slug: fall-river-mirror/header
- * Inserter: no
+ * Inserter: yes
  */
 ?>
 <!-- wp:group {"tagName":"header","style":{"spacing":{"padding":{"top":"var:preset|spacing|50"}}},"layout":{"type":"constrained"}} -->
