@@ -353,7 +353,7 @@ async def bulk_fetch_transcripts(
        - transcript_available = 1 (YouTube has captions available)
        - youtube_id NOT already in transcripts table (avoid duplicates)
     3. For each video in the queue:
-       - Fetch transcript using TranscriptManager (tries YouTube Transcript API first, falls back to Whisper)
+       - Fetch transcript using TranscriptManager (tries YouTube Data API v3 captions endpoints first, falls back to Whisper)
        - Fetch video metadata from YouTube Data API (title, duration, statistics)
        - Store transcript and metadata in transcripts table
        - On success: Remove video from queue
@@ -472,7 +472,7 @@ async def bulk_fetch_transcripts(
     ```
 
     ## Related Endpoints
-    - POST `/queue/build` - Populate video_queue by scraping YouTube channel
+    - POST `/queue/build` - Populate video_queue by discovering YouTube channel videos
     - GET `/queue/stats` - Check video_queue status before bulk fetch
     - GET `/transcript/{youtube_id}` - Fetch single transcript by ID
 

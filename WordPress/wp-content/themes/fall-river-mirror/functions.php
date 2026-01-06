@@ -4,10 +4,10 @@ if(!ABSPATH) {
     exit; // Exit if accessed directly
 }
 
-include_once 'includes/article-api-endpoint.php';
-
 // Include custom post types
-require get_template_directory() . '/includes/custom-post-types.php';
+require_once get_template_directory() . '/includes/article-api-endpoint.php';
+require_once get_template_directory() . '/includes/custom-post-types.php';
+require_once get_template_directory() . '/includes/article-content-template.php';
 
 
 /**

@@ -1,6 +1,6 @@
 <?php
 /**
- * Title: header
+ * Title: Your Mom
  * Slug: fall-river-mirror/header
  * Inserter: yes
  */

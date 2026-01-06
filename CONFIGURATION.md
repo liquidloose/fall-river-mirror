@@ -10,6 +10,13 @@ This application uses environment variables for configuration. Create a `.env` f
 ```bash
 # Get your API key at: https://console.cloud.google.com/apis/credentials
 YOUTUBE_API_KEY=your_youtube_api_key_here
+
+# OAuth 2.0 credentials for caption access (required for transcript fetching)
+# Download from Google Cloud Console -> APIs & Services -> Credentials -> Create OAuth 2.0 Client ID
+YOUTUBE_OAUTH_CREDENTIALS_PATH=/path/to/credentials.json
+
+# OAuth token storage path (tokens are stored here after first authorization)
+YOUTUBE_OAUTH_TOKEN_PATH=youtube_token.json
 ```
 
 #### Default YouTube Channel

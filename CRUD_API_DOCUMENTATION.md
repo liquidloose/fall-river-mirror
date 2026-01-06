@@ -104,7 +104,7 @@ POST /transcript/fetch/10
 ```
 
 - Pulls videos from `video_queue`
-- Fetches captions via YouTube Transcript API (falls back to Whisper if unavailable)
+- Fetches captions via YouTube Data API v3 captions endpoints (falls back to Whisper if unavailable)
 - Stores transcript content in `transcripts` table
 - Removes processed videos from queue
 - Rate-limited to 1 second between requests
