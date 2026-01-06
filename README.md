@@ -40,6 +40,27 @@ This project provides a development environment for The Fall River Mirror with:
 
 Change the name of the file `.env.sample` to `.env` and adjust the values accordingly.
 
+### Required Credential Files
+
+You will need to create the following three credential files in the project root directory. These files are not included in the repository for security reasons:
+
+1. **`client_secret.json`** - Google OAuth credentials file
+   - Contains your Google OAuth client ID, client secret, and project configuration
+   - Get this from [Google Cloud Console](https://console.cloud.google.com/apis/credentials)
+   - Format: Standard Google OAuth credentials JSON file
+
+2. **`youtube_token.json`** - YouTube API OAuth token
+   - Contains your YouTube API access token and refresh token
+   - Generated during the OAuth authentication flow
+   - Format: JSON file with token, refresh_token, client_id, client_secret, and scopes
+
+3. **`youtube_cookies.txt`** - YouTube session cookies
+   - Contains browser cookies for YouTube authentication
+   - Used for accessing YouTube content that requires authentication
+   - Format: Netscape cookie file format
+
+**Note:** These files are already listed in `.gitignore` and will not be committed to the repository. You must obtain the contents for these files yourself through the appropriate Google Cloud Console and OAuth setup processes.
+
 In order to run this project, you will need to create two images with Docker.
 
 ### Building Docker Images
