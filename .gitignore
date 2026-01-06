@@ -1,5 +1,10 @@
 .env
 
+# Google OAuth credentials (sensitive)
+client_secret.json
+youtube_token.json
+youtube_cookies.txt
+
 # Ignore everything in WordPress except the fall-river-mirror theme
 /WordPress/*
 !/WordPress/wp-content/
