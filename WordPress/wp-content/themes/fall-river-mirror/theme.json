@@ -278,6 +278,13 @@
 				}
 			]
 		},
+		"blocks": {
+			"core/column": {
+				"dimensions": {
+					"minHeight": true
+				}
+			}
+		},
 		"useRootPaddingAwareAlignments": true
 	},
 	"styles": {

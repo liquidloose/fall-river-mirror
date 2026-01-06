@@ -75,7 +75,8 @@ services:
     networks:
       - fr-mirror-bridge
     ports:
-      - "${API_PORT}:80"  # Assuming the container exposes port 8080 internally
+      - "${API_PORT}:80"  # FastAPI application
+      - "8080:8080"  # OAuth redirect callback port
     volumes:
       - .:/code
       - ~/.ssh:/root/.ssh:ro

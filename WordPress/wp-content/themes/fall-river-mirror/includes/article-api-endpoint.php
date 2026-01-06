@@ -107,7 +107,7 @@ function create_article_callback( WP_REST_Request $request ) {
   // Note: article_content maps to _article_content custom field, not post_content
   $post_data = array(
     'post_title'    => $title,
-    'post_content'  => '', // Leave post_content empty, article_content goes to custom field
+    'post_content'  => fr_mirror_get_required_article_blocks( $title ), // Include title in heading block
     'post_type'     => 'article',
     'post_status'   => $status,
     'post_author'   => get_current_user_id(),

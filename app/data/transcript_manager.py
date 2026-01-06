@@ -1,5 +1,6 @@
 from datetime import datetime
 import os
+import re
 import logging
 import json
 import sqlite3
@@ -7,7 +8,6 @@ from typing import Optional, Dict, Any, List
 from http.cookiejar import MozillaCookieJar
 from requests import Session
 from fastapi.responses import JSONResponse
-from playwright.sync_api import ViewportSize
 from youtube_transcript_api import YouTubeTranscriptApi
 from youtube_transcript_api.proxies import WebshareProxyConfig
 from youtube_transcript_api._errors import (
@@ -32,15 +32,17 @@ class TranscriptManager:
     """
     Manages YouTube transcript operations including fetching, caching, and database operations.
 
+    Uses YouTube Transcript API (youtube-transcript-api library) with cookies or proxy support.
+    Falls back to OpenAI Whisper if transcript is unavailable.
+
     Public Methods:
     ---------------
-    get_transcript(committee: Committee, youtube_id: str) -> Dict[str, Any] | JSONResponse
+    get_transcript(youtube_id: str) -> Dict[str, Any] | JSONResponse
         Fetches a YouTube video transcript, checking database cache first. If not cached,
         fetches from YouTube Transcript API. Falls back to OpenAI Whisper if transcript
         is unavailable. Automatically caches new transcripts to database.
 
         Args:
-            committee: Committee enum value for categorization
             youtube_id: YouTube video ID (e.g., "VjaU4DAxP6s")
 
         Returns:
@@ -49,8 +51,8 @@ class TranscriptManager:
 
     Usage Example:
     --------------
-    >>> manager = TranscriptManager(committee="Planning Board", database=db)
-    >>> result = manager.get_transcript(Committee.PLANNING_BOARD, "VjaU4DAxP6s")
+    >>> manager = TranscriptManager(database=db)
+    >>> result = manager.get_transcript("VjaU4DAxP6s")
     >>> print(result['transcript'])
     """
 
@@ -78,11 +80,11 @@ class TranscriptManager:
         youtube_id: str,
     ) -> Dict[str, Any] | JSONResponse:
         """
-        Fetch YouTube video transcript using the YouTube Transcript API.
+        Fetch YouTube video transcript using youtube-transcript-api library (with cookies/proxy support).
         First checks if transcript exists in database, if not fetches from YouTube and stores it.
 
         Args:
-            video_id (str): YouTube video ID (default: "VjaU4DAxP6s")
+            youtube_id (str): YouTube video ID (e.g., "VjaU4DAxP6s")
 
         Returns:
             Dict containing transcript data with source information, or error response
@@ -102,6 +104,7 @@ class TranscriptManager:
             rich_data = self._fetch_from_youtube(youtube_id)
             transcript = rich_data["transcript"]  # Extract transcript string
             video_metadata = rich_data["video_metadata"]  # Extract metadata
+            source = rich_data.get("source", "youtube_transcript_api")  # Extract source
 
             # Store transcript in database if available
             if self._can_cache():
@@ -111,7 +114,7 @@ class TranscriptManager:
                 self._cache_transcript(youtube_id, transcript, video_metadata)
 
             return self._formatted_youtube_response(
-                youtube_id, transcript, video_metadata
+                youtube_id, transcript, video_metadata, source=source
             )
 
         except Exception as e:
@@ -406,6 +409,7 @@ class TranscriptManager:
                 "video_metadata": video_metadata,
                 "source": "youtube_transcript_api",
             }
+
         except IpBlocked as e:
             # IP blocked should NOT fall back to Whisper - re-raise to show the library's error message
             logger.error(
@@ -432,7 +436,28 @@ class TranscriptManager:
             logger.info(f"Changing state.category to: {self.category}")
 
             # Fallback to OpenAI Whisper
-            return self._fetch_via_whisper(youtube_id)
+            whisper_transcript = self._fetch_via_whisper(youtube_id)
+
+            # Fetch video metadata for Whisper transcript
+            video_metadata = None
+            try:
+                api_key = os.getenv("YOUTUBE_API_KEY")
+                if api_key:
+                    youtube_api = YouTubeMetadataFetcher(api_key)
+                    video_metadata = youtube_api.get_video_published_date(youtube_id)
+                    logger.info(
+                        f"Retrieved video metadata for {youtube_id}: {video_metadata['title']}"
+                    )
+            except Exception as e:
+                logger.warning(f"Could not fetch video metadata: {str(e)}")
+                video_metadata = None
+
+            # Return in same format as YouTube API response
+            return {
+                "transcript": whisper_transcript,  # Plain text string from Whisper
+                "video_metadata": video_metadata,
+                "source": "openai_whisper",
+            }
 
     # =============================================================================
     # OPENAI WHISPER API METHODS
@@ -442,7 +467,6 @@ class TranscriptManager:
         """
         Download video and transcribe using OpenAI Whisper API.
         """
-
         whisper_processor = WhisperProcessor(video_id=video_id)
 
         self.category = AIAgent.WHISPER
@@ -561,15 +585,27 @@ class TranscriptManager:
         return all_transcripts
 
     def _formatted_youtube_response(
-        self, youtube_id: str, transcript: str, video_metadata: Dict[str, Any] = None
+        self,
+        youtube_id: str,
+        transcript: str,
+        video_metadata: Dict[str, Any] = None,
+        source: str = "youtube_transcript_api",
     ) -> Dict[str, Any]:
         """Format response for transcript fetched from YouTube with video metadata."""
         all_transcripts = self._get_all_transcripts_info()
 
+        # Map internal source names to user-friendly display names
+        source_display_map = {
+            "youtube_transcript_api": "YouTube Transcript API",
+            "openai_whisper": "OpenAI Whisper",
+            "database_cache": "Database Cache",
+        }
+        source_display = source_display_map.get(source, source)
+
         response = {
             "message": "Transcript fetched from YouTube",
             "model": self.category.value,
-            "source": "YouTube Data API",
+            "source": source_display,
             "youtube_id": youtube_id,
             "transcript": transcript,
             "database_path": self.database.db_path if self.database else "No database",

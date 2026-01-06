@@ -342,6 +342,7 @@ function register_article_meta_fields() {
             }
         ));
     }
+
     
     // Register content field separately for REST API (without auto UI generation)
     // We handle the UI manually in the custom panel

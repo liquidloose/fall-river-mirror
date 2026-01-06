@@ -40,6 +40,64 @@ This project provides a development environment for The Fall River Mirror with:
 
 Change the name of the file `.env.sample` to `.env` and adjust the values accordingly.
 
+### Setting Up YouTube OAuth 2.0 (Required for Transcripts)
+
+The application uses the official YouTube Data API v3 for compliant transcript access. Captions/transcripts require OAuth 2.0 authentication.
+
+#### Step 1: Enable YouTube Data API v3
+
+1. Go to [Google Cloud Console](https://console.cloud.google.com/apis/dashboard)
+2. **Select an existing project** from the project dropdown at the top (or create a new one if you have permissions)
+   - If you get a permission error creating a project, use an existing project or contact your organization's Google Cloud admin
+3. Enable "YouTube Data API v3" by searching for it in the API Library and clicking "Enable"
+
+#### Step 2: Create OAuth 2.0 Credentials
+
+1. In Google Cloud Console, go to "APIs & Services" → "Credentials"
+2. Click "Create Credentials" → "OAuth client ID"
+3. If prompted, configure the OAuth consent screen:
+   - User Type: External (or Internal if using Google Workspace)
+   - App name, user support email, developer contact
+   - Add scopes: `https://www.googleapis.com/auth/youtube.force-ssl`
+   - Add test users (if in testing mode)
+4. Create OAuth client ID:
+   - Application type: **Desktop app**
+   - Name: "YouTube Captions Client" (or your preferred name)
+5. **IMPORTANT**: After creating the OAuth client, click on it to edit, and add `http://localhost:8080` to the "Authorized redirect URIs" section
+6. Download the JSON credentials file
+7. **IMPORTANT**: Open the downloaded JSON file and ensure the `redirect_uris` array includes `http://localhost:8080`:
+   ```json
+   "redirect_uris": [
+     "http://localhost:8080"
+   ]
+   ```
+
+#### Step 3: Configure Environment Variables
+
+Add to your `.env` file:
+
+```bash
+# OAuth credentials file (downloaded from Google Cloud Console)
+YOUTUBE_OAUTH_CREDENTIALS_PATH=/path/to/credentials.json
+
+# OAuth token storage (tokens saved here after first authorization)
+YOUTUBE_OAUTH_TOKEN_PATH=youtube_token.json
+```
+
+#### Step 4: First-Time Authorization
+
+1. Start the application: `docker compose up mirror-ai`
+2. Trigger a transcript fetch (e.g., via API endpoint or queue processing)
+3. Check the Docker logs - you'll see an authorization URL printed
+4. Copy the authorization URL from the logs and open it in your browser (on your host machine, not inside Docker)
+5. Sign in with your Google account and authorize the application
+6. After authorization, Google will redirect to `http://localhost:8080` (the redirect callback will be handled automatically by the container)
+7. Tokens will be saved to `YOUTUBE_OAUTH_TOKEN_PATH` for future use
+
+**Note**: The authorization URL will be printed in the Docker logs. Make sure port 8080 is exposed in `docker-compose.yml` (it should be: `8080:8080`).
+
+**Security Note**: The token file contains sensitive credentials and is automatically ignored by git (see `.gitignore`).
+
 In order to run this project, you will need to create two images with Docker.
 
 ### Building Docker Images

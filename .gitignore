@@ -33,3 +33,12 @@ __pycache__/
 
 /app/data/fr-mirror.db
 app.log
+
+# YouTube cookies (contains session tokens)
+youtube_cookies.txt
+
+# YouTube OAuth credentials and tokens (contains sensitive credentials)
+client_secret.json
+youtube_oauth_token.json
+youtube_token.json
+*_token.json
