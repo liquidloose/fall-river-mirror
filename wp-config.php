@@ -107,6 +107,13 @@ $table_prefix = getenv_docker('WORDPRESS_TABLE_PREFIX', 'wp_');
  */
 define('WP_DEBUG', !!getenv_docker('WORDPRESS_DEBUG', ''));
 
+// Enable all logging and debugging
+define('WP_DEBUG_LOG', true); // Log errors to wp-content/debug.log
+define('WP_DEBUG_DISPLAY', true); // Display errors and warnings on screen
+@ini_set('display_errors', 1); // Also enable PHP error display
+define('SCRIPT_DEBUG', true); // Use non-minified versions of JS/CSS files
+define('SAVEQUERIES', true); // Save database queries for analysis
+
 /* Add any custom values between this line and the "stop editing" line. */
 
 // If we're behind a proxy server and using HTTPS, we need to alert WordPress of that fact

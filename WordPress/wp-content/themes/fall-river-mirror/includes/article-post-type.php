@@ -63,13 +63,98 @@ function register_article_post_type() {
 add_action('init', 'register_article_post_type');
 
 // ============================================================================
-// META BOXES
+// TAXONOMY REGISTRATION
 // ============================================================================
-// 
-// NOTE: Meta boxes have been removed in favor of the Gutenberg sidebar panel.
-// All journalist selection is now handled via the block editor sidebar.
-// The REST API registration below handles saving from Gutenberg.
-//
+
+/**
+ * Register Categories for Article Post Type
+ * 
+ * This associates the built-in 'category' taxonomy with the Article post type
+ * so that categories can be used to organize Articles. This also makes the
+ * taxonomy filter available in Query blocks for Article post types.
+ * 
+ * @hook init - Runs when WordPress initializes
+ * @return void
+ */
+if (!function_exists('register_article_taxonomies')) {
+    function register_article_taxonomies() {
+        // Register category taxonomy for Article post type
+        register_taxonomy_for_object_type('category', 'article');
+        
+        // Ensure categories are available in REST API for Query blocks
+        // Get the category taxonomy object
+        $category = get_taxonomy('category');
+        if ($category) {
+            // Make sure it's enabled for REST API
+            $category->show_in_rest = true;
+        }
+    }
+    }
+    add_action('init', 'register_article_taxonomies', 20); // Priority 20 ensures post type is registered first
+
+    /**
+ * Sort Articles by Meeting Date in Category Archives
+ * 
+ * This modifies category archive queries to sort by meeting_date meta field
+ * instead of the default post_date.
+ * 
+ * @hook pre_get_posts
+ * @param WP_Query $query The WP_Query object
+ * @return void
+ */
+if (!function_exists('sort_category_archives_by_meeting_date')) {
+    function sort_category_archives_by_meeting_date($query) {
+        // Only run on frontend category archive pages
+        if (is_admin() || !$query->is_main_query()) {
+            return;
+        }
+        
+        // Check if we're on a category archive page and querying articles
+        if (is_category() && $query->get('post_type') === 'article' || 
+            (is_array($query->get('post_type')) && in_array('article', $query->get('post_type')))) {
+            
+            // Sort by meeting_date meta field
+            $query->set('meta_key', '_article_meeting_date');
+            $query->set('orderby', 'meta_value'); // Use 'meta_value_num' if dates are stored as timestamps
+            $query->set('order', 'DESC'); // or 'ASC' for oldest first
+            
+            // Optional: Only show posts that have a meeting_date
+            // $query->set('meta_compare', 'EXISTS');
+        }
+    }
+    }
+    add_action('pre_get_posts', 'sort_category_archives_by_meeting_date', 10);
+
+/**
+ * Modify Query Block Query Vars to Sort by Meeting Date
+ * 
+ * This specifically targets Query blocks and modifies their query
+ * to sort Articles by meeting_date meta field in category archives.
+ * 
+ * @hook query_loop_block_query_vars
+ * @param array $query Array of query variables.
+ * @param WP_Block $block Block instance.
+ * @return array Modified query variables
+ */
+if (!function_exists('sort_query_block_by_meeting_date')) {
+function sort_query_block_by_meeting_date($query, $block) {
+    // Only modify queries for Article post type
+    $post_type = $query['post_type'] ?? '';
+    
+    if ($post_type === 'article' || (is_array($post_type) && in_array('article', $post_type))) {
+        // Check if we're on a category archive page
+        if (is_category()) {
+            // Override orderby to sort by meeting_date meta field
+            $query['meta_key'] = 'meeting_date';
+            $query['orderby'] = 'meta_value';
+            $query['order'] = 'DESC';
+        }
+    }
+    
+    return $query;
+}
+}
+add_filter('query_loop_block_query_vars', 'sort_query_block_by_meeting_date', 10, 2);
 
 // ============================================================================
 // REST API REGISTRATION
@@ -475,12 +560,7 @@ function sort_articles_by_meeting_date($query) {
     if (!is_admin() || !$query->is_main_query()) {
         return;
     }
-    
-    // Check if we're on the article post type list page
-    $screen = get_current_screen();
-    if (!$screen || $screen->post_type !== 'article') {
-        return;
-    }
+  
     
     // Check if sorting by meeting_date
     $orderby = $query->get('orderby');
