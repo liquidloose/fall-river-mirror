@@ -9,69 +9,11 @@ require_once get_template_directory() . '/includes/article-api-endpoint.php';
 require_once get_template_directory() . '/includes/custom-post-types.php';
 require_once get_template_directory() . '/includes/article-content-template.php';
 
+// Include block styles
+require_once get_template_directory() . '/includes/block-styles.php';
 
-/**
- * Register custom block styles and enqueue block stylesheets
- */
-function my_theme_register_block_styles() {
-    // Register the custom group style
-    register_block_style(
-        'core/group',
-        array(
-            'name'  => 'rivedge-box-shadow',
-            'label' => __( 'Rivedge Box Shadow', 'my-theme' ),
-            'isDefault' => false, 
-        )
-    );
-
-    // Register the custom navigation
-    register_block_style(
-        'core/navigation',
-        array(
-            'name'  => 'rivedge-navigation',
-            'label' => __('Rivedge Box Shadow', 'my-theme'),
-            'isDefault' => false,
-        )
-    );
-
-
-    // Enqueue the group block stylesheet
-    wp_enqueue_block_style(
-        'core/group',
-        array(
-            'handle' => 'rivedge-theme-group-style',
-            'src'    => get_theme_file_uri('assets/css/blocks/core-group.css'),
-            'path'   => get_theme_file_path('assets/css/blocks/core-group.css'),
-            'deps'   => array(),
-            'ver'    => wp_get_theme()->get('Version'),
-        )
-    );
-
-    // Enqueue the group block stylesheet
-    wp_enqueue_block_style(
-        'core/group',
-        array(
-            'handle' => 'rivedge-theme-group-style',
-            'src'    => get_theme_file_uri( 'assets/css/blocks/core-group.css' ),
-            'path'   => get_theme_file_path( 'assets/css/blocks/core-group.css' ),
-            'deps'   => array(),
-            'ver'    => wp_get_theme()->get( 'Version' ),
-        )
-    );
-
-    // Enqueue the group block stylesheet
-    wp_enqueue_block_style(
-        'core/navigation',
-        array(
-            'handle' => 'rivedge-theme-navigation-style',
-            'src'    => get_theme_file_uri('assets/css/blocks/core-navigation.css'),
-            'path'   => get_theme_file_path('assets/css/blocks/core-navigation.css'),
-            'deps'   => array(),
-            'ver'    => wp_get_theme()->get('Version'),
-        )
-    );
-}
-add_action( 'init', 'my_theme_register_block_styles' );
+// Include query loop variations
+require_once get_template_directory() . '/includes/query_loop_filtered_by_meeting_date.php';
 
 /**
  * Enqueue Gutenberg editor scripts for custom meta panels
@@ -152,6 +94,39 @@ function fall_river_mirror_enqueue_block_editor_assets() {
     );
     
     wp_enqueue_script(
+        'paragraph-meeting-date-variation',
+        get_template_directory_uri() . '/js/paragraph-meeting-date-variation.js',
+        array(
+            'wp-blocks',
+            'wp-i18n'
+        ),
+        wp_get_theme()->get('Version'),
+        true
+    );
+    
+    wp_enqueue_script(
+        'paragraph-journalist-variation',
+        get_template_directory_uri() . '/js/paragraph-journalist-variation.js',
+        array(
+            'wp-blocks',
+            'wp-i18n'
+        ),
+        wp_get_theme()->get('Version'),
+        true
+    );
+    
+    wp_enqueue_script(
+        'paragraph-artist-variation',
+        get_template_directory_uri() . '/js/paragraph-artist-variation.js',
+        array(
+            'wp-blocks',
+            'wp-i18n'
+        ),
+        wp_get_theme()->get('Version'),
+        true
+    );
+    
+    wp_enqueue_script(
         'journalist-meta-block-bindings',
         get_template_directory_uri() . '/js/journalist-meta-block-bindings.js',
         array(
@@ -201,8 +176,83 @@ function fall_river_mirror_enqueue_block_editor_assets() {
         wp_get_theme()->get('Version'),
         true
     );
+    
+    wp_enqueue_script(
+        'fr-mirror-post-id-block',
+        get_template_directory_uri() . '/js/post_id_block.js',
+        array(
+            'wp-blocks',
+            'wp-element',
+            'wp-block-editor',
+            'wp-components',
+            'wp-data',
+            'wp-hooks'
+        ),
+        wp_get_theme()->get('Version'),
+        true
+    );
 }
 add_action( 'enqueue_block_editor_assets', 'fall_river_mirror_enqueue_block_editor_assets' );
+
+/**
+ * Register Post ID Block with PHP render callback
+ * 
+ * This allows the block to get the actual post ID from context at render time,
+ * which is especially important when the block is used in templates.
+ */
+function fr_mirror_register_post_id_block() {
+    register_block_type('fr-mirror/post-id-block', array(
+        'render_callback' => 'fr_mirror_render_post_id_block',
+        'uses_context' => array('postId', 'postType'),
+    ));
+}
+add_action('init', 'fr_mirror_register_post_id_block');
+
+/**
+ * Render callback for Post ID Block
+ * 
+ * Gets the bullet_points meta field from the post and displays it.
+ * 
+ * @param array    $attributes Block attributes
+ * @param string   $content    Block content (not used)
+ * @param WP_Block $block      Block instance with context
+ * @return string HTML output
+ */
+function fr_mirror_render_post_id_block($attributes, $content, $block) {
+    // Get post ID from block context (available when template is rendered)
+    $post_id = $block->context['postId'] ?? get_the_ID();
+    
+    // Validate it's a numeric ID
+    $post_id = is_numeric($post_id) ? (int) $post_id : null;
+    
+    if (!$post_id) {
+        return '<div class="fr-mirror-bullet-points-block"></div>';
+    }
+    
+    // Get bullet_points meta field
+    $bullet_points = get_post_meta($post_id, '_article_bullet_points', true);
+    
+    if (empty($bullet_points)) {
+        return '<div class="fr-mirror-bullet-points-block"></div>';
+    }
+    
+    // Output bullet points with proper sanitization (same as shortcode)
+    return '<div class="fr-mirror-bullet-points">' . wp_kses_post($bullet_points) . '</div>';
+}
+
+/**
+ * Enqueue frontend scripts
+ */
+function fall_river_mirror_enqueue_frontend_assets() {
+	wp_enqueue_script(
+		'fr-mirror-bullet-points-processor',
+		get_template_directory_uri() . '/js/bullet-points-processor.js',
+		array(),
+		wp_get_theme()->get('Version'),
+		true
+	);
+}
+add_action( 'wp_enqueue_scripts', 'fall_river_mirror_enqueue_frontend_assets' );
 
 /**
  * Register Block Bindings for Article meta fields
@@ -270,6 +320,95 @@ function fr_mirror_get_article_meta_binding( array $source_args, WP_Block $block
         return null;
     }
     
+    // Special handling: journalist_full_name combines first_name and last_name from first journalist
+    if ( $field_key === 'journalist_full_name' ) {
+        // Get the article's journalist IDs
+        $journalist_ids = get_post_meta( $post_id, '_article_journalists', true );
+        
+        if ( empty( $journalist_ids ) || ! is_array( $journalist_ids ) ) {
+            return '';
+        }
+        
+        // Get the first journalist ID
+        $first_journalist_id = $journalist_ids[0];
+        
+        if ( ! $first_journalist_id ) {
+            return '';
+        }
+        
+        // Get first and last name from the journalist post
+        $first_name = get_post_meta( $first_journalist_id, '_journalist_first_name', true );
+        $last_name = get_post_meta( $first_journalist_id, '_journalist_last_name', true );
+        
+        // Combine them with a space
+        $full_name = trim( $first_name . ' ' . $last_name );
+        
+        if ( empty( $full_name ) ) {
+            return '';
+        }
+        
+        // Create a URL-friendly slug from the full name
+        // Convert to lowercase, replace spaces with hyphens, remove special characters
+        $name_slug = sanitize_title( $full_name );
+        
+        // Build the URL dynamically using the journalist's name
+        // The full name is interpolated into the URL path - no hardcoded prefix
+        $journalist_url = home_url( sprintf( '/%s/', $name_slug ) );
+        
+        // Return the name wrapped in an anchor tag
+        return sprintf(
+            '<a href="%s">%s</a>',
+            esc_url( $journalist_url ),
+            esc_html( $full_name )
+        );
+    }
+    
+    // Special handling: artist_full_name combines first_name and last_name from first artist
+    if ( $field_key === 'artist_full_name' ) {
+        // Get the article's artist IDs
+        $artist_ids = get_post_meta( $post_id, '_article_artists', true );
+        
+        if ( empty( $artist_ids ) || ! is_array( $artist_ids ) ) {
+            return '';
+        }
+        
+        // Get the first artist ID
+        $first_artist_id = $artist_ids[0];
+        
+        if ( ! $first_artist_id ) {
+            return '';
+        }
+        
+        // Get first and last name from the artist post
+        $first_name = get_post_meta( $first_artist_id, '_artist_first_name', true );
+        $last_name = get_post_meta( $first_artist_id, '_artist_last_name', true );
+        
+        // Combine them with a space
+        $full_name = trim( $first_name . ' ' . $last_name );
+        
+        if ( empty( $full_name ) ) {
+            return '';
+        }
+        
+        // Get the artist post to get its slug
+        $artist_post = get_post( $first_artist_id );
+        if ( ! $artist_post ) {
+            return esc_html( $full_name );
+        }
+        
+        // Build the artist URL using the post slug
+        // URL structure: /artist/{slug}/
+        $artist_slug = $artist_post->post_name;
+        $artist_url = home_url( sprintf( '/artist/%s/', $artist_slug ) );
+        
+        // Return the name wrapped in an anchor tag
+        return sprintf(
+            '<a href="%s">%s</a>',
+            esc_url( $artist_url ),
+            esc_html( $full_name )
+        );
+    }
+    
     // Special handling: keep meta key as _article_content for article_content field
     $meta_key = ($field_key === 'article_content') 
         ? '_article_content' 
@@ -291,6 +430,15 @@ function fr_mirror_get_article_meta_binding( array $source_args, WP_Block $block
         return (string) $value;
     }
         return '';
+    }
+
+    if ( $field_key === 'bullet_points' ) {
+        return wp_kses( $value, array(
+            'ul' => array( 'class' => array(), 'id' => array() ),
+            'li' => array( 'class' => array() ),
+            'strong' => array(),
+            'em' => array(),
+        ) );
     }
     
     return $value;
@@ -466,4 +614,29 @@ function fr_mirror_get_artist_meta_binding( array $source_args, WP_Block $block_
     return $value;
 }
 
+/**
+ * Include Article Post Type in Category Archive Queries
+ * 
+ * This modifies category archive queries to include Articles.
+ * Without this, category archives only show regular 'post' post types.
+ * 
+ * @hook pre_get_posts
+ * @param WP_Query $query The WP_Query object
+ * @return void
+ */
+if (!function_exists('include_articles_in_category_archives')) {
+    function include_articles_in_category_archives($query) {
+        // Only run on frontend category archive pages
+        if (is_admin() || !$query->is_main_query()) {
+            return;
+        }
+        
+        // Check if we're on a category archive page
+        if (is_category()) {
+            // Set post type to include Articles
+            $query->set('post_type', array('post', 'article'));
+        }
+    }
+    }
+    add_action('pre_get_posts', 'include_articles_in_category_archives');
 

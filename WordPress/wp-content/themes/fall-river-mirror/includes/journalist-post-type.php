@@ -167,15 +167,6 @@ function get_journalist_custom_fields() {
 }
 
 // ============================================================================
-// META BOXES
-// ============================================================================
-// 
-// NOTE: Meta boxes have been removed in favor of the Gutenberg sidebar panel.
-// All meta field editing is now handled via the block editor sidebar.
-// The REST API registration below handles saving from Gutenberg.
-//
-
-// ============================================================================
 // REST API REGISTRATION
 // ============================================================================
 

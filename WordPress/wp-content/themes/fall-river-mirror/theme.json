@@ -96,6 +96,7 @@
 			]
 		},
 		"typography": {
+			"defaultFontSizes": false,
 			"fontFamilies": [
 				{
 					"fontFamily": "-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen-Sans, Ubuntu, Cantarell, 'Helvetica Neue', sans-serif",
@@ -275,6 +276,28 @@
 					"fontFamily": "Roboto, sans-serif",
 					"name": "Roboto",
 					"slug": "roboto"
+				}
+			],
+			"fontSizes": [
+				{
+					"name": "Small",
+					"size": "1 rem",
+					"slug": "small"
+				},
+				{
+					"name": "Medium",
+					"size": "1.25rem",
+					"slug": "medium"
+				},
+				{
+					"name": "Large",
+					"size": "1.5rem",
+					"slug": "large"
+				},
+				{
+					"name": "Extra Large",
+					"size": "2rem",
+					"slug": "x-large"
 				}
 			]
 		},
