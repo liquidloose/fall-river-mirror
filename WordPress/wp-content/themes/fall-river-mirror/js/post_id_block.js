@@ -5,6 +5,7 @@
     const { addFilter } = wp.hooks;
 
     wp.blocks.registerBlockType('fr-mirror/post-id-block', {
+        apiVersion: 3,
         title: 'Bullet Points Block',
         icon: el(Dashicon, { icon: 'star' }),
         category: 'common',

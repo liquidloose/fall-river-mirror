@@ -1,0 +1,6 @@
+[submodule "WordPress/wp-content/plugins/to-tha-top"]
+	path = WordPress/wp-content/plugins/to-tha-top
+	url = https://github.com/liquidloose/to-tha-top.git
+[submodule "WordPress/wp-content/plugins/dark-and-light"]
+	path = WordPress/wp-content/plugins/dark-and-light
+	url = git@github.com:liquidloose/dark-and-light.git

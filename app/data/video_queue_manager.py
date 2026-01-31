@@ -5,6 +5,14 @@ import os
 import re
 import requests
 from .create_database import Database
+from youtube_transcript_api import YouTubeTranscriptApi
+from youtube_transcript_api._errors import (
+    TranscriptsDisabled,
+    NoTranscriptFound,
+    VideoUnavailable,
+    CouldNotRetrieveTranscript,
+    IpBlocked,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -296,7 +304,10 @@ class VideoQueueManager:
             raise
 
     async def queue_new_videos(
-        self, channel_url: str, max_limit: int = 100, scroll_count: int = 5
+        self,
+        channel_url: str,
+        scroll_count: int = 5,
+        target_new_videos: Optional[int] = None,
     ) -> Dict[str, Any]:
         """
         Compare fetched IDs with existing data and add only new videos to the queue.
@@ -304,16 +315,17 @@ class VideoQueueManager:
         This method:
         1. Gets all existing youtube_ids from transcripts table
         2. Gets all youtube_ids already in video_queue table
-        3. Fetches video IDs from YouTube API
+        3. Fetches video IDs from YouTube API in batches
         4. For each discovered video:
            - Skip if already has transcript
            - Skip if already in queue
            - Add to queue only if both checks pass
+        5. If target_new_videos is set, continues scraping until that many new videos are added
 
         Args:
             channel_url: URL of the YouTube channel to scrape
-            max_limit: Maximum number of videos to process (0 = all videos)
             scroll_count: Ignored (kept for API compatibility)
+            target_new_videos: Target number of new videos to add to queue (None = fetch all videos)
 
         Returns:
             Dict containing results:
@@ -347,44 +359,124 @@ class VideoQueueManager:
             logger.info(f"Found {len(queued_ids)} videos already in queue")
 
             # Step 3: Fetch video IDs from YouTube API
-            scraped_ids = await self.scrape_youtube_ids(
-                channel_url, max_limit, scroll_count
-            )
-            results["total_discovered"] = len(scraped_ids)
-            results["youtube_ids"] = scraped_ids
+            # If target_new_videos is set, scrape enough to get that many new videos
+            if target_new_videos is not None and target_new_videos > 0:
+                # Simple calculation: scrape enough to account for existing ones
+                scrape_limit = len(existing_ids) + len(queued_ids) + target_new_videos
 
-            logger.info(f"Discovered {len(scraped_ids)} videos on YouTube")
+                while results["newly_queued"] < target_new_videos:
+                    logger.info(
+                        f"Scraping {scrape_limit} videos to get {target_new_videos} new ones (currently have {results['newly_queued']})"
+                    )
 
-            # Step 4: Compare and add new videos to queue
-            for youtube_id in scraped_ids:
-                try:
-                    # Check 1: If video ID exists in transcripts, skip it
-                    if youtube_id in existing_ids:
-                        logger.debug(
-                            f"Skipping {youtube_id} - transcript already exists"
-                        )
-                        results["already_exists"] += 1
-                        results["skipped"] += 1
-                    # Check 2: If video ID already in queue, skip it
-                    elif youtube_id in queued_ids:
-                        logger.debug(f"Skipping {youtube_id} - already in queue")
-                        results["already_in_queue"] += 1
-                        results["skipped"] += 1
-                    # Add to queue only if both checks pass
-                    else:
-                        if self._add_to_queue(youtube_id):
-                            logger.info(f"Added {youtube_id} to video queue")
-                            results["newly_queued"] += 1
-                            # Update queued_ids set so we don't try to add it again in this run
-                            queued_ids.add(youtube_id)
-                        else:
-                            # This should rarely happen now since we check before adding
-                            logger.warning(f"Failed to add {youtube_id} to queue")
+                    # Scrape videos
+                    scraped_ids = await self.scrape_youtube_ids(
+                        channel_url, scrape_limit, scroll_count
+                    )
+
+                    # Process each video
+                    for youtube_id in scraped_ids:
+                        # Skip if already processed
+                        if youtube_id in results["youtube_ids"]:
+                            continue
+
+                        results["total_discovered"] += 1
+                        results["youtube_ids"].append(youtube_id)
+
+                        try:
+                            # Check 1: If video ID exists in transcripts, skip it
+                            if youtube_id in existing_ids:
+                                logger.debug(
+                                    f"Skipping {youtube_id} - transcript already exists"
+                                )
+                                results["already_exists"] += 1
+                                results["skipped"] += 1
+                            # Check 2: If video ID already in queue, skip it
+                            elif youtube_id in queued_ids:
+                                logger.debug(
+                                    f"Skipping {youtube_id} - already in queue"
+                                )
+                                results["already_in_queue"] += 1
+                                results["skipped"] += 1
+                            # Add to queue only if both checks pass
+                            else:
+                                if self._add_to_queue(youtube_id):
+                                    logger.info(f"Added {youtube_id} to video queue")
+                                    results["newly_queued"] += 1
+                                    queued_ids.add(youtube_id)
+
+                                    # Stop if we've reached target
+                                    if results["newly_queued"] >= target_new_videos:
+                                        break
+                                else:
+                                    logger.warning(
+                                        f"Failed to add {youtube_id} to queue"
+                                    )
+                                    results["failed"] += 1
+
+                        except Exception as e:
+                            logger.error(
+                                f"Error processing video ID {youtube_id}: {str(e)}"
+                            )
                             results["failed"] += 1
 
-                except Exception as e:
-                    logger.error(f"Error processing video ID {youtube_id}: {str(e)}")
-                    results["failed"] += 1
+                    # Stop if we've reached target
+                    if results["newly_queued"] >= target_new_videos:
+                        break
+
+                    # If we didn't get enough, increase scrape limit and try again
+                    remaining = target_new_videos - results["newly_queued"]
+                    scrape_limit += remaining * 2  # Add buffer for next attempt
+
+                    # Safety check: if we've scraped all available videos, stop
+                    if len(scraped_ids) < scrape_limit:
+                        logger.info("No more videos available from channel")
+                        break
+
+                logger.info(
+                    f"Discovered {results['total_discovered']} videos on YouTube"
+                )
+            else:
+                # Original behavior: fetch all videos (no limit)
+                scraped_ids = await self.scrape_youtube_ids(
+                    channel_url, 0, scroll_count
+                )
+                results["total_discovered"] = len(scraped_ids)
+                results["youtube_ids"] = scraped_ids
+
+                logger.info(f"Discovered {len(scraped_ids)} videos on YouTube")
+
+                # Step 4: Compare and add new videos to queue
+                for youtube_id in scraped_ids:
+                    try:
+                        # Check 1: If video ID exists in transcripts, skip it
+                        if youtube_id in existing_ids:
+                            logger.debug(
+                                f"Skipping {youtube_id} - transcript already exists"
+                            )
+                            results["already_exists"] += 1
+                            results["skipped"] += 1
+                        # Check 2: If video ID already in queue, skip it
+                        elif youtube_id in queued_ids:
+                            logger.debug(f"Skipping {youtube_id} - already in queue")
+                            results["already_in_queue"] += 1
+                            results["skipped"] += 1
+                        # Add to queue only if both checks pass
+                        else:
+                            if self._add_to_queue(youtube_id):
+                                logger.info(f"Added {youtube_id} to video queue")
+                                results["newly_queued"] += 1
+                                # Update queued_ids set so we don't try to add it again in this run
+                                queued_ids.add(youtube_id)
+                            else:
+                                logger.warning(f"Failed to add {youtube_id} to queue")
+                                results["failed"] += 1
+
+                    except Exception as e:
+                        logger.error(
+                            f"Error processing video ID {youtube_id}: {str(e)}"
+                        )
+                        results["failed"] += 1
 
             logger.info(
                 f"Queue processing complete: {results['total_discovered']} discovered, "
@@ -402,14 +494,11 @@ class VideoQueueManager:
 
     def _check_captions(self, youtube_id: str) -> bool:
         """
-        Check if captions are available for a video using YouTube Data API v3.
+        Check if captions are available for a video using youtube-transcript-api.
 
-        This method uses the YouTube Data API v3 captions.list endpoint to check if ANY
-        caption track exists for a video, including both manually uploaded closed captions
-        AND auto-generated captions.
-
-        Note: This method uses only the API key (not OAuth) since it only lists captions,
-        which is allowed with API key authentication. Full caption download requires OAuth.
+        This method uses the same library that TranscriptManager uses to actually
+        fetch transcripts, ensuring accurate detection of available transcripts.
+        Currently using plain HTTP client (no cookies/proxy) for testing.
 
         Args:
             youtube_id: The 11-character YouTube video ID (e.g., 'dQw4w9WgXcQ')
@@ -417,40 +506,39 @@ class VideoQueueManager:
         Returns:
             bool: True if at least one caption track is available, False otherwise
         """
-        if not self.api_key:
-            logger.warning("YOUTUBE_API_KEY not set, cannot check captions")
-            return False
-
         try:
-            # Use YouTube Data API v3 captions.list endpoint
-            # Note: captions.list requires OAuth, but we can use a workaround:
-            # Check video's contentDetails.caption field instead, which is available with API key
-            url = f"{self.base_url}/videos"
-            params = {"part": "contentDetails", "id": youtube_id, "key": self.api_key}
+            from requests import Session
 
-            response = requests.get(url, params=params, timeout=10)
-            response.raise_for_status()
-            data = response.json()
+            # Use plain HTTP client (no cookies, no proxy) for testing
+            http_client = Session()
+            ytt_api = YouTubeTranscriptApi(http_client=http_client)
 
-            items = data.get("items", [])
-            if not items:
-                logger.debug(f"Video {youtube_id} not found via API")
-                return False
+            # Try to list available transcripts (doesn't fetch the actual content)
+            transcript_list = ytt_api.list(youtube_id)
 
-            # Check if caption field exists and is not 'false'
-            content_details = items[0].get("contentDetails", {})
-            caption = content_details.get("caption", "false")
+            # If we can list transcripts without exception, at least one is available
+            # Convert to list to verify there are actually transcripts
+            transcript_list_items = list(transcript_list)
+            has_captions = len(transcript_list_items) > 0
 
-            has_captions = caption.lower() != "false"
             logger.debug(f"Video {youtube_id} caption availability: {has_captions}")
             return has_captions
 
-        except requests.exceptions.RequestException as e:
-            logger.warning(f"Failed to check captions for video {youtube_id}: {str(e)}")
+        except (TranscriptsDisabled, NoTranscriptFound, VideoUnavailable):
+            logger.debug(
+                f"Video {youtube_id} caption availability: False (no transcripts found)"
+            )
+            return False
+        except IpBlocked:
+            # IP blocked - can't check, assume False to be safe
+            logger.warning(
+                f"IP blocked when checking captions for {youtube_id}, assuming False"
+            )
             return False
         except Exception as e:
+            # For other errors, log and fall back to False
             logger.warning(
-                f"Unexpected error checking captions for video {youtube_id}: {str(e)}"
+                f"Error checking captions for video {youtube_id}: {str(e)}. Assuming False."
             )
             return False
 

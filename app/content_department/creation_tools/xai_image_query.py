@@ -10,7 +10,7 @@ logger = logging.getLogger(__name__)
 
 class XAIImageQuery:
     """
-    A processor class for handling xAI image generation (grok-2-image) interactions.
+    A processor class for handling xAI image generation (grok-imagine-image) interactions.
 
     This class provides functionality to communicate with the xAI API for generating
     AI-powered images. It handles authentication, prompt formatting, and error
@@ -34,10 +34,10 @@ class XAIImageQuery:
         prompt: str,
         medium: str = None,
         aesthetic: str = None,
-        model: str = None,  # Accepted for interface consistency, ignored (always uses grok-2-image)
+        model: str = None,  # Accepted for interface consistency, ignored (always uses grok-imagine-image)
     ) -> dict:
         """
-        Generate an image using the xAI grok-2-image model.
+        Generate an image using the xAI grok-imagine-image model.
 
         This method creates an image generation request with the xAI API,
         incorporating style parameters like medium and aesthetic into the prompt.
@@ -64,7 +64,7 @@ class XAIImageQuery:
             logger.info(f"=== END PROMPT ===")
 
             response = client.image.sample(
-                model="grok-2-image",
+                model="grok-imagine-image",
                 prompt=prompt,
                 image_format="url",
             )

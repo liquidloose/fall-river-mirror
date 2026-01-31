@@ -106,7 +106,7 @@ class BaseArtist(BaseCreator):
             return bullet_points[:300]
 
     def generate_image(
-        self, title: str, bullet_points: str = "", model: str = "gpt-image-1-mini"
+        self, title: str, bullet_points: str = "", model: str = "gpt-image-1"
     ) -> Dict[str, Any]:
         """
         Generate an editorial illustration for an article.
@@ -151,7 +151,7 @@ class BaseArtist(BaseCreator):
         )
 
         # Choose image client based on model
-        if model == "grok-2-image":
+        if model == "grok-imagine-image":
             image_query = XAIImageQuery()
         else:
             image_query = OpenAIImageQuery()

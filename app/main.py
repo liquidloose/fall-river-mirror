@@ -25,6 +25,7 @@ import requests
 # Local imports
 from app import TranscriptManager, ArticleGenerator
 from app.content_department.ai_journalists.aurelius_stone import AureliusStone
+from app.content_department.ai_journalists.fr_j1 import FRJ1
 from app.content_department.creation_tools.xai_text_query import XAITextQuery
 from app.data.enum_classes import (
     ArticleType,
@@ -40,6 +41,7 @@ from app.data.create_database import Database
 from app.data.journalist_manager import JournalistManager
 from app.data.video_queue_manager import VideoQueueManager
 from app.content_department.ai_artists.spectra_veritas import SpectraVeritas
+from app.content_department.ai_artists.fra1 import FRA1
 
 # Configure logging with both console and file output
 logging.basicConfig(
@@ -69,6 +71,7 @@ if database:
     # Initialize journalists as proper entities
     journalist_manager = JournalistManager(database)
     aurelius = AureliusStone()
+    frj1 = FRJ1()
 
     # Create/update Aurelius Stone with bio and description
     journalist_manager.upsert_journalist(
@@ -77,6 +80,15 @@ if database:
         last_name=aurelius.LAST_NAME,
         bio=aurelius.get_bio(),
         description=aurelius.get_description(),
+    )
+
+    # Create/update FRJ1 with bio and description
+    journalist_manager.upsert_journalist(
+        full_name=frj1.FULL_NAME,
+        first_name=frj1.FIRST_NAME,
+        last_name=frj1.LAST_NAME,
+        bio=frj1.get_bio(),
+        description=frj1.get_description(),
     )
     logger.info("Journalist initialization completed")
 
@@ -117,7 +129,7 @@ def _decode_image_url(image_url: str) -> bytes:
     import requests
 
     if image_url.startswith("data:image"):
-        # Handle base64 data URLs (from gpt-image-1)
+        # Handle base64 data URLs (from OpenAI image generation)
         # Format: data:image/png;base64,<base64_data>
         header, base64_data = image_url.split(",", 1)
         return base64.b64decode(base64_data)
@@ -819,6 +831,7 @@ def get_journalist_profile(journalist_name: Journalist):
         # Map journalist enum values to their classes
         journalist_classes = {
             Journalist.AURELIUS_STONE: AureliusStone,
+            Journalist.FR_J1: FRJ1,
         }
 
         # Get the journalist class
@@ -898,7 +911,7 @@ def get_journalist_profile(journalist_name: Journalist):
 def bulk_generate_images(
     amount: int,
     artist_name: Artist = Artist.SPECTRA_VERITAS,
-    model: ImageModel = ImageModel.MINI,
+    model: ImageModel = ImageModel.GPT_IMAGE_1,
 ) -> Dict[str, Any]:
     """
     Bulk generate images for articles that have bullet points but no existing art.
@@ -911,7 +924,7 @@ def bulk_generate_images(
     Args:
         amount: Maximum number of images to generate
         artist_name: AI artist to use (default: Spectra Veritas)
-        model: Image model to use (default: gpt-image-1-mini)
+        model: Image model to use (default: gpt-image-1)
 
     Returns:
         Dict containing:
@@ -933,8 +946,21 @@ def bulk_generate_images(
             f"artist={artist_name.value}, model={model.value}"
         )
 
-        # Create artist instance (currently only Spectra Veritas is available)
-        artist_instance = SpectraVeritas()
+        # Map artist enum to class instances
+        artist_classes = {
+            Artist.SPECTRA_VERITAS: SpectraVeritas,
+            Artist.FRA1: FRA1,
+        }
+
+        # Get artist instance
+        artist_class = artist_classes.get(artist_name)
+        if not artist_class:
+            available_artists = [a.value for a in Artist]
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=f"Artist '{artist_name.value}' not implemented yet. Available artists: {available_artists}",
+            )
+        artist_instance = artist_class()
 
         # Query articles that have bullet_points but no existing art
         cursor = database.cursor
@@ -1098,7 +1124,7 @@ def bulk_generate_images(
 def generate_image(
     artist_name: Artist,
     article_id: int,
-    model: ImageModel = ImageModel.MINI,
+    model: ImageModel = ImageModel.GPT_IMAGE_1,
 ):
     """
     Generate an image using the xAI Aurora API.
@@ -1106,6 +1132,7 @@ def generate_image(
     # Map artist enum values to their classes
     artist_classes = {
         Artist.SPECTRA_VERITAS: SpectraVeritas,
+        Artist.FRA1: FRA1,
     }
 
     # Get the artist class
@@ -1249,7 +1276,28 @@ def generate_article_from_strings(
 
         # TODO: Write article_content to database using transcript_id
         # Get journalist ID from database
-        journalist_id = journalist_manager.get_journalist(aurelius.FULL_NAME)["id"]
+        journalist_data = journalist_manager.get_journalist(
+            journalist_instance.FULL_NAME
+        )
+        if not journalist_data:
+            # Create the journalist if it doesn't exist
+            journalist_manager.upsert_journalist(
+                full_name=journalist_instance.FULL_NAME,
+                first_name=journalist_instance.FIRST_NAME,
+                last_name=journalist_instance.LAST_NAME,
+                bio=journalist_instance.get_bio(),
+                description=journalist_instance.get_description(),
+            )
+            # Get the journalist data again after creation
+            journalist_data = journalist_manager.get_journalist(
+                journalist_instance.FULL_NAME
+            )
+            if not journalist_data:
+                raise HTTPException(
+                    status_code=500,
+                    detail=f"Failed to create or retrieve journalist '{journalist_instance.FULL_NAME}'",
+                )
+        journalist_id = journalist_data["id"]
         # Get metadata from transcript
         committee = transcript_data[1]  # committee at index 1
         youtube_id = transcript_data[2]  # youtube_id at index 2
@@ -1295,29 +1343,72 @@ def generate_article_from_strings(
 
 @app.post("/article/create/manually")
 def generate_article(
+    transcript_id: int,
     additional_context: str = "",
     journalist: Journalist = Journalist.AURELIUS_STONE,  # This creates the dropdown
     tone: Optional[Tone] = None,
     article_type: Optional[ArticleType] = None,
 ) -> Dict[str, Any]:
-    try:
-        # Hardcoded article ID of 1
-        article_id = 1
+    """
+    Generate an article from a transcript without writing to the database.
 
+    This endpoint:
+    - Fetches a transcript from the database using the provided transcript_id
+    - Generates an article using the specified journalist, tone, and article type
+    - Returns the article content and metadata
+
+    Note: This endpoint does NOT write to the database. It only returns the generated
+    article and its metadata for preview/testing purposes.
+
+    Args:
+        transcript_id: ID of the transcript to generate an article from
+        additional_context: Optional additional context to provide to the journalist
+        journalist: Journalist to write the article (default: Aurelius Stone)
+        tone: Writing tone for the article (optional, uses journalist default if not provided)
+        article_type: Type of article to generate (optional, uses journalist default if not provided)
+
+    Returns:
+        Dict containing:
+            - journalist: Name of the journalist who generated the article
+            - context: Full context used for article generation
+            - article_title: Generated article title
+            - article_content: Generated article content
+            - transcript_id: ID of the transcript used
+            - transcript_content_length: Length of the transcript content
+
+    Raises:
+        HTTPException: If database not available, transcript not found, or generation fails
+    """
+    try:
         # Fetch transcript content from database
         if not database:
             raise HTTPException(status_code=500, detail="Database not available")
 
-        transcript_data = database.get_transcript_by_id(article_id)
+        transcript_data = database.get_transcript_by_id(transcript_id)
         if not transcript_data:
             raise HTTPException(
-                status_code=404, detail=f"No transcript found with ID {article_id}"
+                status_code=404, detail=f"No transcript found with ID {transcript_id}"
             )
 
         # Extract content from transcript data (content is at index 3)
         transcript_content = transcript_data[3]
 
-        journalist_instance = AureliusStone()
+        # Map journalist enum to class instances
+        journalist_classes = {
+            Journalist.AURELIUS_STONE: AureliusStone,
+            Journalist.FR_J1: FRJ1,
+        }
+
+        # Get journalist instance
+        journalist_class = journalist_classes.get(journalist)
+        if not journalist_class:
+            available_journalists = [j.value for j in Journalist]
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=f"Journalist '{journalist.value}' not implemented yet. Available journalists: {available_journalists}",
+            )
+
+        journalist_instance = journalist_class()
         base_context = journalist_instance.load_context(
             tone=tone, article_type=article_type
         )
@@ -1333,7 +1424,7 @@ def generate_article(
         )
 
         logger.info(
-            f"Article generated successfully by {journalist_instance.NAME} using transcript ID {article_id}"
+            f"Article generated successfully by {journalist_instance.NAME} using transcript ID {transcript_id}"
         )
         return {
             "journalist": journalist_instance.NAME,
@@ -1348,7 +1439,7 @@ def generate_article(
                 if isinstance(article_result, dict)
                 else article_result
             ),
-            "transcript_id": article_id,
+            "transcript_id": transcript_id,
             "transcript_content_length": len(transcript_content),
         }
     except Exception as e:
@@ -1404,6 +1495,7 @@ async def bulk_generate_articles(
         # Map journalist enum to class instances
         journalist_classes = {
             Journalist.AURELIUS_STONE: AureliusStone,
+            Journalist.FR_J1: FRJ1,
         }
 
         # Get journalist instance and ID first (needed for query)
@@ -1414,9 +1506,31 @@ async def bulk_generate_articles(
                 detail=f"Journalist '{journalist.value}' not implemented yet",
             )
         journalist_instance = journalist_class()
-        journalist_id = journalist_manager.get_journalist(
+
+        # Ensure journalist exists in database, create if not
+        journalist_data = journalist_manager.get_journalist(
             journalist_instance.FULL_NAME
-        )["id"]
+        )
+        if not journalist_data:
+            # Create the journalist if it doesn't exist
+            journalist_manager.upsert_journalist(
+                full_name=journalist_instance.FULL_NAME,
+                first_name=journalist_instance.FIRST_NAME,
+                last_name=journalist_instance.LAST_NAME,
+                bio=journalist_instance.get_bio(),
+                description=journalist_instance.get_description(),
+            )
+            # Get the journalist data again after creation
+            journalist_data = journalist_manager.get_journalist(
+                journalist_instance.FULL_NAME
+            )
+            if not journalist_data:
+                raise HTTPException(
+                    status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                    detail=f"Failed to create or retrieve journalist '{journalist_instance.FULL_NAME}'",
+                )
+
+        journalist_id = journalist_data["id"]
 
         # Query transcripts that don't already have articles from THIS journalist (oldest first)
         cursor = database.cursor
@@ -2052,29 +2166,24 @@ async def build_video_queue(
     """
     Build the video queue by discovering videos from a YouTube channel using YouTube API.
 
-    This endpoint intelligently adjusts the scrape limit to account for already-processed videos.
-    If you request limit=10, it will scrape (current_transcript_count + 10) videos from the channel,
-    ensuring you get approximately 10 NEW videos added to the queue.
-
-    This endpoint:
-    1. Counts existing transcripts in the database
-    2. Adjusts limit: adjusted_limit = transcript_count + requested_limit
-    3. Fetches video IDs from YouTube channel using YouTube Data API v3
-    4. Compares and adds only new videos to the video_queue
+    This endpoint continues scraping videos until the requested number of NEW videos
+    are added to the queue, skipping videos that already have transcripts or are
+    already in the queue.
 
     Requires YOUTUBE_API_KEY environment variable to be set.
     Get a free API key at: https://console.cloud.google.com/apis/credentials
 
     Args:
         channel_url: URL of the YouTube channel (@handle, /channel/ID, or /c/custom)
-        limit: Number of NEW videos you want in the queue (default: 0 = all videos)
-               The actual scrape limit will be automatically increased based on existing transcript count
+        limit: Number of NEW videos you want added to the queue (default: 5, 0 = all videos)
+               The system will continue scraping until this many new videos are queued
 
     Returns:
         Dict containing queue building results:
             - total_discovered: Number of videos found on YouTube
             - already_exists: Number of videos that already have transcripts
-            - newly_queued: Number of videos added to queue
+            - already_in_queue: Number of videos already in the queue
+            - newly_queued: Number of videos added to queue (should match limit)
             - skipped: Number of videos skipped
             - failed: Number of videos that failed to process
             - youtube_ids: List of all discovered video IDs
@@ -2089,35 +2198,15 @@ async def build_video_queue(
                 detail="Database not available",
             )
 
-        # Get the current count of transcripts in the database
-        cursor = database.cursor
-        cursor.execute("SELECT COUNT(*) FROM transcripts")
-        transcript_count = cursor.fetchone()[0]
-
-        # Get the current count of videos in the queue
-        cursor.execute("SELECT COUNT(*) FROM video_queue")
-        queue_size = cursor.fetchone()[0]
-
-        # Add transcript count AND queue size to the requested limit
-        # This ensures we scrape far enough past all already-processed and already-queued videos
-        adjusted_limit = transcript_count + queue_size + limit
-
-        logger.info(
-            f"Transcripts in database: {transcript_count}, "
-            f"Videos in queue: {queue_size}, "
-            f"Requested limit: {limit}, "
-            f"Adjusted limit: {adjusted_limit}"
-        )
-
         # Use async context manager
         async with VideoQueueManager(database) as queue_manager:
-            # Execute queue building with adjusted limit
+            # Execute queue building - continue until we've added 'limit' new videos
             logger.info(
-                f"Building queue from {channel_url} with adjusted limit {adjusted_limit}"
+                f"Building queue from {channel_url} - will continue until {limit} new videos are queued"
             )
             results = await queue_manager.queue_new_videos(
                 channel_url,
-                adjusted_limit,
+                target_new_videos=limit,
             )
 
             logger.info(f"Queue building complete: {results}")
@@ -2233,6 +2322,62 @@ def get_queue_stats() -> Dict[str, Any]:
         )
 
 
+@app.delete("/queue/clear")
+def clear_video_queue() -> Dict[str, Any]:
+    """
+    Delete all videos from the video queue.
+
+    This endpoint completely clears the video_queue table, removing all queued videos.
+    Use this when you want to start fresh with a new queue.
+
+    **WARNING**: This action cannot be undone. All queued videos will be permanently removed.
+
+    Returns:
+        Dict containing deletion results:
+            - success: Whether deletion succeeded
+            - message: Description of what happened
+            - deleted_count: Number of videos removed from queue
+
+    Raises:
+        HTTPException: If database not available or deletion fails
+    """
+    try:
+        if not database:
+            raise HTTPException(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail="Database not available",
+            )
+
+        logger.info("Starting video queue clear (deleting all entries)")
+
+        cursor = database.cursor
+
+        # Get count before deletion for reporting
+        cursor.execute("SELECT COUNT(*) FROM video_queue")
+        count_before = cursor.fetchone()[0]
+
+        # Delete all rows from video_queue
+        cursor.execute("DELETE FROM video_queue")
+        database.conn.commit()
+
+        logger.info(f"Cleared video queue: removed {count_before} videos")
+
+        return {
+            "success": True,
+            "message": f"Successfully cleared video queue",
+            "deleted_count": count_before,
+        }
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Failed to clear video queue: {str(e)}", exc_info=True)
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to clear video queue: {str(e)}",
+        )
+
+
 @app.get("/transcripts/pending/{journalist}")
 def get_pending_transcripts(journalist: Journalist) -> Dict[str, Any]:
     """
@@ -2256,6 +2401,7 @@ def get_pending_transcripts(journalist: Journalist) -> Dict[str, Any]:
         # Map journalist enum to class
         journalist_classes = {
             Journalist.AURELIUS_STONE: AureliusStone,
+            Journalist.FR_J1: FRJ1,
         }
 
         journalist_class = journalist_classes.get(journalist)
@@ -2266,9 +2412,31 @@ def get_pending_transcripts(journalist: Journalist) -> Dict[str, Any]:
             )
 
         journalist_instance = journalist_class()
-        journalist_id = journalist_manager.get_journalist(
+
+        # Ensure journalist exists in database, create if not
+        journalist_data = journalist_manager.get_journalist(
             journalist_instance.FULL_NAME
-        )["id"]
+        )
+        if not journalist_data:
+            # Create the journalist if it doesn't exist
+            journalist_manager.upsert_journalist(
+                full_name=journalist_instance.FULL_NAME,
+                first_name=journalist_instance.FIRST_NAME,
+                last_name=journalist_instance.LAST_NAME,
+                bio=journalist_instance.get_bio(),
+                description=journalist_instance.get_description(),
+            )
+            # Get the journalist data again after creation
+            journalist_data = journalist_manager.get_journalist(
+                journalist_instance.FULL_NAME
+            )
+            if not journalist_data:
+                raise HTTPException(
+                    status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                    detail=f"Failed to create or retrieve journalist '{journalist_instance.FULL_NAME}'",
+                )
+
+        journalist_id = journalist_data["id"]
 
         cursor = database.cursor
         cursor.execute(
@@ -2491,7 +2659,7 @@ def generate_article_bullet_points(article_id: int):
 def regenerate_art_image(
     art_id: int,
     artist_name: Artist = Artist.SPECTRA_VERITAS,
-    model: ImageModel = ImageModel.MINI,
+    model: ImageModel = ImageModel.GPT_IMAGE_1,
 ) -> Dict[str, Any]:
     """
     Regenerate the image for an existing art record.
@@ -2502,7 +2670,7 @@ def regenerate_art_image(
     Args:
         art_id: The ID of the art record to regenerate
         artist_name: AI artist to use (default: Spectra Veritas)
-        model: Image model to use (default: gpt-image-1-mini)
+        model: Image model to use (default: gpt-image-1)
 
     Returns:
         Dict containing the updated art metadata
@@ -2551,6 +2719,7 @@ def regenerate_art_image(
         # Step 4: Create artist instance and generate new image
         artist_classes = {
             Artist.SPECTRA_VERITAS: SpectraVeritas,
+            Artist.FRA1: FRA1,
         }
         artist_class = artist_classes.get(artist_name)
         if not artist_class:

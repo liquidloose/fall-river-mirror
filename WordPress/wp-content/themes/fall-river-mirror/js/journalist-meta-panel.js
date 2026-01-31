@@ -37,7 +37,7 @@
         // Initialize meta with saved values from REST API when component loads
         useEffect(function () {
             if (!postId || isInitialized) return;
-            
+
             setIsLoading(true);
 
             // Fetch the post with meta fields from REST API to initialize
@@ -172,39 +172,46 @@
             },
             // Name field removed - using post title instead
             wp.element.createElement(TextControl, {
+                __next40pxDefaultSize: true,
                 label: __('First Name', 'fall-river-mirror'),
                 value: (meta && meta._journalist_first_name) || '',
                 onChange: (value) => setMeta({ ...(meta || {}), _journalist_first_name: value || '' })
             }),
             wp.element.createElement(TextControl, {
+                __next40pxDefaultSize: true,
                 label: __('Last Name', 'fall-river-mirror'),
                 value: (meta && meta._journalist_last_name) || '',
                 onChange: (value) => setMeta({ ...(meta || {}), _journalist_last_name: value || '' })
             }),
             wp.element.createElement(TextControl, {
+                __next40pxDefaultSize: true,
                 label: __('Email', 'fall-river-mirror'),
                 type: 'email',
                 value: (meta && meta._journalist_email) || '',
                 onChange: (value) => setMeta({ ...(meta || {}), _journalist_email: value || '' })
             }),
             wp.element.createElement(TextControl, {
+                __next40pxDefaultSize: true,
                 label: __('Phone', 'fall-river-mirror'),
                 value: (meta && meta._journalist_phone) || '',
                 onChange: (value) => setMeta({ ...(meta || {}), _journalist_phone: value || '' })
             }),
             wp.element.createElement(TextControl, {
+                __next40pxDefaultSize: true,
                 label: __('Title/Position', 'fall-river-mirror'),
                 value: (meta && meta._journalist_title) || '',
                 onChange: (value) => setMeta({ ...(meta || {}), _journalist_title: value || '' }),
                 help: __('e.g., Senior Reporter, Editor, etc.', 'fall-river-mirror')
             }),
             wp.element.createElement(TextControl, {
+                __next40pxDefaultSize: true,
                 label: __('Twitter/X', 'fall-river-mirror'),
                 value: (meta && meta._journalist_twitter) || '',
                 onChange: (value) => setMeta({ ...(meta || {}), _journalist_twitter: value || '' }),
                 placeholder: '@username'
             }),
             wp.element.createElement(TextControl, {
+                __next40pxDefaultSize: true,
                 label: __('LinkedIn', 'fall-river-mirror'),
                 type: 'url',
                 value: (meta && meta._journalist_linkedin) || '',
