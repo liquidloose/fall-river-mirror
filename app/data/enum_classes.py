@@ -16,6 +16,7 @@ class ArticleType(str, Enum):
 
 class Artist(str, Enum):
     SPECTRA_VERITAS = "Spectra Veritas"
+    FRA1 = "FRA1"
 
 
 class AIAgent(str, Enum):
@@ -40,12 +41,12 @@ class Tone(str, Enum):
 
 class Journalist(str, Enum):
     AURELIUS_STONE = "Aurelius Stone"
+    FR_J1 = "FRJ1"
 
 
 class ImageModel(str, Enum):
-    FULL = "gpt-image-1"
-    MINI = "gpt-image-1-mini"
-    GROK = "grok-2-image"
+    GPT_IMAGE_1 = "gpt-image-1"
+    GROK = "grok-imagine-image"
 
 
 # Request/Response models

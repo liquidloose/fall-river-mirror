@@ -13,3 +13,13 @@ License URI: http://www.gnu.org/licenses/gpl-2.0.html
 Text Domain: fall-river-mirror
 Tags: 
 */
+
+@media (prefers-color-scheme: dark) {
+  body {
+    color: var(--wp--preset--color--paper);
+  }
+
+  h1, h2, h3, h4, h5, h6, p {
+    color: var(--wp--preset--color--paper);
+  }
+}

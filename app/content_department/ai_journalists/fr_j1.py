@@ -2,26 +2,26 @@ from app.data.enum_classes import Tone, ArticleType
 from app.content_department.ai_journalists.base_journalist import BaseJournalist
 
 
-class AureliusStone(BaseJournalist):
+class FRJ1(BaseJournalist):
     """
-    Aurelius Stone - An AI journalist personality.
+    FRJ1 - An AI journalist personality.
     Inherits shared functionality from BaseJournalist and BaseCreator.
     """
 
     # Fixed identity traits
-    FIRST_NAME = "Aurelius"
-    LAST_NAME = "Stone"
+    FIRST_NAME = "FR"
+    LAST_NAME = "J1"
     FULL_NAME = f"{FIRST_NAME} {LAST_NAME}"
     NAME = FULL_NAME
     SLANT = "unbiased"
-    STYLE = "conversational"
+    STYLE = "journalistic"
 
     # Journalist-specific defaults
     DEFAULT_TONE = Tone.ANALYTICAL
     DEFAULT_ARTICLE_TYPE = ArticleType.OP_ED
 
     def get_guidelines(self) -> str:
-        """Return Aurelius Stone's specific article guidelines."""
+        """Return FRJ1's specific article guidelines."""
         guidelines = [
             "- Internal Breakdown: Analyze the transcript to identify major agenda items and key speakers for each topic.",
             "- Tracking Outcomes: Note specific results such as votes, items being tabled, or delays.",
