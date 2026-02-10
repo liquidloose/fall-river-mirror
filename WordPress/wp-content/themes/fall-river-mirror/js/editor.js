@@ -20,21 +20,21 @@
         
         // Define which article meta fields are available for binding
         const articleEditableAttributes = [
-            'article_content',
-            'committee',
-            'youtube_id',
-            'bullet_points',
-            'meeting_date',
-            'view_count'
+            '_article_content',
+            '_article_committee',
+            '_article_youtube_id',
+            '_article_bullet_points',
+            '_article_meeting_date',
+            '_article_view_count'
         ];
         
         const articleReadOnlyAttributes = [
-            'article_content',
-            'committee',
-            'youtube_id',
-            'bullet_points',
-            'meeting_date',
-            'view_count'
+            '_article_content',
+            '_article_committee',
+            '_article_youtube_id',
+            '_article_bullet_points',
+            '_article_meeting_date',
+            '_article_view_count'
         ];
         
         // Define which journalist meta fields are available for binding
@@ -102,10 +102,7 @@
                             articleEditableAttributes.includes( fieldKey )
                             || articleReadOnlyAttributes.includes( fieldKey )
                         ) {
-                            // Special handling: keep meta key as _article_content for article_content field
-                            const metaKey = (fieldKey === 'article_content') 
-                                ? '_article_content' 
-                                : '_article_' + fieldKey;
+                            const metaKey = fieldKey;
                             
                             // Get the value from meta object
                             const value = meta[ metaKey ];

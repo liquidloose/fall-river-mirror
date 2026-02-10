@@ -22,12 +22,12 @@ if (!defined('ABSPATH')) {
  * editing in the Gutenberg editor without requiring code changes.
  * 
  * Supported meta fields:
- * - content (HTML content)
- * - committee (string)
- * - youtube_id (string)
- * - bullet_points (text)
- * - meeting_date (string)
- * - view_count (integer)
+ * - _article_content (HTML content)
+ * - _article_committee (string)
+ * - _article_youtube_id (string)
+ * - _article_bullet_points (text)
+ * - _article_meeting_date (string)
+ * - _article_view_count (integer)
  * 
  * @return void
  */
@@ -52,8 +52,7 @@ add_action( 'init', 'fr_mirror_register_article_meta_bindings' );
  * Get value for article meta block binding
  * 
  * Callback function that retrieves article meta field values for block bindings.
- * The field key is specified in the binding args, and the meta key is constructed
- * as '_article_{key}'.
+ * The field key is specified in the binding args and used directly as the meta key.
  * 
  * @param array     $source_args    Arguments passed from the block binding, including 'key' parameter.
  * @param WP_Block  $block_instance The block instance containing context information.
@@ -169,10 +168,7 @@ function fr_mirror_get_article_meta_binding( array $source_args, WP_Block $block
         );
     }
     
-    // Special handling: keep meta key as _article_content for article_content field
-    $meta_key = ($field_key === 'article_content') 
-        ? '_article_content' 
-        : '_article_' . $field_key;
+    $meta_key = $field_key;
     
     // Retrieve the meta value
     $value = get_post_meta( $post_id, $meta_key, true );
@@ -184,15 +180,14 @@ function fr_mirror_get_article_meta_binding( array $source_args, WP_Block $block
     
     // Handle empty values appropriately
     if ( $value === false || $value === '' ) {
-        // For integer fields, return 0; for string fields, return empty string
-          // Cast integer fields to string
-    if ( $field_key === 'view_count' ) {
-        return (string) $value;
-    }
+        // For integer fields like _article_view_count, return '0' when empty
+        if ( $field_key === '_article_view_count' ) {
+            return (string) ( $value ?: 0 );
+        }
         return '';
     }
 
-    if ( $field_key === 'bullet_points' ) {
+    if ( $field_key === '_article_bullet_points' ) {
         return wp_kses( $value, array(
             'ul' => array( 'class' => array(), 'id' => array() ),
             'li' => array( 'class' => array() ),

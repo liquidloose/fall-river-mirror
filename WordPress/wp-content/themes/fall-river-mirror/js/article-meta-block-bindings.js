@@ -125,10 +125,7 @@
                         return;
                     }
                     
-                    // Special handling: keep meta key as _article_content for article_content field
-                    const metaKey = (fieldKey === 'article_content') 
-                        ? '_article_content' 
-                        : '_article_' + fieldKey;
+                    const metaKey = fieldKey;
                     const value = meta[metaKey] || '';
                     
                     // Update block content when meta changes
@@ -176,12 +173,12 @@
                                 }
                             }, el('strong', {}, __('Currently bound to: ', 'fr-mirror')), 
                                 el('span', {}, 
-                                    fieldKey === 'article_content' ? __('Content', 'fr-mirror') :
-                                    fieldKey === 'committee' ? __('Committee', 'fr-mirror') :
-                                    fieldKey === 'youtube_id' ? __('YouTube ID', 'fr-mirror') :
-                                    fieldKey === 'bullet_points' ? __('Bullet Points', 'fr-mirror') :
-                                    fieldKey === 'meeting_date' ? __('Meeting Date', 'fr-mirror') :
-                                    fieldKey === 'view_count' ? __('View Count', 'fr-mirror') :
+                                    fieldKey === '_article_content' ? __('Content', 'fr-mirror') :
+                                    fieldKey === '_article_committee' ? __('Committee', 'fr-mirror') :
+                                    fieldKey === '_article_youtube_id' ? __('YouTube ID', 'fr-mirror') :
+                                    fieldKey === '_article_bullet_points' ? __('Bullet Points', 'fr-mirror') :
+                                    fieldKey === '_article_meeting_date' ? __('Meeting Date', 'fr-mirror') :
+                                    fieldKey === '_article_view_count' ? __('View Count', 'fr-mirror') :
                                     fieldKey
                                 )
                             ) : null,
@@ -197,12 +194,12 @@
                                 value: isBound ? contentBinding?.args?.key || '' : '',
                                 options: [
                                     { label: __('None', 'fr-mirror'), value: '' },
-                                    { label: __('Article Content', 'fr-mirror'), value: 'article_content' },
-                                    { label: __('Committee', 'fr-mirror'), value: 'committee' },
-                                    { label: __('YouTube ID', 'fr-mirror'), value: 'youtube_id' },
-                                    { label: __('Bullet Points', 'fr-mirror'), value: 'bullet_points' },
-                                    { label: __('Meeting Date', 'fr-mirror'), value: 'meeting_date' },
-                                    { label: __('View Count', 'fr-mirror'), value: 'view_count' }
+                                    { label: __('Article Content', 'fr-mirror'), value: '_article_content' },
+                                    { label: __('Committee', 'fr-mirror'), value: '_article_committee' },
+                                    { label: __('YouTube ID', 'fr-mirror'), value: '_article_youtube_id' },
+                                    { label: __('Bullet Points', 'fr-mirror'), value: '_article_bullet_points' },
+                                    { label: __('Meeting Date', 'fr-mirror'), value: '_article_meeting_date' },
+                                    { label: __('View Count', 'fr-mirror'), value: '_article_view_count' }
                                 ],
                                 /**
                                  * STEP 9: HANDLE BINDING SELECTION

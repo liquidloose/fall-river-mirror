@@ -84,7 +84,7 @@ class XAITextQuery:
             headline_chat = client.chat.create(model="grok-4")
             headline_chat.append(
                 system(
-                    "You are a headline writer. Create a single catchy, attention-grabbing headline (max 10 words) for the following article. Return ONLY the headline text, no quotes or extra text."
+                    "You are a headline writer. Create a single catchy, attention-grabbing headline (max 10 words) for the following article. Do NOT include 'Fall River' in the headline - the publication is already about Fall River so it's redundant. Return ONLY the headline text, no quotes or extra text."
                 )
             )
             headline_chat.append(user(f"Article content:\n\n{response.content}"))

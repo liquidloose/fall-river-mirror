@@ -280,6 +280,40 @@ def delete_art_endpoint(art_id: int) -> Dict[str, Any]:
         )
 
 
+@app.delete("/art/delete-all")
+def delete_all_art_endpoint() -> Dict[str, Any]:
+    """
+    Delete ALL art records from the database.
+
+    WARNING: This is destructive and cannot be undone.
+
+    Returns:
+        Dict containing count of deleted records
+    """
+    try:
+        if not database:
+            raise HTTPException(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail="Database not available",
+            )
+
+        deleted_count = database.delete_all_art()
+
+        logger.info(f"Deleted all art: {deleted_count} records")
+        return {
+            "success": True,
+            "message": f"Successfully deleted all art records",
+            "deleted_count": deleted_count,
+        }
+
+    except Exception as e:
+        logger.error(f"Failed to delete all art: {str(e)}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to delete all art: {str(e)}",
+        )
+
+
 @app.delete("/article/{article_id}")
 def delete_article_endpoint(article_id: int) -> Dict[str, Any]:
     """
@@ -611,7 +645,7 @@ async def bulk_fetch_transcripts(
         transcripts_failed = 0
 
         # Rate limit in milliseconds (adjust as needed)
-        RATE_LIMIT_MS = 1000  # 1 second between requests
+        RATE_LIMIT_MS = 5000  # 5 seconds between requests (polite scraping)
 
         for row in queue_items:
             youtube_id = row[0]
@@ -741,6 +775,146 @@ async def get_article_count() -> Dict[str, Any]:
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Failed to get article count: {str(e)}",
+        )
+
+
+@app.post("/articles/strip-h1-tags")
+async def strip_h1_tags_from_articles() -> Dict[str, Any]:
+    """
+    Strip all H1 tags (and their content) from all articles.
+
+    H1 tags are duplicate titles since articles already have a title field.
+    This endpoint removes them from existing articles.
+
+    Returns:
+        Dict containing count of articles modified
+    """
+    import re
+
+    try:
+        if not database:
+            raise HTTPException(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail="Database not initialized",
+            )
+
+        # Get all articles from database
+        all_articles = database.get_all_articles()
+
+        # Pattern to match H1 tags and their content (including multiline)
+        h1_pattern = re.compile(r"<h1[^>]*>.*?</h1>", re.DOTALL | re.IGNORECASE)
+
+        modified_count = 0
+        modified_ids = []
+
+        for article in all_articles:
+            content = article.get("content", "")
+            if content and h1_pattern.search(content):
+                # Remove H1 tags and their content
+                new_content = h1_pattern.sub("", content)
+                # Clean up any resulting double newlines
+                new_content = re.sub(r"\n\s*\n\s*\n", "\n\n", new_content)
+
+                # Update in database
+                if database.update_article_content(article["id"], new_content):
+                    modified_count += 1
+                    modified_ids.append(article["id"])
+
+                    # Also update in-memory cache if it exists
+                    if article["id"] in articles_db:
+                        articles_db[article["id"]]["content"] = new_content
+
+        logger.info(f"Stripped H1 tags from {modified_count} articles")
+        return {
+            "message": f"Successfully processed articles",
+            "articles_modified": modified_count,
+            "modified_article_ids": modified_ids,
+            "total_articles_scanned": len(all_articles),
+        }
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Failed to strip H1 tags: {str(e)}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to strip H1 tags: {str(e)}",
+        )
+
+
+@app.post("/articles/strip-fall-river-from-titles")
+async def strip_fall_river_from_titles() -> Dict[str, Any]:
+    """
+    Remove 'Fall River' from all article titles.
+
+    Since the publication is about Fall River, having it in every title is redundant.
+    This endpoint removes variations like 'Fall River', 'Fall River's', etc.
+
+    Returns:
+        Dict containing count of articles modified
+    """
+    import re
+
+    try:
+        if not database:
+            raise HTTPException(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail="Database not initialized",
+            )
+
+        # Get all articles from database
+        all_articles = database.get_all_articles()
+
+        # Pattern to match "Fall River" and variations (case insensitive)
+        # Handles: "Fall River", "Fall River's", "Fall River:", etc.
+        fall_river_pattern = re.compile(r"\bFall River'?s?\b[:\s]*", re.IGNORECASE)
+
+        modified_count = 0
+        modified_articles = []
+
+        for article in all_articles:
+            title = article.get("title", "")
+            if title and fall_river_pattern.search(title):
+                # Remove "Fall River" and clean up
+                new_title = fall_river_pattern.sub("", title)
+                # Clean up any resulting double spaces or leading/trailing spaces
+                new_title = re.sub(r"\s+", " ", new_title).strip()
+                # Capitalize first letter if it's now lowercase
+                if new_title and new_title[0].islower():
+                    new_title = new_title[0].upper() + new_title[1:]
+
+                # Update in database
+                if new_title and database.update_article_title(
+                    article["id"], new_title
+                ):
+                    modified_count += 1
+                    modified_articles.append(
+                        {
+                            "id": article["id"],
+                            "old_title": title,
+                            "new_title": new_title,
+                        }
+                    )
+
+                    # Also update in-memory cache if it exists
+                    if article["id"] in articles_db:
+                        articles_db[article["id"]]["title"] = new_title
+
+        logger.info(f"Removed 'Fall River' from {modified_count} article titles")
+        return {
+            "message": f"Successfully processed articles",
+            "articles_modified": modified_count,
+            "modified_articles": modified_articles,
+            "total_articles_scanned": len(all_articles),
+        }
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Failed to strip Fall River from titles: {str(e)}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to strip Fall River from titles: {str(e)}",
         )
 
 
@@ -1818,6 +1992,21 @@ def sync_article_to_wordpress(article_id: int) -> Dict[str, Any]:
                 exc_info=True,
             )
 
+        # Validate that article has content, bullet points, and art before syncing
+        missing_fields = []
+        if not article.get("content"):
+            missing_fields.append("content")
+        if not article.get("bullet_points"):
+            missing_fields.append("bullet_points")
+        if not featured_image:
+            missing_fields.append("featured_image (art)")
+
+        if missing_fields:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=f"Article {article_id} is missing required fields for sync: {', '.join(missing_fields)}. Article must have content, bullet points, and art to sync to WordPress.",
+            )
+
         # Build WordPress payload
         payload = {
             "title": article.get("title") or "",
@@ -2092,6 +2281,24 @@ def sync_all_articles_to_wordpress(limit: Optional[int] = None) -> Dict[str, Any
                     logger.warning(
                         f"Failed to fetch/process image for article {article_id}: {str(e)}"
                     )
+
+                # Validate that article has content, bullet points, and art before syncing
+                missing_fields = []
+                if not article.get("content"):
+                    missing_fields.append("content")
+                if not article.get("bullet_points"):
+                    missing_fields.append("bullet_points")
+                if not featured_image:
+                    missing_fields.append("featured_image (art)")
+
+                if missing_fields:
+                    failed_count += 1
+                    error_msg = f"Missing required fields: {', '.join(missing_fields)}"
+                    errors.append(
+                        {"article_id": article_id, "error": error_msg, "skipped": True}
+                    )
+                    logger.info(f"Skipping article {article_id}: {error_msg}")
+                    continue
 
                 # Build WordPress payload
                 payload = {

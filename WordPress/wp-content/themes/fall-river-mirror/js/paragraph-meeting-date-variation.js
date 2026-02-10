@@ -54,7 +54,7 @@
                         content: {
                             source: 'fr-mirror/article-meta',
                             args: {
-                                key: 'meeting_date',
+                                key: '_article_meeting_date',
                             },
                         },
                     },

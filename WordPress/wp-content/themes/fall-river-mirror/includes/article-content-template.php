@@ -14,15 +14,15 @@ function fr_mirror_get_required_article_blocks( $title = '' ) {
 <h2 class=\"wp-block-heading\">{$title_html}</h2>
 <!-- /wp:heading -->
 
-<!-- wp:paragraph {\"metadata\":{\"bindings\":{\"content\":{\"source\":\"fr-mirror/article-meta\",\"args\":{\"key\":\"bullet_points\"}}}}} -->
+<!-- wp:paragraph {\"metadata\":{\"bindings\":{\"content\":{\"source\":\"fr-mirror/article-meta\",\"args\":{\"key\":\"_article_bullet_points\"}}}}} -->
 <p></p>
 <!-- /wp:paragraph -->
 
-<!-- wp:paragraph {\"metadata\":{\"bindings\":{\"content\":{\"source\":\"fr-mirror/article-meta\",\"args\":{\"key\":\"article_content\"}}}}} -->
+<!-- wp:paragraph {\"metadata\":{\"bindings\":{\"content\":{\"source\":\"fr-mirror/article-meta\",\"args\":{\"key\":\"_article_content\"}}}}} -->
 <p></p>
 <!-- /wp:paragraph -->
 
-<!-- wp:paragraph {\"metadata\":{\"bindings\":{\"content\":{\"source\":\"fr-mirror/article-meta\",\"args\":{\"key\":\"article_content\"}}}}} -->
+<!-- wp:paragraph {\"metadata\":{\"bindings\":{\"content\":{\"source\":\"fr-mirror/article-meta\",\"args\":{\"key\":\"_article_content\"}}}}} -->
 <p></p>
 <!-- /wp:paragraph -->";
 }

@@ -14,14 +14,14 @@ class WhisperProcessor:
     """Handles OpenAI Whisper-based audio transcription for YouTube videos."""
 
     def __init__(self, video_id: Optional[str] = None):
-        self.video_id = video_id
-        self.api_key = os.getenv("OPENAI_API_KEY")
         """
         Initialize WhisperProcessor.
 
         Args:
             video_id: YouTube video ID
         """
+        self.video_id = video_id
+        self.api_key = os.getenv("OPENAI_API_KEY")
 
         if not self.api_key:
             raise ValueError(
@@ -31,6 +31,31 @@ class WhisperProcessor:
         self.client = OpenAI(api_key=self.api_key)
         self.max_file_size = 25 * 1024 * 1024  # 25MB in bytes
         self.chunk_duration = 1200  # 20 minutes in seconds
+
+        # Add deno to PATH for yt-dlp YouTube extraction
+        deno_path = os.path.expanduser("~/.deno/bin")
+        if deno_path not in os.environ.get("PATH", ""):
+            os.environ["PATH"] = f"{deno_path}:{os.environ.get('PATH', '')}"
+
+        # Configure Webshare proxy for yt-dlp downloads
+        # Uses static proxy IP from Webshare proxy list (format: http://user:pass@IP:port)
+        self.proxy_username = os.getenv("WEBSHARE_PROXY_USERNAME")
+        self.proxy_password = os.getenv("WEBSHARE_PROXY_PASSWORD")
+        self.proxy_host = os.getenv("WEBSHARE_PROXY_HOST")  # IP from Webshare proxy list
+        self.proxy_port = os.getenv("WEBSHARE_PROXY_PORT", "8153")
+        self.proxy_enabled = bool(self.proxy_username and self.proxy_password and self.proxy_host)
+
+        if self.proxy_enabled:
+            logger.info(f"Webshare proxy configured: {self.proxy_host}:{self.proxy_port}")
+
+    def _get_proxy_url(self) -> Optional[str]:
+        """Generate proxy URL for Webshare static proxy."""
+        if not self.proxy_enabled:
+            return None
+
+        proxy_url = f"http://{self.proxy_username}:{self.proxy_password}@{self.proxy_host}:{self.proxy_port}"
+        logger.info(f"Using Webshare proxy: {self.proxy_host}:{self.proxy_port}")
+        return proxy_url
 
     def transcribe_youtube_video(self, video_id: str) -> str:
         """
@@ -65,7 +90,14 @@ class WhisperProcessor:
                         "preferredquality": "96",
                     }
                 ],
+                # Required for YouTube - enables JS challenge solving with deno
+                "extractor_args": {"youtube": {"remote_components": ["ejs:github"]}},
             }
+
+            # Add proxy if configured (with rotating session ID)
+            proxy_url = self._get_proxy_url()
+            if proxy_url:
+                ydl_opts["proxy"] = proxy_url
 
             youtube_url = f"https://www.youtube.com/watch?v={video_id}"
 

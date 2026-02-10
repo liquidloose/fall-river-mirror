@@ -800,6 +800,70 @@ class Database:
             )
             return False
 
+    def update_article_content(self, article_id: int, content: str) -> bool:
+        """
+        Update content for an existing article.
+
+        Args:
+            article_id: The unique identifier of the article
+            content: The new article content
+
+        Returns:
+            True if update succeeded, False otherwise
+        """
+        self._log_operation(
+            "update_article_content",
+            {"article_id": article_id, "content_len": len(content)},
+        )
+
+        try:
+            self.cursor.execute(
+                "UPDATE articles SET content = ? WHERE id = ?",
+                (content, article_id),
+            )
+            self.conn.commit()
+            updated = self.cursor.rowcount > 0
+            if updated:
+                self.logger.info(f"Updated content for article ID: {article_id}")
+            else:
+                self.logger.warning(f"No article found with ID: {article_id}")
+            return updated
+        except Exception as e:
+            self._log_error("update_article_content", e, {"article_id": article_id})
+            return False
+
+    def update_article_title(self, article_id: int, title: str) -> bool:
+        """
+        Update title for an existing article.
+
+        Args:
+            article_id: The unique identifier of the article
+            title: The new article title
+
+        Returns:
+            True if update succeeded, False otherwise
+        """
+        self._log_operation(
+            "update_article_title",
+            {"article_id": article_id, "title": title},
+        )
+
+        try:
+            self.cursor.execute(
+                "UPDATE articles SET title = ? WHERE id = ?",
+                (title, article_id),
+            )
+            self.conn.commit()
+            updated = self.cursor.rowcount > 0
+            if updated:
+                self.logger.info(f"Updated title for article ID: {article_id}")
+            else:
+                self.logger.warning(f"No article found with ID: {article_id}")
+            return updated
+        except Exception as e:
+            self._log_error("update_article_title", e, {"article_id": article_id})
+            return False
+
     def delete_article_by_id(self, article_id: int) -> bool:
         """
         Delete an article by its ID.
@@ -1238,6 +1302,29 @@ class Database:
 
         except Exception as e:
             self._log_error("delete_art_by_id", e, operation_details)
+            raise
+
+    def delete_all_art(self) -> int:
+        """
+        Delete all art records from the database.
+
+        Returns:
+            int: Number of art records deleted
+        """
+        self._log_operation("delete_all_art", {})
+
+        try:
+            self.cursor.execute("SELECT COUNT(*) FROM art")
+            count_before = self.cursor.fetchone()[0]
+
+            self.cursor.execute("DELETE FROM art")
+            self.conn.commit()
+
+            self.logger.info(f"Deleted all {count_before} art record(s)")
+            return count_before
+
+        except Exception as e:
+            self._log_error("delete_all_art", e, {})
             raise
 
     def get_art_by_id(self, art_id: int) -> Optional[dict]:

@@ -108,6 +108,7 @@ class BaseJournalist(BaseCreator):
             "",
             "FORMAT REQUIREMENTS:",
             "- Do NOT include a title - just the article body content",
+            "- Do NOT use <h1> tags - the title is handled separately",
             "- Use HTML paragraph tags (<p>...</p>) for paragraphs",
             "- You may use <h2>, <h3> for section headers within the article body",
             "- You may use <strong>, <em>, <blockquote>, <ul>, <li> for formatting",

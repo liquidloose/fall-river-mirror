@@ -1,6 +1,6 @@
 services:
   db:
-    image: mysql:latest
+    image: mysql:8.4
     networks:
       - fr-mirror-bridge
     volumes:
@@ -14,6 +14,7 @@ services:
   wordpress:
     depends_on:
       - db
+    user: 1000:1000
     image: fr-mirror:latest
     networks:
       - fr-mirror-bridge

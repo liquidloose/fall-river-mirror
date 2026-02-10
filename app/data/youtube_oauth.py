@@ -5,6 +5,18 @@ This module handles OAuth 2.0 authentication for YouTube Data API v3 caption acc
 Captions require OAuth 2.0 authentication (not just an API key) because they can be
 user-specific.
 
+Note:
+    This module is NOT currently integrated into the main application. The
+    TranscriptManager uses the youtube-transcript-api library instead. This module
+    and YouTubeCaptionsFetcher were created as an alternative implementation using
+    the official YouTube Data API v3 captions endpoints but have not been integrated.
+
+Limitation:
+    YouTube Data API v3 only allows downloading captions for videos YOU own. Attempting
+    to download captions from other users' videos results in a 403 Forbidden error.
+    This makes the official API unsuitable for bulk downloading transcripts from
+    arbitrary YouTube videos.
+
 Requirements:
     - OAuth 2.0 credentials JSON file from Google Cloud Console
     - Set YOUTUBE_OAUTH_CREDENTIALS_PATH environment variable

@@ -144,8 +144,11 @@ function sort_query_block_by_meeting_date($query, $block) {
     if ($post_type === 'article' || (is_array($post_type) && in_array('article', $post_type))) {
         // Check if we're on a category archive page
         if (is_category()) {
-            // Override orderby to sort by meeting_date meta field
-            $query['meta_key'] = 'meeting_date';
+            // Override orderby to sort by _article_meeting_date meta field
+            $query['meta_key'] = '_article_meeting_date';
+            $query['meta_query'] = array(
+                array( 'key' => '_article_meeting_date', 'compare' => 'EXISTS' ),
+            );
             $query['orderby'] = 'meta_value';
             $query['order'] = 'DESC';
         }
@@ -175,32 +178,32 @@ add_filter('query_loop_block_query_vars', 'sort_query_block_by_meeting_date', 10
 if (!function_exists('get_article_custom_fields')) {
 function get_article_custom_fields() {
     return array(
-        'article_content' => array(
+        '_article_content' => array(
             'label' => 'Content',
             'type' => 'string',
             'sanitize' => 'wp_kses_post',
         ),
-        'committee' => array(
+        '_article_committee' => array(
             'label' => 'Committee',
             'type' => 'string',
             'sanitize' => 'sanitize_text_field',
         ),
-        'youtube_id' => array(
+        '_article_youtube_id' => array(
             'label' => 'YouTube ID',
             'type' => 'string',
             'sanitize' => 'sanitize_text_field',
         ),
-        'bullet_points' => array(
+        '_article_bullet_points' => array(
             'label' => 'Bullet Points',
             'type' => 'string',
             'sanitize' => 'sanitize_textarea_field',
         ),
-        'meeting_date' => array(
+        '_article_meeting_date' => array(
             'label' => 'Meeting Date',
             'type' => 'string',
             'sanitize' => 'sanitize_text_field',
         ),
-        'view_count' => array(
+        '_article_view_count' => array(
             'label' => 'View Count',
             'type' => 'integer',
             'sanitize' => 'absint',
@@ -354,18 +357,9 @@ function register_article_meta_fields() {
     $article_custom_fields = get_article_custom_fields();
     foreach (array_keys($article_custom_fields) as $field_key) {
         $field_config = $article_custom_fields[$field_key];
-        // Special handling: keep meta key as _article_content for article_content field
-        $meta_key = ($field_key === 'article_content') 
-            ? '_article_content' 
-            : '_article_' . $field_key;
+        $meta_key = $field_key;
         $sanitize_function = $field_config['sanitize'];
         $field_type = $field_config['type'];
-        
-        // Skip registering 'article_content' field with show_in_rest to prevent auto UI generation
-        // We'll handle it manually in the custom panel
-        if ($field_key === 'article_content') {
-            continue;
-        }
         
         // Determine schema default based on type
         $schema_default = ($field_type === 'integer') ? 0 : '';
@@ -427,48 +421,6 @@ function register_article_meta_fields() {
             }
         ));
     }
-
-    
-    // Register content field separately for REST API (without auto UI generation)
-    // We handle the UI manually in the custom panel
-    register_post_meta('article', '_article_content', array(
-        'show_in_rest' => array(
-            'schema' => array(
-                'type' => 'string',
-                'default' => '',
-            ),
-        ),
-        'single' => true,
-        'type' => 'string',
-        'auth_callback' => function() {
-            return current_user_can('edit_posts'); 
-        },
-        'get_callback' => function($object, $field_name, $request, $object_type) {
-            if (is_array($object) && isset($object['id'])) {
-                $post_id = $object['id'];
-            } elseif (is_object($object) && isset($object->ID)) {
-                $post_id = $object->ID;
-            } else {
-                return '';
-            }
-            return get_post_meta($post_id, '_article_content', true);
-        },
-        'update_callback' => function($value, $object, $field_name, $request, $object_type) {
-            if (is_array($object) && isset($object['id'])) {
-                $post_id = $object['id'];
-            } elseif (is_object($object) && isset($object->ID)) {
-                $post_id = $object->ID;
-            } else {
-                return new WP_Error('invalid_object', 'Invalid post object', array('status' => 400));
-            }
-            $sanitized_value = wp_kses_post($value);
-            $result = update_post_meta($post_id, '_article_content', $sanitized_value);
-            if ($result === false) {
-                return new WP_Error('update_failed', 'Failed to update content field', array('status' => 500));
-            }
-            return true;
-        }
-    ));
 }
 }
 add_action('init', 'register_article_meta_fields');

@@ -108,6 +108,17 @@ function fall_river_mirror_enqueue_block_editor_assets() {
     );
     
     wp_enqueue_script(
+        'paragraph-view-count-variation',
+        get_template_directory_uri() . '/js/paragraph-view-count-variation.js',
+        array(
+            'wp-blocks',
+            'wp-i18n'
+        ),
+        wp_get_theme()->get('Version'),
+        true
+    );
+    
+    wp_enqueue_script(
         'paragraph-journalist-variation',
         get_template_directory_uri() . '/js/paragraph-journalist-variation.js',
         array(
@@ -378,6 +389,16 @@ function fall_river_mirror_enqueue_frontend_assets() {
 	);
 }
 add_action( 'wp_enqueue_scripts', 'fall_river_mirror_enqueue_frontend_assets' );
+
+/**
+ * Add Google AdSense script to site head
+ */
+function fall_river_mirror_add_adsense_script() {
+    ?>
+    <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-1234567890123456" crossorigin="anonymous"></script>
+    <?php
+}
+add_action('wp_head', 'fall_river_mirror_add_adsense_script');
 
 /**
  * Include Article Post Type in Category Archive Queries
