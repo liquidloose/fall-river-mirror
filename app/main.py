@@ -377,6 +377,147 @@ def delete_article_endpoint(article_id: int) -> Dict[str, Any]:
         )
 
 
+@app.delete("/articles/remove-duplicate-per-transcript")
+def remove_duplicate_articles_per_transcript() -> Dict[str, Any]:
+    """
+    Find transcripts that have more than one article and delete the extra article(s).
+
+    For each transcript_id that has multiple articles, keeps the article with the
+    smallest id (first created) and deletes the others, along with their linked art.
+
+    Returns:
+        Dict containing:
+            - success: Overall status
+            - transcripts_affected: Number of transcripts that had duplicates
+            - articles_deleted: Number of articles removed
+            - art_deleted: Number of art records removed
+            - deleted_article_ids: List of article IDs that were deleted
+    """
+    try:
+        if not database:
+            raise HTTPException(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail="Database not available",
+            )
+
+        cursor = database.cursor
+        # Transcripts with more than one article: get article ids to delete (keep MIN(id) per transcript)
+        cursor.execute(
+            """
+            SELECT a.id, a.transcript_id
+            FROM articles a
+            JOIN (
+                SELECT transcript_id, MIN(id) AS keep_id
+                FROM articles
+                WHERE transcript_id IS NOT NULL
+                GROUP BY transcript_id
+                HAVING COUNT(*) > 1
+            ) sub ON a.transcript_id = sub.transcript_id AND a.id != sub.keep_id
+            ORDER BY a.id
+            """
+        )
+        rows = cursor.fetchall()
+        to_delete = [r[0] for r in rows]
+        transcripts_affected = len(set(r[1] for r in rows))
+
+        if not to_delete:
+            return {
+                "success": True,
+                "message": "No duplicate articles found (each transcript has at most one article).",
+                "transcripts_affected": 0,
+                "articles_deleted": 0,
+                "art_deleted": 0,
+                "deleted_article_ids": [],
+            }
+
+        articles_deleted = 0
+        art_deleted = 0
+        for article_id in to_delete:
+            art_deleted += database.delete_art_by_article_id(article_id)
+            if database.delete_article_by_id(article_id):
+                articles_deleted += 1
+
+        logger.info(
+            f"Removed duplicate articles: {articles_deleted} articles, {art_deleted} art records; ids={to_delete}"
+        )
+        return {
+            "success": True,
+            "message": f"Deleted {articles_deleted} duplicate article(s) from {transcripts_affected} transcript(s), and {art_deleted} linked art record(s).",
+            "transcripts_affected": transcripts_affected,
+            "articles_deleted": articles_deleted,
+            "art_deleted": art_deleted,
+            "deleted_article_ids": to_delete,
+        }
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Remove duplicate articles failed: {str(e)}", exc_info=True)
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Remove duplicate articles failed: {str(e)}",
+        )
+
+
+@app.get("/transcripts/without-articles")
+def get_transcripts_without_articles() -> Dict[str, Any]:
+    """
+    List transcripts that have no article.
+
+    Returns transcripts in the database for which there is no article with
+    matching transcript_id. Useful to see which meetings still need an article.
+
+    Returns:
+        Dict containing:
+            - success: Status
+            - count: Number of transcripts with no article
+            - transcripts: List of { id, youtube_id, committee, meeting_date, video_title }
+    """
+    try:
+        if not database:
+            raise HTTPException(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail="Database not available",
+            )
+
+        cursor = database.cursor
+        cursor.execute(
+            """
+            SELECT t.id, t.youtube_id, t.committee, t.meeting_date, t.video_title
+            FROM transcripts t
+            WHERE NOT EXISTS (
+                SELECT 1 FROM articles a WHERE a.transcript_id = t.id
+            )
+            ORDER BY t.id
+            """
+        )
+        rows = cursor.fetchall()
+        transcripts = [
+            {
+                "id": r[0],
+                "youtube_id": r[1],
+                "committee": r[2],
+                "meeting_date": r[3],
+                "video_title": r[4],
+            }
+            for r in rows
+        ]
+        return {
+            "success": True,
+            "count": len(transcripts),
+            "transcripts": transcripts,
+        }
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Get transcripts without articles failed: {str(e)}", exc_info=True)
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Get transcripts without articles failed: {str(e)}",
+        )
+
+
 @app.post("/transcript/fetch/{amount}")
 async def bulk_fetch_transcripts(
     amount: int,
@@ -1627,7 +1768,7 @@ def generate_article(
 @app.post("/article/write/{amount_of_articles}")
 async def bulk_generate_articles(
     amount_of_articles: int,
-    journalist: Journalist = Journalist.AURELIUS_STONE,
+    journalist: Journalist = Journalist.FR_J1,
     tone: Tone = Tone.PROFESSIONAL,
     article_type: ArticleType = ArticleType.NEWS,
 ) -> Dict[str, Any]:
@@ -1706,16 +1847,16 @@ async def bulk_generate_articles(
 
         journalist_id = journalist_data["id"]
 
-        # Query transcripts that don't already have articles from THIS journalist (oldest first)
+        # Query transcripts that don't already have any article (skip if transcript has any article)
         cursor = database.cursor
         cursor.execute(
             """SELECT t.id, t.committee, t.youtube_id, t.content 
                FROM transcripts t
-               LEFT JOIN articles a ON t.id = a.transcript_id AND a.journalist_id = ?
+               LEFT JOIN articles a ON t.id = a.transcript_id
                WHERE a.id IS NULL
                ORDER BY t.id ASC
                LIMIT ?""",
-            (journalist_id, amount_of_articles),
+            (amount_of_articles,),
         )
         transcripts = cursor.fetchall()
 

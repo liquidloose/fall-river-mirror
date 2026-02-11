@@ -223,7 +223,7 @@ add_filter( 'get_block_type_variations', 'fall_river_mirror_register_query_loop_
  */
 if ( ! function_exists( 'fall_river_mirror_add_custom_field_filter_to_context' ) ) {
     function fall_river_mirror_add_custom_field_filter_to_context( $context, $parsed_block, $parent_block ) {
-        if ( ! $parent_block || 'core/query' !== $parent_block->block_type->name ) {
+        if ( ! $parent_block || ! $parent_block->block_type || 'core/query' !== $parent_block->block_type->name ) {
             return $context;
         }
         $custom_filter = $parent_block->attributes['__frmCustomFieldFilter'] ?? null;

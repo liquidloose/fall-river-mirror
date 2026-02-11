@@ -244,6 +244,30 @@ function create_article_callback( WP_REST_Request $request ) {
     return new WP_Error( 'no_article_content', 'Article content is required to create an article.', array( 'status' => 400 ) );
   }
 
+  // Check for existing article with same YouTube ID and delete it
+  $youtube_id = $request->get_param( 'youtube_id' );
+  if ( ! empty( $youtube_id ) ) {
+    $existing_articles = get_posts( array(
+      'post_type'      => 'article',
+      'meta_key'       => '_article_youtube_id',
+      'meta_value'     => $youtube_id,
+      'posts_per_page' => 1,
+      'post_status'    => 'any',
+      'fields'         => 'ids',
+    ) );
+
+    if ( ! empty( $existing_articles ) ) {
+      $existing_post_id = $existing_articles[0];
+      // Delete featured image if attached
+      $thumbnail_id = get_post_thumbnail_id( $existing_post_id );
+      if ( $thumbnail_id ) {
+        wp_delete_attachment( $thumbnail_id, true );
+      }
+      // Delete the existing post
+      wp_delete_post( $existing_post_id, true );
+    }
+  }
+
   // Prepare the post data for insertion.
   // Note: article_content maps to _article_content custom field, not post_content
   $post_data = array(
