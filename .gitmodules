@@ -4,3 +4,6 @@
 [submodule "WordPress/wp-content/plugins/dark-and-light"]
 	path = WordPress/wp-content/plugins/dark-and-light
 	url = git@github.com:liquidloose/dark-and-light.git
+[submodule "WordPress/wp-content/themes/fall-river-mirror-theme"]
+	path = WordPress/wp-content/themes/fall-river-mirror-theme
+	url = https://github.com/liquidloose/fall-river-mirror-theme.git

@@ -105,7 +105,6 @@ $table_prefix = getenv_docker('WORDPRESS_TABLE_PREFIX', 'wp_');
  *
  * @link https://developer.wordpress.org/advanced-administration/debug/debug-wordpress/
  */
-define('WP_DEBUG', !!getenv_docker('WORDPRESS_DEBUG', ''));
 
 // Enable all logging and debugging
 define('WP_DEBUG_LOG', true); // Log errors to wp-content/debug.log
@@ -133,6 +132,13 @@ if ($configExtra = getenv_docker('WORDPRESS_CONFIG_EXTRA', '')) {
 define('JWT_AUTH_SECRET_KEY', 'Pi1[^BPm{NOsHEQf@$xl%x{!;Ey1k72^Nt_r$jft,OoG[v6KGWWip#blbZn@bEZI');
 define('JWT_AUTH_CORS_ENABLE', true);
 
+define( 'AS3CF_SETTINGS', serialize( array(
+	'provider'          => 'gcp',
+	'key-file-path'     => getenv( 'GCP_KEY_FILE_PATH' ),
+	'bucket'            => 'cdn.fallrivermirror.com',
+	'object-ownership'  => 'bucket-owner-full-control',
+	'force-https'       => false,
+) ) );
 
 /* That's all, stop editing! Happy publishing. */
 

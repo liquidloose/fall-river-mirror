@@ -5,14 +5,16 @@ client_secret.json
 youtube_token.json
 youtube_cookies.txt
 
+# GCP service account key (private key; path set via GCP_KEY_FILE_PATH in .env)
+the-fall-river-mirror-mailer-*.json
+
 # Ignore everything in WordPress except the fall-river-mirror theme
 /WordPress/*
 !/WordPress/wp-content/
 /WordPress/wp-content/*
 !/WordPress/wp-content/themes/
 /WordPress/wp-content/themes/*
-!/WordPress/wp-content/themes/fall-river-mirror/
-!/WordPress/wp-content/themes/fall-river-mirror/**
+!/WordPress/wp-content/themes/fall-river-mirror-theme
 
 # Explicitly ignore plugins and other directories
 /WordPress/wp-content/plugins/
