@@ -1,5 +1,7 @@
 # FastAPI, Docker, and WordPress dev environment for The Fall River Mirror
 
+**License:** This project is licensed under the [Polyform Noncommercial 1.0.0](https://polyformproject.org/licenses/noncommercial/1.0.0) license. Noncommercial use is free; commercial use is prohibited without permission. See [LICENSE](LICENSE) for full terms.
+
 ## Overview
 
 This project provides a development environment for The Fall River Mirror with:
