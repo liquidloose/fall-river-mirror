@@ -327,7 +327,17 @@ pytest tests/unit/data/test_transcript_manager.py
 
 Install test dependencies first if needed: `pip install -r requirements.txt` (pytest, pytest-cov, pytest-asyncio, and related packages are already listed there).
 
-**Manual DB check when logs aren’t enough:** `manual_database_test.py` talks to your **real** database (`fr-mirror.db`). It writes one test transcript row, verifies it, then optionally deletes it. Use it to confirm the DB and transcript caching path when things go wrong. Run: `python manual_database_test.py` (it will prompt before writing).
+#### How the tests work
+
+- **Dependency overrides:** The app exposes a single dependency, `get_app_deps`, that provides the database, transcript manager, article generator, and related state. In tests, that dependency is overridden so every request gets a **test double**: a real in-memory SQLite database plus mocks for external services (YouTube, WordPress, etc.). No production DB or APIs are touched. See `tests/conftest.py` for the `client` fixture and `_make_test_deps`.
+- **Layers:**  
+  - **Unit tests** (`tests/unit/`) exercise one class or module in isolation with mocks (e.g. `TranscriptManager` with a fake DB and patched YouTube API).  
+  - **API integration tests** (`tests/integration/api/`) call routes via FastAPI’s `TestClient` using the overridden deps; they assert status codes and response shape.  
+  - **Database integration tests** (`tests/integration/database/`) use an in-memory `Database` instance and assert schema and CRUD against the current production schema.
+- **In-memory DB:** All test databases use `Database(":memory:")`, so nothing is written to disk and runs stay fast.
+- When something fails, the failing test name and file usually narrow it down: a unit test points at the class under test; an API test points at the route or the test double’s configuration.
+
+**Manual DB check when logs aren’t enough:** `manual_database_test.py` talks to your **real** database (`fr-mirror.db`). It writes one test transcript row, verifies it, then deletes it. Use it to confirm the DB and transcript caching path when things go wrong. Run: `python manual_database_test.py` (it will prompt before writing).
 
 ### Adding New Endpoints
 1. Add endpoint in `main.py`
