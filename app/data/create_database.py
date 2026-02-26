@@ -656,7 +656,7 @@ class Database:
         article_type: Optional[str],
         tone: Optional[str] = None,
         title: Optional[str] = None,
-    ) -> None:
+    ) -> int:
         """
         Add a new article to the database.
 
@@ -723,6 +723,7 @@ class Database:
             self.logger.info(
                 f"Added article (ID: {article_id}) for committee: {committee}, journalist_id: {journalist_id}"
             )
+            return article_id
         except Exception as e:
             self._log_error("add_article", e, operation_details)
             raise
