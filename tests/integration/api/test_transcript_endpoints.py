@@ -1,97 +1,77 @@
 """
 Integration tests for transcript-related API endpoints.
+Uses dependency overrides: client gets test DB + mocks (e.g. mock_transcript_manager).
 """
 
 import pytest
 from fastapi.testclient import TestClient
-from unittest.mock import patch, Mock
+
+
+class TestHealthEndpoint:
+    """Integration tests for health check."""
+
+    def test_health_check(self, client: TestClient):
+        """Health check returns 200 and status ok."""
+        response = client.get("/")
+        assert response.status_code == 200
+        data = response.json()
+        assert data.get("status") == "ok"
+        assert "database" in data
 
 
 class TestTranscriptEndpoints:
     """Integration tests for transcript API endpoints."""
 
-    def test_health_check(self, client: TestClient):
-        """Test the health check endpoint."""
-        response = client.get("/health")
-        assert response.status_code == 200
-        assert "status" in response.json()
-
-    @patch("app.main.TranscriptManager")
-    def test_get_transcript_success(self, mock_transcript_manager, client: TestClient):
-        """Test successful transcript retrieval."""
-        # Mock the transcript manager
-        mock_tm_instance = Mock()
-        mock_transcript_manager.return_value = mock_tm_instance
-        mock_tm_instance.get_transcript.return_value = {
+    def test_get_transcript_success(
+        self, client: TestClient, mock_transcript_manager
+    ):
+        """Successful transcript retrieval via overridden deps."""
+        mock_transcript_manager.get_transcript.return_value = {
             "transcript": "Test transcript content",
             "source": "youtube",
             "video_id": "TEST123",
         }
-
-        response = client.get("/transcript/TEST123")
-
-        # Should return success with transcript data
+        response = client.get("/transcript/fetch/TEST123")
         assert response.status_code == 200
         data = response.json()
         assert "transcript" in data
         assert data["video_id"] == "TEST123"
 
-    @patch("app.main.TranscriptManager")
     def test_get_transcript_not_found(
-        self, mock_transcript_manager, client: TestClient
+        self, client: TestClient, mock_transcript_manager
     ):
-        """Test transcript retrieval when video not found."""
-        # Mock the transcript manager to return error
-        mock_tm_instance = Mock()
-        mock_transcript_manager.return_value = mock_tm_instance
-        mock_tm_instance.get_transcript.side_effect = Exception("Video not found")
-
-        response = client.get("/transcript/INVALID123")
-
-        # Should return error
+        """Transcript not found returns error status."""
+        mock_transcript_manager.get_transcript.side_effect = Exception(
+            "Video not found"
+        )
+        response = client.get("/transcript/fetch/INVALID123")
         assert response.status_code in [404, 500]
 
-    def test_get_transcript_invalid_video_id(self, client: TestClient):
-        """Test transcript retrieval with invalid video ID format."""
-        response = client.get("/transcript/")
-
-        # Should return 404 for missing video ID
+    def test_get_transcript_missing_path_param(self, client: TestClient):
+        """Missing youtube_id in path yields 404."""
+        response = client.get("/transcript/fetch/")
         assert response.status_code == 404
 
 
 class TestArticleEndpoints:
-    """Integration tests for article generation endpoints."""
+    """Integration tests for article endpoints (GET /articles/{id})."""
 
-    @patch("app.main.ArticleGenerator")
-    def test_generate_article_success(
-        self, mock_article_generator, client: TestClient, mock_article_data
+    def test_get_article_success(
+        self, client: TestClient, test_articles_db
     ):
-        """Test successful article generation."""
-        # Mock the article generator
-        mock_ag_instance = Mock()
-        mock_article_generator.return_value = mock_ag_instance
-        mock_ag_instance.generate_article.return_value = {
-            "article": "Generated article content",
+        """Return article when id exists in deps.articles_db."""
+        test_articles_db["art-1"] = {
             "title": "Test Article",
-            "author": "AI Journalist",
+            "content": "Body",
         }
-
-        response = client.post("/articles/generate", json=mock_article_data)
-
+        response = client.get("/articles/art-1")
         assert response.status_code == 200
         data = response.json()
-        assert "article" in data
-        assert "title" in data
+        assert data["title"] == "Test Article"
+        assert data["content"] == "Body"
 
-    def test_generate_article_invalid_data(self, client: TestClient):
-        """Test article generation with invalid request data."""
-        invalid_data = {
-            "context": "",  # Empty context should fail validation
-            "prompt": "Test prompt",
-            # Missing required fields
-        }
-
-        response = client.post("/articles/generate", json=invalid_data)
-
-        # Should return validation error
-        assert response.status_code == 422
+    def test_get_article_not_found(self, client: TestClient):
+        """Return 404 when article id not in deps.articles_db."""
+        response = client.get("/articles/nonexistent-id")
+        assert response.status_code == 404
+        assert "not found" in response.json().get("detail", "").lower()

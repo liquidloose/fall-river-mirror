@@ -13,7 +13,9 @@ except ImportError:
     pass
 
 # Third-party imports
-from fastapi import FastAPI
+from fastapi import APIRouter, FastAPI, HTTPException, Request, Depends, status, Body
+from fastapi.responses import JSONResponse, Response
+import requests
 
 # Local imports
 from app import TranscriptManager, ArticleGenerator
@@ -48,6 +50,7 @@ except Exception as e:
     database = None
 
 # Initialize database sync and run it
+journalist_manager = None
 if database:
     db_sync = DatabaseSync(database)
     db_sync.sync_all_enums()
@@ -95,6 +98,35 @@ article_generator = ArticleGenerator()
 # In-memory storage for demo purposes (replace with actual database operations)
 articles_db = {}
 
+
+# ===== DEPENDENCY INJECTION (for testing override) =====
+
+
+class AppDeps:
+    """Container for app dependencies. Used by route handlers and overridden in tests."""
+
+    def __init__(
+        self,
+        *,
+        database,
+        transcript_manager,
+        article_generator,
+        articles_db,
+        journalist_manager=None,
+    ):
+        self.database = database
+        self.transcript_manager = transcript_manager
+        self.article_generator = article_generator
+        self.articles_db = articles_db
+        self.journalist_manager = journalist_manager
+
+
+def get_app_deps(request: Request) -> AppDeps:
+    """FastAPI dependency that returns app deps. Override in tests via app.dependency_overrides."""
+    return request.app.state.deps
+
+
+
 # Service layer (OOP)
 image_service = ImageService()
 wordpress_sync_service = WordPressSyncService(database)
@@ -114,6 +146,15 @@ app.state.articles_db = articles_db
 app.state.image_service = image_service
 app.state.wordpress_sync_service = wordpress_sync_service
 app.state.pipeline_service = pipeline_service
+
+# For dependency injection (get_app_deps) used by tests
+app.state.deps = AppDeps(
+    database=database,
+    transcript_manager=transcript_manager,
+    article_generator=article_generator,
+    articles_db=articles_db,
+    journalist_manager=journalist_manager,
+)
 
 # Include routers
 app.include_router(health.router)

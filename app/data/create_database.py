@@ -38,7 +38,9 @@ class Database:
             handler.setFormatter(formatter)
             self.logger.addHandler(handler)
 
-        self.db_path: str = db_name + ".db"
+        self.db_path: str = (
+            ":memory:" if db_name == ":memory:" else db_name + ".db"
+        )
         self.conn: Optional[sqlite3.Connection] = None
         self.cursor: Optional[sqlite3.Cursor] = None
         self.is_connected: bool = False
@@ -304,13 +306,15 @@ class Database:
                 # Get database file size
                 import os
 
-                if os.path.exists(self.db_path):
+                if self.db_path != ":memory:" and os.path.exists(self.db_path):
                     file_size_bytes = os.path.getsize(self.db_path)
                     state["file_size_mb"] = round(file_size_bytes / (1024 * 1024), 2)
                     state["file_size_bytes"] = file_size_bytes
                 else:
-                    state["file_size_mb"] = "File not found"
-                    state["file_size_bytes"] = "File not found"
+                    state["file_size_mb"] = (
+                        "N/A (in-memory)" if self.db_path == ":memory:" else "File not found"
+                    )
+                    state["file_size_bytes"] = state["file_size_mb"]
 
                 # Get database schema information
                 try:

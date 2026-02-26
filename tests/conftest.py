@@ -2,42 +2,72 @@
 Pytest configuration and fixtures for the entire test suite.
 """
 
-import os
-import tempfile
+from unittest.mock import Mock
+
 import pytest
 from fastapi.testclient import TestClient
-from sqlalchemy import create_engine
-from sqlalchemy.orm import sessionmaker
 
-from app.main import app
-from app.data.database import Database
+from app.main import app, get_app_deps, AppDeps
+from app.data.create_database import Database
 
 
 @pytest.fixture(scope="session")
 def test_database():
-    """Create a temporary test database for the entire test session."""
-    # Create a temporary file for the test database
-    db_fd, db_path = tempfile.mkstemp(suffix=".db")
-    db_name = db_path.replace(".db", "").split("/")[-1]
-
-    try:
-        # Initialize test database
-        test_db = Database(db_name)
-        yield test_db
-    finally:
-        # Clean up
-        if test_db.is_connected:
-            test_db.close()
-        os.close(db_fd)
-        if os.path.exists(db_path):
-            os.unlink(db_path)
+    """Create an in-memory test database for the entire test session (no temp files)."""
+    test_db = Database(":memory:")
+    yield test_db
+    if test_db.is_connected:
+        test_db.close()
 
 
 @pytest.fixture
-def client():
-    """Create a FastAPI test client."""
-    with TestClient(app) as test_client:
-        yield test_client
+def mock_transcript_manager():
+    """Mock TranscriptManager for use in overridden deps. Configure in tests via .return_value / .side_effect."""
+    return Mock()
+
+
+@pytest.fixture
+def mock_article_generator():
+    """Mock ArticleGenerator for use in overridden deps."""
+    return Mock()
+
+
+@pytest.fixture
+def test_articles_db():
+    """Mutable dict used as deps.articles_db so tests can pre-populate for GET /articles/{id}."""
+    return {}
+
+
+def _make_test_deps(test_db, mock_tm, mock_ag, articles_db):
+    """Build AppDeps with real test DB and provided mocks/dicts."""
+    return AppDeps(
+        database=test_db,
+        transcript_manager=mock_tm,
+        article_generator=mock_ag,
+        articles_db=articles_db,
+        journalist_manager=None,
+    )
+
+
+@pytest.fixture
+def client(test_database, mock_transcript_manager, mock_article_generator, test_articles_db):
+    """Create a FastAPI test client with dependency overrides (test DB + mocks)."""
+    def get_test_deps():
+        return _make_test_deps(
+            test_database,
+            mock_transcript_manager,
+            mock_article_generator,
+            test_articles_db,
+        )
+
+    app.dependency_overrides[get_app_deps] = get_test_deps
+    try:
+        with TestClient(
+            app, raise_server_exceptions=False
+        ) as test_client:
+            yield test_client
+    finally:
+        app.dependency_overrides.clear()
 
 
 @pytest.fixture
