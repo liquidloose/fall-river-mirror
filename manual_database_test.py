@@ -10,8 +10,8 @@ import os
 sys.path.append("/code")
 
 from app.data.transcript_manager import TranscriptManager
-from app.data.database import Database
-from app.data.data_classes import AIAgent, Committee
+from app.data.create_database import Database
+from app.data.enum_classes import AIAgent
 
 
 def manual_database_test():
@@ -36,9 +36,7 @@ def manual_database_test():
 
     # Create TranscriptManager
     print("🎬 Creating TranscriptManager...")
-    transcript_manager = TranscriptManager(
-        committee="Test Committee", database=database
-    )
+    transcript_manager = TranscriptManager(database=database)
 
     # Real test data that will be written to your database
     test_video_id = "MANUAL_TEST_123"
@@ -50,7 +48,7 @@ def manual_database_test():
     Speaker 1: You can safely delete this record after testing.
     [END TEST DATA]
     """
-    test_committee = Committee.CITY_COUNCIL.value
+    test_committee = "City Council"
     test_category = AIAgent.GROK
 
     print(f"📝 Test data:")
@@ -62,38 +60,52 @@ def manual_database_test():
     try:
         # Test _cache_transcript - this will write to your real database
         print("\n🔄 Writing to REAL database...")
+        video_metadata = {
+            "title": test_video_id,
+            "published_at": None,
+            "committee": test_committee,
+            "duration_seconds": None,
+            "duration_formatted": "",
+            "channel_title": None,
+            "meeting_date": None,
+            "view_count": None,
+            "like_count": None,
+            "comment_count": None,
+        }
         transcript_manager._cache_transcript(
-            video_id=test_video_id, transcript=test_transcript, committee=test_committee
+            youtube_id=test_video_id,
+            content=test_transcript,
+            video_metadata=video_metadata,
+            committee=test_committee,
         )
 
         print("✅ Data written to fr-mirror.db successfully!")
 
-        # Verify the data was written
+        # Verify the data was written (current schema: youtube_id, video_title, etc.)
         print("\n🔍 Verifying data in real database...")
         cursor = database.cursor
         cursor.execute(
-            "SELECT id, committee, title, content, category FROM transcripts WHERE title = ?",
+            "SELECT id, committee, youtube_id, content, video_title, model FROM transcripts WHERE youtube_id = ?",
             (test_video_id,),
         )
         result = cursor.fetchone()
 
         if result:
-            transcript_id, committee, title, content, category = result
+            transcript_id, committee, youtube_id, content, video_title, model = result
             print("✅ Data found in production database!")
             print(f"   Database ID: {transcript_id}")
             print(f"   Committee: {committee}")
-            print(f"   Title: {title}")
-            print(f"   Category: {category}")
+            print(f"   YouTube ID: {youtube_id}")
+            print(f"   Video title: {video_title}")
+            print(f"   Model: {model}")
             print(f"   Content preview: {content[:100]}...")
 
-            # Ask if user wants to clean up
-            cleanup = input("\n🧹 Delete this test data? (yes/no): ")
-            if cleanup.lower() == "yes":
-                cursor.execute("DELETE FROM transcripts WHERE id = ?", (transcript_id,))
-                database.conn.commit()
-                print("✅ Test data deleted from database")
-            else:
-                print("ℹ️  Test data left in database (you can delete it manually)")
+            # Always clean up the test row
+            cursor.execute(
+                "DELETE FROM transcripts WHERE youtube_id = ?", (test_video_id,)
+            )
+            database.conn.commit()
+            print("✅ Test data deleted from database")
 
         else:
             print("❌ Data not found in database!")

@@ -18,7 +18,7 @@ except ImportError:
     pass
 
 # Third-party imports
-from fastapi import APIRouter, FastAPI, HTTPException, status, Body
+from fastapi import APIRouter, FastAPI, HTTPException, Request, Depends, status, Body
 from fastapi.responses import JSONResponse, Response
 import requests
 
@@ -83,6 +83,7 @@ except Exception as e:
     database = None
 
 # Initialize database sync and run it
+journalist_manager = None
 if database:
     db_sync = DatabaseSync(database)
     db_sync.sync_all_enums()
@@ -127,6 +128,43 @@ article_generator = ArticleGenerator()
 
 # In-memory storage for demo purposes (replace with actual database operations)
 articles_db = {}
+
+
+# ===== DEPENDENCY INJECTION (for testing override) =====
+
+
+class AppDeps:
+    """Container for app dependencies. Used by route handlers and overridden in tests."""
+
+    def __init__(
+        self,
+        *,
+        database,
+        transcript_manager,
+        article_generator,
+        articles_db,
+        journalist_manager=None,
+    ):
+        self.database = database
+        self.transcript_manager = transcript_manager
+        self.article_generator = article_generator
+        self.articles_db = articles_db
+        self.journalist_manager = journalist_manager
+
+
+# Populate app.state so get_app_deps can return real deps
+app.state.deps = AppDeps(
+    database=database,
+    transcript_manager=transcript_manager,
+    article_generator=article_generator,
+    articles_db=articles_db,
+    journalist_manager=journalist_manager,
+)
+
+
+def get_app_deps(request: Request) -> AppDeps:
+    """FastAPI dependency that returns app deps. Override in tests via app.dependency_overrides."""
+    return request.app.state.deps
 
 
 # ===== HELPER FUNCTIONS =====
@@ -528,7 +566,7 @@ def _run_image_batch(
 
 
 @app.get("/")
-def health_check() -> Dict[str, str]:
+def health_check(deps: AppDeps = Depends(get_app_deps)) -> Dict[str, str]:
     """
     Health check endpoint to verify the server is running.
 
@@ -538,7 +576,7 @@ def health_check() -> Dict[str, str]:
     logger.info("Health check endpoint called!")
 
     # Add database status to health check
-    db_status = "connected" if database and database.is_connected else "disconnected"
+    db_status = "connected" if deps.database and deps.database.is_connected else "disconnected"
 
     return {
         "status": "ok",
@@ -551,9 +589,8 @@ def health_check() -> Dict[str, str]:
 @app.get("/transcript/fetch/{youtube_id}", response_model=None)
 def get_transcript_endpoint(
     youtube_id: str = "iGi8ymCBzhw",
+    deps: AppDeps = Depends(get_app_deps),
 ) -> Dict[str, Any] | JSONResponse:
-
-    logger.info(f"Fetching transcript for YouTube ID {youtube_id}")
     """
     Endpoint to fetch YouTube video transcripts.
     First checks database cache, then fetches from YouTube if not found and
@@ -565,7 +602,8 @@ def get_transcript_endpoint(
     Returns:
         Dict[str, Any] | JSONResponse: YouTube transcript data or error response
     """
-    return transcript_manager.get_transcript(youtube_id)
+    logger.info(f"Fetching transcript for YouTube ID {youtube_id}")
+    return deps.transcript_manager.get_transcript(youtube_id)
 
 
 @app.delete("/transcript/delete/{transcript_id}")
@@ -1315,7 +1353,10 @@ async def get_all_articles(
 
 
 @app.get("/articles/{article_id}", response_model=Dict[str, Any])
-async def get_article(article_id: str) -> Dict[str, Any]:
+async def get_article(
+    article_id: str,
+    deps: AppDeps = Depends(get_app_deps),
+) -> Dict[str, Any]:
     """
     Retrieve a specific article by ID.
 
@@ -1326,14 +1367,14 @@ async def get_article(article_id: str) -> Dict[str, Any]:
         The article data
     """
     try:
-        if article_id not in articles_db:
+        if article_id not in deps.articles_db:
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,
                 detail=f"Article with ID {article_id} not found",
             )
 
         logger.info(f"Retrieved article with ID: {article_id}")
-        return articles_db[article_id]
+        return deps.articles_db[article_id]
 
     except HTTPException:
         raise

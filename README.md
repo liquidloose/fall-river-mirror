@@ -306,6 +306,29 @@ app/
 
 ## Development
 
+### Running tests
+
+From the project root (where `requirements.txt` and `app/` live), run the test suite with [pytest](https://docs.pytest.org/):
+
+```bash
+# Run all tests
+pytest
+
+# Run with verbose output
+pytest -v
+
+# Run with coverage report
+pytest --cov=app --cov-report=term-missing
+
+# Run a specific test file or directory
+pytest tests/integration/api/
+pytest tests/unit/data/test_transcript_manager.py
+```
+
+Install test dependencies first if needed: `pip install -r requirements.txt` (pytest, pytest-cov, pytest-asyncio, and related packages are already listed there).
+
+**Manual DB check when logs aren’t enough:** `manual_database_test.py` talks to your **real** database (`fr-mirror.db`). It writes one test transcript row, verifies it, then optionally deletes it. Use it to confirm the DB and transcript caching path when things go wrong. Run: `python manual_database_test.py` (it will prompt before writing).
+
 ### Adding New Endpoints
 1. Add endpoint in `main.py`
 2. Implement business logic in `utils.py`
