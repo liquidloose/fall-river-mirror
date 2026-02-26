@@ -2,8 +2,9 @@
 Pytest configuration and shared fixtures for the test suite.
 
 This module wires the app for testing by overriding FastAPI's dependency injection.
-Routes that use ``Depends(get_app_deps)`` receive a test double (real in-memory DB +
-mocks for externals) instead of production dependencies, so tests run without
+Routes use ``Depends(AppDependencies)`` (from app.dependencies). We override
+``AppDependencies`` so they receive a test double (real in-memory DB + mocks
+for externals) instead of production dependencies, so tests run without
 hitting YouTube, WordPress, or the real database.
 """
 
@@ -12,7 +13,8 @@ from unittest.mock import Mock
 import pytest
 from fastapi.testclient import TestClient
 
-from app.main import app, get_app_deps, AppDeps
+from app.main import app
+from app.dependencies import AppDependencies
 from app.data.create_database import Database
 
 
@@ -34,7 +36,7 @@ def test_database():
 @pytest.fixture
 def mock_transcript_manager():
     """
-    Mock for ``TranscriptManager`` used in overridden ``AppDeps``.
+    Mock for ``TranscriptManager`` used in overridden ``AppDependencies``.
 
     In tests, set ``mock_transcript_manager.get_transcript.return_value = {...}``
     or ``.side_effect = Exception(...)`` to drive success or error behavior
@@ -46,7 +48,7 @@ def mock_transcript_manager():
 @pytest.fixture
 def mock_article_generator():
     """
-    Mock for ``ArticleGenerator`` in overridden ``AppDeps``.
+    Mock for ``ArticleGenerator`` in overridden ``AppDependencies``.
 
     Used by the test client's dependency override; configure in tests if
     an endpoint under test calls the article generator.
@@ -68,18 +70,22 @@ def test_articles_db():
 
 def _make_test_deps(test_db, mock_tm, mock_ag, articles_db):
     """
-    Build an ``AppDeps`` instance for the test client.
+    Build a test double with the same interface as ``AppDependencies``.
 
-    Uses a real in-memory DB and the fixture mocks/dicts so API tests
-    exercise real SQL without external services.
+    Routers read database, transcript_manager, article_generator, articles_db,
+    etc. We supply the session test DB and fixture mocks; other attributes
+    (e.g. pipeline_service) are None so routes that don't use them still pass.
     """
-    return AppDeps(
-        database=test_db,
-        transcript_manager=mock_tm,
-        article_generator=mock_ag,
-        articles_db=articles_db,
-        journalist_manager=None,
-    )
+    deps = Mock()
+    deps.database = test_db
+    deps.transcript_manager = mock_tm
+    deps.article_generator = mock_ag
+    deps.articles_db = articles_db
+    deps.journalist_manager = None
+    deps.wordpress_sync_service = None
+    deps.pipeline_service = None
+    deps.image_service = None
+    return deps
 
 
 @pytest.fixture
@@ -87,13 +93,14 @@ def client(test_database, mock_transcript_manager, mock_article_generator, test_
     """
     FastAPI test client with dependency overrides applied.
 
-    When a request hits a route that uses ``Depends(get_app_deps)``, FastAPI
-    calls our override and injects test deps (session DB + mocks). Overrides
-    are cleared in a ``finally`` so the real app is unchanged after the test.
-    ``raise_server_exceptions=False`` so 500 responses return a response
-    object instead of raising, allowing tests to assert on error status.
+    When a request hits a route that uses ``Depends(AppDependencies)``, FastAPI
+    calls our override and injects the test double (session DB + mocks).
+    Overrides are cleared in a ``finally`` so the real app is unchanged after
+    the test. ``raise_server_exceptions=False`` so 500 responses return a
+    response object instead of raising, allowing tests to assert on error status.
     """
-    def get_test_deps():
+    def get_test_deps(request=None):
+        """Override for AppDependencies; ignores request, returns test double."""
         return _make_test_deps(
             test_database,
             mock_transcript_manager,
@@ -101,7 +108,7 @@ def client(test_database, mock_transcript_manager, mock_article_generator, test_
             test_articles_db,
         )
 
-    app.dependency_overrides[get_app_deps] = get_test_deps
+    app.dependency_overrides[AppDependencies] = get_test_deps
     try:
         with TestClient(
             app, raise_server_exceptions=False
