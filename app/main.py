@@ -144,6 +144,362 @@ def _decode_image_url(image_url: str) -> bytes:
         return response.content
 
 
+# ===== Pipeline helpers (shared by endpoints and POST /pipeline/run) =====
+
+
+async def _run_build_queue(
+    db: Database, channel_url: str, limit: int
+) -> Dict[str, Any]:
+    """Build video queue; returns result dict (no HTTPException)."""
+    async with VideoQueueManager(db) as queue_manager:
+        results = await queue_manager.queue_new_videos(
+            channel_url,
+            target_new_videos=limit,
+        )
+    return {
+        "success": True,
+        "message": f"Queue built successfully from {channel_url}",
+        "results": results,
+    }
+
+
+async def _run_bulk_fetch_transcripts(
+    db: Database,
+    transcript_mgr: TranscriptManager,
+    amount: int,
+    auto_build: bool,
+    channel_url: Optional[str] = None,
+) -> Dict[str, Any]:
+    """Bulk fetch transcripts from queue; returns result dict (no HTTPException)."""
+    import json
+
+    channel_url = channel_url or os.getenv("DEFAULT_YOUTUBE_CHANNEL_URL")
+    cursor = db.cursor
+    cursor.execute(
+        """SELECT COUNT(*)
+           FROM video_queue AS T1
+           LEFT JOIN transcripts AS T2 ON T1.youtube_id = T2.youtube_id
+           WHERE T1.transcript_available = 1 AND T2.youtube_id IS NULL"""
+    )
+    available_count = cursor.fetchone()[0]
+    auto_build_triggered = False
+    auto_build_added = 0
+
+    if available_count < amount and auto_build and channel_url:
+        auto_build_triggered = True
+        shortfall = amount - available_count
+        try:
+            async with VideoQueueManager(db) as queue_manager:
+                build_results = await queue_manager.queue_new_videos(
+                    channel_url,
+                    target_new_videos=shortfall,
+                )
+            auto_build_added = build_results.get("newly_queued", 0)
+        except Exception as e:
+            logger.warning(f"Auto-build queue failed: {e}. Proceeding with available.")
+
+    cursor.execute(
+        """SELECT T1.youtube_id
+           FROM video_queue AS T1
+           LEFT JOIN transcripts AS T2 ON T1.youtube_id = T2.youtube_id
+           WHERE T1.transcript_available = 1 AND T2.youtube_id IS NULL
+           LIMIT ?""",
+        (amount,),
+    )
+    queue_items = cursor.fetchall()
+    if not queue_items:
+        return {
+            "success": False,
+            "message": "No videos with transcripts available in queue or all already fetched",
+            "transcripts_fetched": 0,
+            "transcripts_failed": 0,
+            "results": [],
+        }
+
+    results = []
+    transcripts_fetched = 0
+    transcripts_failed = 0
+    RATE_LIMIT_MS = 5000
+
+    for row in queue_items:
+        youtube_id = row[0]
+        try:
+            transcript_result = transcript_mgr.get_transcript(youtube_id)
+            if isinstance(transcript_result, JSONResponse):
+                error_content = json.loads(transcript_result.body.decode())
+                raise Exception(
+                    error_content.get("error", "Unknown error during transcript fetch")
+                )
+            transcripts_fetched += 1
+            results.append(
+                {
+                    "youtube_id": youtube_id,
+                    "status": "success",
+                    "source": transcript_result.get("source"),
+                }
+            )
+            cursor.execute(
+                "DELETE FROM video_queue WHERE youtube_id = ?", (youtube_id,)
+            )
+            db.conn.commit()
+        except Exception as e:
+            transcripts_failed += 1
+            results.append(
+                {"youtube_id": youtube_id, "status": "failed", "error": str(e)}
+            )
+        time.sleep(RATE_LIMIT_MS / 1000.0)
+
+    message = (
+        f"Processed {len(queue_items)} videos from queue"
+        if len(queue_items) >= amount
+        else f"Processed {len(queue_items)} videos from queue (requested {amount}, only {len(queue_items)} available)"
+    )
+    response = {
+        "success": True,
+        "message": message,
+        "transcripts_fetched": transcripts_fetched,
+        "transcripts_failed": transcripts_failed,
+        "results": results,
+    }
+    if auto_build_triggered:
+        response["auto_build"] = {
+            "triggered": True,
+            "videos_added": auto_build_added,
+            "channel_url": channel_url,
+        }
+    return response
+
+
+async def _run_bulk_write_articles(
+    db: Database,
+    journalist_mgr: JournalistManager,
+    amount: int,
+    journalist: Journalist,
+    tone: Tone,
+    article_type: ArticleType,
+) -> Dict[str, Any]:
+    """Bulk write articles from transcripts; returns result dict (no HTTPException)."""
+    journalist_classes = {
+        Journalist.AURELIUS_STONE: AureliusStone,
+        Journalist.FR_J1: FRJ1,
+    }
+    journalist_class = journalist_classes.get(journalist)
+    if not journalist_class:
+        raise ValueError(f"Journalist '{journalist.value}' not implemented")
+    journalist_instance = journalist_class()
+    journalist_data = journalist_mgr.get_journalist(journalist_instance.FULL_NAME)
+    if not journalist_data:
+        journalist_mgr.upsert_journalist(
+            full_name=journalist_instance.FULL_NAME,
+            first_name=journalist_instance.FIRST_NAME,
+            last_name=journalist_instance.LAST_NAME,
+            bio=journalist_instance.get_bio(),
+            description=journalist_instance.get_description(),
+        )
+        journalist_data = journalist_mgr.get_journalist(journalist_instance.FULL_NAME)
+    if not journalist_data:
+        raise ValueError(
+            f"Failed to create or retrieve journalist {journalist_instance.FULL_NAME}"
+        )
+    journalist_id = journalist_data["id"]
+
+    cursor = db.cursor
+    cursor.execute(
+        """SELECT t.id, t.committee, t.youtube_id, t.content
+           FROM transcripts t
+           LEFT JOIN articles a ON t.id = a.transcript_id
+           WHERE a.id IS NULL
+           ORDER BY t.id ASC
+           LIMIT ?""",
+        (amount,),
+    )
+    transcripts = cursor.fetchall()
+    if not transcripts:
+        return {
+            "success": False,
+            "message": "No transcripts found in database",
+            "articles_generated": 0,
+            "articles_failed": 0,
+            "results": [],
+        }
+
+    results = []
+    articles_generated = 0
+    articles_failed = 0
+    for row in transcripts:
+        transcript_id, committee, youtube_id, transcript_content = (
+            row[0],
+            row[1],
+            row[2],
+            row[3],
+        )
+        try:
+            base_context = journalist_instance.load_context(
+                tone=tone, article_type=article_type
+            )
+            full_context = f"{base_context}\n\nTRANSCRIPT CONTENT TO ANALYZE:\n{transcript_content}"
+            article_result = journalist_instance.generate_article(full_context, "")
+            db.add_article(
+                committee=committee,
+                youtube_id=youtube_id,
+                journalist_id=journalist_id,
+                content=article_result["content"],
+                transcript_id=transcript_id,
+                date=datetime.now().isoformat(),
+                article_type=article_type.value,
+                tone=tone.value,
+                title=article_result.get("title", "Untitled Article"),
+            )
+            articles_generated += 1
+            results.append(
+                {
+                    "youtube_id": youtube_id,
+                    "transcript_id": transcript_id,
+                    "status": "success",
+                    "title": article_result.get("title", "Untitled Article"),
+                }
+            )
+        except Exception as e:
+            articles_failed += 1
+            results.append(
+                {"youtube_id": youtube_id, "status": "failed", "error": str(e)}
+            )
+
+    return {
+        "success": True,
+        "message": f"Processed {len(transcripts)} transcripts",
+        "articles_generated": articles_generated,
+        "articles_failed": articles_failed,
+        "results": results,
+    }
+
+
+def _run_bullet_points_batch(db: Database, amount: int) -> Dict[str, Any]:
+    """Generate bullet points for articles that don't have them; returns result dict."""
+    articles = db.get_all_articles()
+    journalist = AureliusStone()
+    results = {"processed": 0, "skipped": 0, "errors": []}
+    for article in articles:
+        if results["processed"] >= amount:
+            break
+        if article.get("bullet_points"):
+            results["skipped"] += 1
+            continue
+        result = journalist.generate_bullet_points(article["content"])
+        if result.get("error"):
+            results["errors"].append({"id": article["id"], "error": result["error"]})
+            continue
+        db.update_article_bullet_points(article["id"], result["bullet_points"])
+        results["processed"] += 1
+    return results
+
+
+def _run_image_batch(
+    db: Database, amount: int, artist: Artist, model: ImageModel
+) -> Dict[str, Any]:
+    """Generate images for articles with bullet_points but no art; returns result dict."""
+    artist_classes = {
+        Artist.SPECTRA_VERITAS: SpectraVeritas,
+        Artist.FRA1: FRA1,
+    }
+    artist_class = artist_classes.get(artist)
+    if not artist_class:
+        raise ValueError(f"Artist '{artist.value}' not implemented")
+    artist_instance = artist_class()
+    cursor = db.cursor
+    cursor.execute(
+        """SELECT a.id, a.title, a.bullet_points, a.transcript_id
+           FROM articles a
+           LEFT JOIN art ON a.id = art.article_id
+           WHERE a.bullet_points IS NOT NULL AND a.bullet_points != '' AND art.id IS NULL
+           LIMIT ?""",
+        (amount,),
+    )
+    articles = cursor.fetchall()
+    if not articles:
+        return {
+            "success": True,
+            "message": "No articles found that need images",
+            "images_generated": 0,
+            "images_failed": 0,
+            "results": [],
+        }
+    results = []
+    images_generated = 0
+    images_failed = 0
+    for row in articles:
+        article_id, title, bullet_points, transcript_id = row[0], row[1], row[2], row[3]
+        try:
+            cursor.execute("SELECT id FROM art WHERE article_id = ?", (article_id,))
+            if cursor.fetchone():
+                results.append(
+                    {
+                        "article_id": article_id,
+                        "status": "skipped",
+                        "reason": "Art exists",
+                    }
+                )
+                continue
+            image_result = artist_instance.generate_image(
+                title=title, bullet_points=bullet_points, model=model.value
+            )
+            if image_result.get("error"):
+                images_failed += 1
+                results.append(
+                    {
+                        "article_id": article_id,
+                        "status": "failed",
+                        "error": image_result["error"],
+                    }
+                )
+                continue
+            if image_result.get("image_url"):
+                image_data = _decode_image_url(image_result["image_url"])
+                art_id = db.add_art(
+                    prompt=image_result["prompt_used"],
+                    image_url=None,
+                    image_data=image_data,
+                    medium=image_result.get("medium"),
+                    aesthetic=image_result.get("aesthetic"),
+                    title=title,
+                    artist_name=image_result.get("artist"),
+                    snippet=image_result.get("snippet"),
+                    transcript_id=transcript_id,
+                    article_id=article_id,
+                    model=model.value,
+                )
+                images_generated += 1
+                results.append(
+                    {
+                        "article_id": article_id,
+                        "status": "success",
+                        "art_id": art_id,
+                        "title": title,
+                    }
+                )
+            else:
+                images_failed += 1
+                results.append(
+                    {
+                        "article_id": article_id,
+                        "status": "failed",
+                        "error": "No image URL",
+                    }
+                )
+        except Exception as e:
+            images_failed += 1
+            results.append(
+                {"article_id": article_id, "status": "failed", "error": str(e)}
+            )
+    return {
+        "success": True,
+        "message": f"Processed {len(articles)} articles",
+        "images_generated": images_generated,
+        "images_failed": images_failed,
+        "results": results,
+    }
+
+
 # ===== GET ENDPOINTS =====
 
 
@@ -511,7 +867,9 @@ def get_transcripts_without_articles() -> Dict[str, Any]:
     except HTTPException:
         raise
     except Exception as e:
-        logger.error(f"Get transcripts without articles failed: {str(e)}", exc_info=True)
+        logger.error(
+            f"Get transcripts without articles failed: {str(e)}", exc_info=True
+        )
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Get transcripts without articles failed: {str(e)}",
@@ -691,183 +1049,10 @@ async def bulk_fetch_transcripts(
                 status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
                 detail="Database not available",
             )
-
         logger.info(f"Starting bulk transcript fetch for {amount} videos from queue")
-
-        # ========================================
-        # Step 1: Check Queue Size and Auto-Build if Needed
-        # ========================================
-        # Count available videos in queue (transcript_available = 1, not already in transcripts table)
-        cursor = database.cursor
-        cursor.execute(
-            """SELECT COUNT(*) 
-               FROM video_queue AS T1
-               LEFT JOIN transcripts AS T2 ON T1.youtube_id = T2.youtube_id
-               WHERE T1.transcript_available = 1 AND T2.youtube_id IS NULL"""
+        return await _run_bulk_fetch_transcripts(
+            database, transcript_manager, amount, auto_build
         )
-        available_count = cursor.fetchone()[0]
-
-        logger.info(
-            f"Found {available_count} videos available in queue, requested {amount}"
-        )
-
-        # Track auto-build info for response
-        auto_build_triggered = False
-        auto_build_added = 0
-
-        # Get default channel URL from environment
-        channel_url = os.getenv("DEFAULT_YOUTUBE_CHANNEL_URL")
-        if channel_url:
-            logger.info(f"Using default channel URL from environment: {channel_url}")
-
-        # If insufficient videos, auto_build enabled, and channel_url available, build more queue entries
-        if available_count < amount and auto_build and channel_url:
-            auto_build_triggered = True
-            shortfall = amount - available_count
-            logger.info(
-                f"Queue has only {available_count}/{amount} videos. "
-                f"Auto-building {shortfall} more from {channel_url}"
-            )
-
-            try:
-                # Use async context manager to build queue
-                async with VideoQueueManager(database) as queue_manager:
-                    build_results = await queue_manager.queue_new_videos(
-                        channel_url,
-                        max_limit=shortfall,
-                    )
-                    auto_build_added = build_results.get("newly_queued", 0)
-                    logger.info(
-                        f"Auto-build complete: {auto_build_added} videos added to queue"
-                    )
-            except Exception as e:
-                logger.warning(
-                    f"Failed to auto-build queue: {str(e)}. Proceeding with available videos."
-                )
-        elif available_count < amount and not auto_build:
-            logger.info(
-                f"Queue has only {available_count}/{amount} videos. "
-                f"Auto-build disabled. Proceeding with available videos."
-            )
-        elif available_count < amount:
-            logger.warning(
-                f"Queue has only {available_count}/{amount} videos. "
-                f"No channel_url available (not provided and DEFAULT_YOUTUBE_CHANNEL_URL not set). "
-                f"Proceeding with available videos."
-            )
-
-        # ========================================
-        # Step 2: Query Available Videos from Queue
-        # ========================================
-        # Query video_queue for videos with transcripts available and not already in transcripts table
-        cursor.execute(
-            """SELECT T1.youtube_id
-               FROM video_queue AS T1
-               LEFT JOIN transcripts AS T2 ON T1.youtube_id = T2.youtube_id
-               WHERE T1.transcript_available = 1 AND T2.youtube_id IS NULL
-               LIMIT ?""",
-            (amount,),
-        )
-        queue_items = cursor.fetchall()
-
-        if not queue_items:
-            return {
-                "success": False,
-                "message": "No videos with transcripts available in queue or all already fetched",
-                "transcripts_fetched": 0,
-                "transcripts_failed": 0,
-                "results": [],
-            }
-
-        logger.info(f"Found {len(queue_items)} videos in queue to process")
-
-        results = []
-        transcripts_fetched = 0
-        transcripts_failed = 0
-
-        # Rate limit in milliseconds (adjust as needed)
-        RATE_LIMIT_MS = 5000  # 5 seconds between requests (polite scraping)
-
-        for row in queue_items:
-            youtube_id = row[0]
-
-            try:
-                logger.info(f"Fetching transcript for video {youtube_id}")
-                transcript_result = transcript_manager.get_transcript(youtube_id)
-
-                # Check if transcript_result is a JSONResponse (error) or a Dict (success)
-                if isinstance(transcript_result, JSONResponse):
-                    # Extract error message from JSONResponse content
-                    import json
-
-                    error_content = json.loads(transcript_result.body.decode())
-                    raise Exception(
-                        error_content.get(
-                            "error", "Unknown error during transcript fetch"
-                        )
-                    )
-
-                transcripts_fetched += 1
-                results.append(
-                    {
-                        "youtube_id": youtube_id,
-                        "status": "success",
-                        "source": transcript_result.get("source"),
-                    }
-                )
-                logger.info(f"Successfully fetched transcript for {youtube_id}")
-
-                # Remove from queue after successful fetch
-                cursor.execute(
-                    "DELETE FROM video_queue WHERE youtube_id = ?", (youtube_id,)
-                )
-                database.conn.commit()
-                logger.debug(f"Removed {youtube_id} from video_queue")
-
-            except Exception as e:
-                transcripts_failed += 1
-                error_msg = str(e)
-                results.append(
-                    {"youtube_id": youtube_id, "status": "failed", "error": error_msg}
-                )
-                logger.error(
-                    f"Failed to fetch transcript for {youtube_id}: {error_msg}"
-                )
-
-            # Rate limit: sleep between requests
-            time.sleep(RATE_LIMIT_MS / 1000.0)
-
-        logger.info(
-            f"Bulk transcript fetch complete: {transcripts_fetched} succeeded, {transcripts_failed} failed"
-        )
-
-        # Build the message - explain if fewer videos were available than requested
-        if len(queue_items) < amount:
-            message = (
-                f"Processed {len(queue_items)} videos from queue "
-                f"(requested {amount}, but only {len(queue_items)} available with transcripts)"
-            )
-        else:
-            message = f"Processed {len(queue_items)} videos from queue"
-
-        response = {
-            "success": True,
-            "message": message,
-            "transcripts_fetched": transcripts_fetched,
-            "transcripts_failed": transcripts_failed,
-            "results": results,
-        }
-
-        # Add auto-build info if it was triggered
-        if auto_build_triggered:
-            response["auto_build"] = {
-                "triggered": True,
-                "videos_added": auto_build_added,
-                "channel_url": channel_url,
-            }
-
-        return response
-
     except HTTPException:
         raise
     except Exception as e:
@@ -1255,176 +1440,16 @@ def bulk_generate_images(
                 status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
                 detail="Database not available",
             )
-
         logger.info(
             f"Starting bulk image generation: {amount} images, "
             f"artist={artist_name.value}, model={model.value}"
         )
-
-        # Map artist enum to class instances
-        artist_classes = {
-            Artist.SPECTRA_VERITAS: SpectraVeritas,
-            Artist.FRA1: FRA1,
-        }
-
-        # Get artist instance
-        artist_class = artist_classes.get(artist_name)
-        if not artist_class:
-            available_artists = [a.value for a in Artist]
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail=f"Artist '{artist_name.value}' not implemented yet. Available artists: {available_artists}",
-            )
-        artist_instance = artist_class()
-
-        # Query articles that have bullet_points but no existing art
-        cursor = database.cursor
-        cursor.execute(
-            """SELECT a.id, a.title, a.bullet_points, a.transcript_id
-               FROM articles a
-               LEFT JOIN art ON a.id = art.article_id
-               WHERE a.bullet_points IS NOT NULL 
-                 AND a.bullet_points != ''
-                 AND art.id IS NULL
-               LIMIT ?""",
-            (amount,),
+        return _run_image_batch(database, amount, artist_name, model)
+    except ValueError as e:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=str(e),
         )
-        articles = cursor.fetchall()
-
-        if not articles:
-            return {
-                "success": True,
-                "message": "No articles found that need images (all have art or lack bullet_points)",
-                "images_generated": 0,
-                "images_failed": 0,
-                "results": [],
-            }
-
-        logger.info(f"Found {len(articles)} articles to process")
-
-        results = []
-        images_generated = 0
-        images_failed = 0
-
-        for row in articles:
-            article_id = row[0]
-            title = row[1]
-            bullet_points = row[2]
-            transcript_id = row[3]
-
-            try:
-                # Check if art was already created (handles race conditions from concurrent requests)
-                cursor.execute("SELECT id FROM art WHERE article_id = ?", (article_id,))
-                existing_art = cursor.fetchone()
-                if existing_art:
-                    logger.info(
-                        f"Skipping article {article_id} - art already exists (id: {existing_art[0]})"
-                    )
-                    results.append(
-                        {
-                            "article_id": article_id,
-                            "status": "skipped",
-                            "reason": f"Art already exists (id: {existing_art[0]})",
-                        }
-                    )
-                    continue
-
-                logger.info(f"Generating image for article ID {article_id}: {title}")
-
-                # Generate image
-                image_result = artist_instance.generate_image(
-                    title=title,
-                    bullet_points=bullet_points,
-                    model=model.value,
-                )
-
-                if image_result.get("error"):
-                    images_failed += 1
-                    results.append(
-                        {
-                            "article_id": article_id,
-                            "status": "failed",
-                            "error": image_result["error"],
-                        }
-                    )
-                    logger.error(
-                        f"Failed to generate image for article {article_id}: {image_result['error']}"
-                    )
-                    continue
-
-                # Save to database if successful
-                if image_result.get("image_url"):
-                    try:
-                        image_data = _decode_image_url(image_result["image_url"])
-                    except HTTPException as e:
-                        images_failed += 1
-                        results.append(
-                            {
-                                "article_id": article_id,
-                                "status": "failed",
-                                "error": e.detail,
-                            }
-                        )
-                        continue
-
-                    art_id = database.add_art(
-                        prompt=image_result["prompt_used"],
-                        image_url=None,
-                        image_data=image_data,
-                        medium=image_result.get("medium"),
-                        aesthetic=image_result.get("aesthetic"),
-                        title=title,
-                        artist_name=image_result.get("artist"),
-                        snippet=image_result.get("snippet"),
-                        transcript_id=transcript_id,
-                        article_id=article_id,
-                        model=model.value,
-                    )
-
-                    images_generated += 1
-                    results.append(
-                        {
-                            "article_id": article_id,
-                            "status": "success",
-                            "art_id": art_id,
-                            "title": title,
-                        }
-                    )
-                    logger.info(
-                        f"Successfully generated image for article {article_id} (art_id: {art_id})"
-                    )
-                else:
-                    images_failed += 1
-                    results.append(
-                        {
-                            "article_id": article_id,
-                            "status": "failed",
-                            "error": "No image URL returned",
-                        }
-                    )
-
-            except Exception as e:
-                images_failed += 1
-                error_msg = str(e)
-                results.append(
-                    {"article_id": article_id, "status": "failed", "error": error_msg}
-                )
-                logger.error(
-                    f"Failed to generate image for article {article_id}: {error_msg}"
-                )
-
-        logger.info(
-            f"Bulk image generation complete: {images_generated} succeeded, {images_failed} failed"
-        )
-
-        return {
-            "success": True,
-            "message": f"Processed {len(articles)} articles",
-            "images_generated": images_generated,
-            "images_failed": images_failed,
-            "results": results,
-        }
-
     except HTTPException:
         raise
     except Exception as e:
@@ -1801,151 +1826,23 @@ async def bulk_generate_articles(
                 status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
                 detail="Database not available",
             )
-
         logger.info(
             f"Starting bulk article generation: {amount_of_articles} articles, "
             f"journalist={journalist.value}, tone={tone.value}, type={article_type.value}"
         )
-
-        # Map journalist enum to class instances
-        journalist_classes = {
-            Journalist.AURELIUS_STONE: AureliusStone,
-            Journalist.FR_J1: FRJ1,
-        }
-
-        # Get journalist instance and ID first (needed for query)
-        journalist_class = journalist_classes.get(journalist)
-        if not journalist_class:
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail=f"Journalist '{journalist.value}' not implemented yet",
-            )
-        journalist_instance = journalist_class()
-
-        # Ensure journalist exists in database, create if not
-        journalist_data = journalist_manager.get_journalist(
-            journalist_instance.FULL_NAME
+        return await _run_bulk_write_articles(
+            database,
+            journalist_manager,
+            amount_of_articles,
+            journalist,
+            tone,
+            article_type,
         )
-        if not journalist_data:
-            # Create the journalist if it doesn't exist
-            journalist_manager.upsert_journalist(
-                full_name=journalist_instance.FULL_NAME,
-                first_name=journalist_instance.FIRST_NAME,
-                last_name=journalist_instance.LAST_NAME,
-                bio=journalist_instance.get_bio(),
-                description=journalist_instance.get_description(),
-            )
-            # Get the journalist data again after creation
-            journalist_data = journalist_manager.get_journalist(
-                journalist_instance.FULL_NAME
-            )
-            if not journalist_data:
-                raise HTTPException(
-                    status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-                    detail=f"Failed to create or retrieve journalist '{journalist_instance.FULL_NAME}'",
-                )
-
-        journalist_id = journalist_data["id"]
-
-        # Query transcripts that don't already have any article (skip if transcript has any article)
-        cursor = database.cursor
-        cursor.execute(
-            """SELECT t.id, t.committee, t.youtube_id, t.content 
-               FROM transcripts t
-               LEFT JOIN articles a ON t.id = a.transcript_id
-               WHERE a.id IS NULL
-               ORDER BY t.id ASC
-               LIMIT ?""",
-            (amount_of_articles,),
+    except ValueError as e:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=str(e),
         )
-        transcripts = cursor.fetchall()
-
-        if not transcripts:
-            return {
-                "success": False,
-                "message": "No transcripts found in database",
-                "articles_generated": 0,
-                "articles_failed": 0,
-                "results": [],
-            }
-
-        logger.info(f"Found {len(transcripts)} transcripts to process")
-
-        results = []
-        articles_generated = 0
-        articles_failed = 0
-
-        # Process each transcript
-        for row in transcripts:
-            # Extract transcript data from query
-            transcript_id = row[0]
-            committee = row[1]
-            youtube_id = row[2]
-            transcript_content = row[3]
-
-            try:
-                logger.info(
-                    f"Processing transcript ID {transcript_id} (video {youtube_id})"
-                )
-
-                # Generate article
-                logger.info(f"Generating article for transcript ID {transcript_id}")
-
-                base_context = journalist_instance.load_context(
-                    tone=tone, article_type=article_type
-                )
-
-                full_context = f"{base_context}\n\nTRANSCRIPT CONTENT TO ANALYZE:\n{transcript_content}"
-
-                article_result = journalist_instance.generate_article(full_context, "")
-
-                # Save article to database
-                database.add_article(
-                    committee=committee,
-                    youtube_id=youtube_id,
-                    journalist_id=journalist_id,
-                    content=article_result["content"],
-                    transcript_id=transcript_id,
-                    date=datetime.now().isoformat(),
-                    article_type=article_type.value,
-                    tone=tone.value,
-                    title=article_result.get("title", "Untitled Article"),
-                )
-
-                articles_generated += 1
-                results.append(
-                    {
-                        "youtube_id": youtube_id,
-                        "transcript_id": transcript_id,
-                        "status": "success",
-                        "title": article_result.get("title", "Untitled Article"),
-                    }
-                )
-
-                logger.info(f"Successfully generated article for {youtube_id}")
-
-            except Exception as e:
-                articles_failed += 1
-                error_msg = str(e)
-                results.append(
-                    {"youtube_id": youtube_id, "status": "failed", "error": error_msg}
-                )
-                logger.error(
-                    f"Failed to generate article for {youtube_id}: {error_msg}"
-                )
-
-        logger.info(
-            f"Bulk generation complete: {articles_generated} succeeded, {articles_failed} failed"
-        )
-
-        return {
-            "success": True,
-            "message": f"Processed {len(transcripts)} transcripts",
-            "articles_generated": articles_generated,
-            "articles_failed": articles_failed,
-            "results": results,
-        }
-
     except HTTPException:
         raise
     except Exception as e:
@@ -2545,25 +2442,10 @@ async def build_video_queue(
                 status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
                 detail="Database not available",
             )
-
-        # Use async context manager
-        async with VideoQueueManager(database) as queue_manager:
-            # Execute queue building - continue until we've added 'limit' new videos
-            logger.info(
-                f"Building queue from {channel_url} - will continue until {limit} new videos are queued"
-            )
-            results = await queue_manager.queue_new_videos(
-                channel_url,
-                target_new_videos=limit,
-            )
-
-            logger.info(f"Queue building complete: {results}")
-            return {
-                "success": True,
-                "message": f"Queue built successfully from {channel_url}",
-                "results": results,
-            }
-
+        logger.info(
+            f"Building queue from {channel_url} - will continue until {limit} new videos are queued"
+        )
+        return await _run_build_queue(database, channel_url, limit)
     except HTTPException:
         raise
     except Exception as e:
@@ -2724,6 +2606,99 @@ def clear_video_queue() -> Dict[str, Any]:
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Failed to clear video queue: {str(e)}",
         )
+
+
+@app.post("/pipeline/run")
+async def run_data_pipeline(
+    amount: int,
+    channel_url: Optional[str] = None,
+    auto_build: bool = True,
+    journalist: Journalist = Journalist.FR_J1,
+    tone: Tone = Tone.PROFESSIONAL,
+    article_type: ArticleType = ArticleType.NEWS,
+    model: ImageModel = ImageModel.GPT_IMAGE_1,
+) -> Dict[str, Any]:
+    """
+    Run the full data pipeline using shared logic: build queue, fetch transcripts,
+    write articles, generate bullet points, generate images. Artist is always FRA1.
+    Each step persists to the database.
+    """
+    if not database:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Database not available",
+        )
+    if amount <= 0:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="amount must be a positive integer",
+        )
+    channel_url = channel_url or os.environ.get("DEFAULT_YOUTUBE_CHANNEL_URL", "")
+    artist = Artist.FRA1
+
+    aggregated = {
+        "success": True,
+        "message": "Pipeline run complete",
+        "amount": amount,
+        "queue_build": None,
+        "transcript_fetch": None,
+        "article_write": None,
+        "bullet_points": None,
+        "image_generate": None,
+    }
+
+    try:
+        aggregated["queue_build"] = await _run_build_queue(
+            database, channel_url, amount
+        )
+    except Exception as e:
+        aggregated["success"] = False
+        aggregated["queue_build"] = {"error": str(e)}
+        logger.error(f"Pipeline queue build failed: {e}")
+        return aggregated
+
+    try:
+        aggregated["transcript_fetch"] = await _run_bulk_fetch_transcripts(
+            database, transcript_manager, amount, auto_build, channel_url
+        )
+    except Exception as e:
+        aggregated["success"] = False
+        aggregated["transcript_fetch"] = {"error": str(e)}
+        logger.error(f"Pipeline transcript fetch failed: {e}")
+        return aggregated
+
+    try:
+        aggregated["article_write"] = await _run_bulk_write_articles(
+            database,
+            journalist_manager,
+            amount,
+            journalist,
+            tone,
+            article_type,
+        )
+    except Exception as e:
+        aggregated["success"] = False
+        aggregated["article_write"] = {"error": str(e)}
+        logger.error(f"Pipeline article write failed: {e}")
+        return aggregated
+
+    try:
+        aggregated["bullet_points"] = _run_bullet_points_batch(database, amount)
+    except Exception as e:
+        aggregated["success"] = False
+        aggregated["bullet_points"] = {"error": str(e)}
+        logger.error(f"Pipeline bullet points failed: {e}")
+        return aggregated
+
+    try:
+        aggregated["image_generate"] = _run_image_batch(database, amount, artist, model)
+    except Exception as e:
+        aggregated["success"] = False
+        aggregated["image_generate"] = {"error": str(e)}
+        logger.error(f"Pipeline image generate failed: {e}")
+        return aggregated
+
+    return aggregated
 
 
 @app.get("/transcripts/pending/{journalist}")
@@ -3144,31 +3119,12 @@ def regenerate_art_image(
 @app.post("/bullet-points/generate/batch/{amount_of_articles}")
 def generate_all_bullet_points(amount_of_articles: int):
     """Generate bullet points for all articles that don't have them."""
-    articles = database.get_all_articles()
-    journalist = AureliusStone()
-
-    results = {"processed": 0, "skipped": 0, "errors": []}
-
-    for article in articles:
-        # Stop if we've processed enough
-        if results["processed"] >= amount_of_articles:
-            break
-
-        # Skip if already has bullet points
-        if article.get("bullet_points"):
-            results["skipped"] += 1
-            continue
-
-        result = journalist.generate_bullet_points(article["content"])
-
-        if result.get("error"):
-            results["errors"].append({"id": article["id"], "error": result["error"]})
-            continue
-
-        database.update_article_bullet_points(article["id"], result["bullet_points"])
-        results["processed"] += 1
-
-    return results
+    if not database:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Database not available",
+        )
+    return _run_bullet_points_batch(database, amount_of_articles)
 
 
 @app.get("/image/{art_id}")
