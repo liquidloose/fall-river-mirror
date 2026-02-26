@@ -1,0 +1,205 @@
+"""
+WordPress sync service: fetch article YouTube IDs from WordPress and sync articles to WordPress.
+"""
+
+import base64
+import logging
+import os
+from datetime import datetime
+from typing import Any, Dict, Optional, Set
+
+import requests
+from fastapi import status
+
+from app.data.create_database import Database
+
+logger = logging.getLogger(__name__)
+
+DEFAULT_BASE_URL = "http://192.168.1.17:9004"
+DEFAULT_API_PATH_CREATE = "/wp-json/fr-mirror/v2/create-article"
+DEFAULT_API_PATH_YOUTUBE_IDS = "/wp-json/fr-mirror/v2/article-youtube-ids"
+
+
+class WordPressSyncService:
+    """
+    Syncs articles from the FastAPI database to the WordPress create-article endpoint.
+    """
+
+    def __init__(
+        self,
+        database: Optional[Database],
+        base_url: Optional[str] = None,
+        api_path_create: Optional[str] = None,
+        api_path_youtube_ids: Optional[str] = None,
+    ) -> None:
+        self._database = database
+        self._base_url = (base_url or os.environ.get("WORDPRESS_BASE_URL") or DEFAULT_BASE_URL).rstrip("/")
+        self._api_path_create = api_path_create or os.environ.get("WORDPRESS_API_PATH_CREATE_ARTICLE") or DEFAULT_API_PATH_CREATE
+        self._api_path_youtube_ids = api_path_youtube_ids or os.environ.get("WORDPRESS_API_PATH_ARTICLE_YOUTUBE_IDS") or DEFAULT_API_PATH_YOUTUBE_IDS
+
+    def get_article_youtube_ids(self, base_url: Optional[str] = None) -> Set[str]:
+        """Fetch the set of youtube_ids that already have an article on WordPress. Returns empty set on error."""
+        url = (base_url or self._base_url) + self._api_path_youtube_ids
+        try:
+            r = requests.get(url, timeout=15)
+            r.raise_for_status()
+            data = r.json()
+            raw = data.get("youtube_ids") or []
+            return set((yid or "").strip() for yid in raw if (yid or "").strip())
+        except Exception as e:
+            logger.warning(f"Could not fetch WordPress article youtube_ids: {e}")
+            return set()
+
+    def sync_one_article(self, article_id: int) -> Dict[str, Any]:
+        """
+        Fetch an article from the database and POST it to the WordPress create-article endpoint.
+        Returns a result dict; does not raise.
+        """
+        db = self._database
+        if not db:
+            return {
+                "success": False,
+                "error": "Database not available",
+                "http_status": status.HTTP_500_INTERNAL_SERVER_ERROR,
+            }
+
+        article = db.get_article_by_id(article_id)
+        if not article:
+            return {
+                "success": False,
+                "error": f"Article with ID {article_id} not found",
+                "http_status": status.HTTP_404_NOT_FOUND,
+            }
+
+        journalist_name = ""
+        if article.get("journalist_id"):
+            try:
+                db.cursor.execute(
+                    "SELECT first_name, last_name FROM journalists WHERE id = ?",
+                    (article["journalist_id"],),
+                )
+                journalist_result = db.cursor.fetchone()
+                if journalist_result:
+                    first_name = journalist_result[0] or ""
+                    last_name = journalist_result[1] or ""
+                    if first_name and last_name:
+                        journalist_name = f"{first_name} {last_name}"
+                    elif first_name:
+                        journalist_name = first_name
+                    elif last_name:
+                        journalist_name = last_name
+            except Exception as e:
+                logger.warning(f"Failed to fetch journalist data: {str(e)}")
+
+        meeting_date = ""
+        transcript_id = article.get("transcript_id")
+        if transcript_id:
+            try:
+                db.cursor.execute(
+                    "SELECT meeting_date FROM transcripts WHERE id = ?",
+                    (transcript_id,),
+                )
+                transcript_result = db.cursor.fetchone()
+                if transcript_result and transcript_result[0]:
+                    date_str = transcript_result[0]
+                    try:
+                        date_obj = None
+                        try:
+                            date_obj = datetime.strptime(date_str, "%m-%d-%Y")
+                        except ValueError:
+                            pass
+                        if not date_obj:
+                            try:
+                                date_obj = datetime.strptime(date_str, "%m/%d/%Y")
+                            except ValueError:
+                                pass
+                        if not date_obj:
+                            try:
+                                s = date_str.replace("Z", "+00:00") if date_str.endswith("Z") else date_str
+                                date_obj = datetime.fromisoformat(s)
+                            except ValueError:
+                                pass
+                        if not date_obj:
+                            try:
+                                date_obj = datetime.strptime(date_str, "%Y-%m-%d")
+                            except ValueError:
+                                pass
+                        if date_obj:
+                            meeting_date = date_obj.strftime("%Y-%m-%d")
+                        else:
+                            logger.warning(f"Could not parse meeting_date '{date_str}', using as-is")
+                            meeting_date = date_str
+                    except Exception as e:
+                        logger.warning(f"Failed to format meeting_date: {str(e)}, using original value")
+                        meeting_date = transcript_result[0]
+            except Exception as e:
+                logger.warning(f"Failed to fetch meeting_date from transcript: {str(e)}")
+
+        featured_image = None
+        try:
+            db.cursor.execute(
+                "SELECT id, image_data, model FROM art WHERE article_id = ? LIMIT 1",
+                (article_id,),
+            )
+            art_result = db.cursor.fetchone()
+            if art_result and art_result[1]:
+                image_data = art_result[1]
+                if isinstance(image_data, bytes):
+                    image_format = "png"
+                    if len(image_data) >= 2 and image_data[:2] == b"\xff\xd8":
+                        image_format = "jpeg"
+                    elif len(image_data) >= 8 and image_data[:8] == b"\x89PNG\r\n\x1a\n":
+                        image_format = "png"
+                    base64_data = base64.b64encode(image_data).decode("utf-8")
+                    featured_image = f"data:image/{image_format};base64,{base64_data}"
+        except Exception as e:
+            logger.warning(f"Failed to fetch/process image for article {article_id}: {str(e)}", exc_info=True)
+
+        missing_fields = []
+        if not article.get("content"):
+            missing_fields.append("content")
+        if not article.get("bullet_points"):
+            missing_fields.append("bullet_points")
+        if not featured_image:
+            missing_fields.append("featured_image (art)")
+        if missing_fields:
+            return {
+                "success": False,
+                "error": f"Article {article_id} is missing required fields for sync: {', '.join(missing_fields)}. Article must have content, bullet points, and art to sync to WordPress.",
+                "http_status": status.HTTP_400_BAD_REQUEST,
+            }
+
+        payload = {
+            "title": article.get("title") or "",
+            "article_content": article.get("content") or "",
+            "journalist_name": journalist_name or "",
+            "committee": article.get("committee") or "",
+            "youtube_id": article.get("youtube_id") or "",
+            "bullet_points": article.get("bullet_points") or "",
+            "meeting_date": meeting_date or "",
+            "view_count": article.get("view_count") or 0,
+            "featured_image": featured_image or "",
+            "status": "publish",
+        }
+        wordpress_url = self._base_url + self._api_path_create
+        try:
+            response = requests.post(
+                wordpress_url,
+                json=payload,
+                headers={"Content-Type": "application/json"},
+                timeout=30,
+            )
+            response.raise_for_status()
+            logger.info(f"Successfully synced article {article_id} to WordPress")
+            return {
+                "success": True,
+                "article_id": article_id,
+                "wordpress_response": response.json(),
+            }
+        except requests.exceptions.RequestException as e:
+            logger.error(f"Failed to POST to WordPress: {str(e)}")
+            return {
+                "success": False,
+                "error": f"Failed to sync to WordPress: {str(e)}",
+                "http_status": status.HTTP_502_BAD_GATEWAY,
+            }
