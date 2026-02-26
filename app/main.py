@@ -2633,7 +2633,7 @@ async def run_data_pipeline(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="amount must be a positive integer",
         )
-    channel_url = channel_url or os.environ.get("DEFAULT_YOUTUBE_CHANNEL_URL", "")
+    channel_url = channel_url or os.getenv("DEFAULT_YOUTUBE_CHANNEL_URL")
     artist = Artist.FRA1
 
     aggregated = {
