@@ -6,7 +6,7 @@ import json
 import logging
 import os
 import time
-from typing import Dict, Any, List, Optional
+from typing import Dict, Any, List, Optional, Set
 from app.data.enum_manager import DatabaseSync
 
 # Load environment variables
@@ -53,6 +53,26 @@ logging.basicConfig(
     ],
 )
 logger = logging.getLogger(__name__)
+
+# WordPress API configuration (base URL can be overridden via WORDPRESS_BASE_URL env)
+WORDPRESS_BASE_URL = os.environ.get("WORDPRESS_BASE_URL", "http://192.168.1.17:9004")
+WORDPRESS_API_PATH_CREATE_ARTICLE = "/wp-json/fr-mirror/v2/create-article"
+WORDPRESS_API_PATH_ARTICLE_YOUTUBE_IDS = "/wp-json/fr-mirror/v2/article-youtube-ids"
+
+
+def _get_wordpress_article_youtube_ids(base_url: Optional[str] = None) -> Set[str]:
+    """Fetch the set of youtube_ids that already have an article on WordPress. Returns empty set on error. Normalizes by stripping whitespace."""
+    url = (base_url or WORDPRESS_BASE_URL).rstrip("/") + WORDPRESS_API_PATH_ARTICLE_YOUTUBE_IDS
+    try:
+        r = requests.get(url, timeout=15)
+        r.raise_for_status()
+        data = r.json()
+        raw = data.get("youtube_ids") or []
+        return set((yid or "").strip() for yid in raw if (yid or "").strip())
+    except Exception as e:
+        logger.warning(f"Could not fetch WordPress article youtube_ids: {e}")
+        return set()
+
 
 # Initialize database instance at the top level
 try:
@@ -320,10 +340,12 @@ async def _run_bulk_write_articles(
             "message": "No transcripts found in database",
             "articles_generated": 0,
             "articles_failed": 0,
+            "article_ids": [],
             "results": [],
         }
 
     results = []
+    article_ids = []
     articles_generated = 0
     articles_failed = 0
     for row in transcripts:
@@ -339,7 +361,7 @@ async def _run_bulk_write_articles(
             )
             full_context = f"{base_context}\n\nTRANSCRIPT CONTENT TO ANALYZE:\n{transcript_content}"
             article_result = journalist_instance.generate_article(full_context, "")
-            db.add_article(
+            new_id = db.add_article(
                 committee=committee,
                 youtube_id=youtube_id,
                 journalist_id=journalist_id,
@@ -351,6 +373,7 @@ async def _run_bulk_write_articles(
                 title=article_result.get("title", "Untitled Article"),
             )
             articles_generated += 1
+            article_ids.append(new_id)
             results.append(
                 {
                     "youtube_id": youtube_id,
@@ -370,6 +393,7 @@ async def _run_bulk_write_articles(
         "message": f"Processed {len(transcripts)} transcripts",
         "articles_generated": articles_generated,
         "articles_failed": articles_failed,
+        "article_ids": article_ids,
         "results": results,
     }
 
@@ -1853,268 +1877,225 @@ async def bulk_generate_articles(
         )
 
 
+def _sync_one_article_to_wordpress(article_id: int, db: Database) -> Dict[str, Any]:
+    """
+    Fetch an article from the database and POST it to the WordPress create-article endpoint.
+    Returns a result dict; does not raise. Used by the sync endpoint and the pipeline.
+    """
+    if not db:
+        return {
+            "success": False,
+            "error": "Database not available",
+            "http_status": status.HTTP_500_INTERNAL_SERVER_ERROR,
+        }
+
+    article = db.get_article_by_id(article_id)
+    if not article:
+        return {
+            "success": False,
+            "error": f"Article with ID {article_id} not found",
+            "http_status": status.HTTP_404_NOT_FOUND,
+        }
+
+    # Get journalist first_name and last_name and combine into journalist_name
+    journalist_name = ""
+    if article.get("journalist_id"):
+        try:
+            db.cursor.execute(
+                "SELECT first_name, last_name FROM journalists WHERE id = ?",
+                (article["journalist_id"],),
+            )
+            journalist_result = db.cursor.fetchone()
+            if journalist_result:
+                first_name = journalist_result[0] or ""
+                last_name = journalist_result[1] or ""
+                if first_name and last_name:
+                    journalist_name = f"{first_name} {last_name}"
+                elif first_name:
+                    journalist_name = first_name
+                elif last_name:
+                    journalist_name = last_name
+        except Exception as e:
+            logger.warning(f"Failed to fetch journalist data: {str(e)}")
+
+    # Get meeting date from transcript (not article creation date)
+    meeting_date = ""
+    transcript_id = article.get("transcript_id")
+    if transcript_id:
+        try:
+            db.cursor.execute(
+                "SELECT meeting_date FROM transcripts WHERE id = ?",
+                (transcript_id,),
+            )
+            transcript_result = db.cursor.fetchone()
+            if transcript_result and transcript_result[0]:
+                date_str = transcript_result[0]
+                try:
+                    date_obj = None
+                    try:
+                        date_obj = datetime.strptime(date_str, "%m-%d-%Y")
+                    except ValueError:
+                        pass
+                    if not date_obj:
+                        try:
+                            date_obj = datetime.strptime(date_str, "%m/%d/%Y")
+                        except ValueError:
+                            pass
+                    if not date_obj:
+                        try:
+                            s = date_str.replace("Z", "+00:00") if date_str.endswith("Z") else date_str
+                            date_obj = datetime.fromisoformat(s)
+                        except ValueError:
+                            pass
+                    if not date_obj:
+                        try:
+                            date_obj = datetime.strptime(date_str, "%Y-%m-%d")
+                        except ValueError:
+                            pass
+                    if date_obj:
+                        meeting_date = date_obj.strftime("%Y-%m-%d")
+                    else:
+                        logger.warning(
+                            f"Could not parse meeting_date '{date_str}', using as-is"
+                        )
+                        meeting_date = date_str
+                except Exception as e:
+                    logger.warning(
+                        f"Failed to format meeting_date: {str(e)}, using original value"
+                    )
+                    meeting_date = transcript_result[0]
+        except Exception as e:
+            logger.warning(
+                f"Failed to fetch meeting_date from transcript: {str(e)}"
+            )
+
+    # Get image data from art record if available
+    featured_image = None
+    try:
+        db.cursor.execute(
+            "SELECT id, image_data, model FROM art WHERE article_id = ? LIMIT 1",
+            (article_id,),
+        )
+        art_result = db.cursor.fetchone()
+
+        if art_result:
+            logger.info(
+                f"Found art record for article {article_id}: art_id={art_result[0]}, "
+                f"has_image_data={art_result[1] is not None}, "
+                f"image_data_type={type(art_result[1])}"
+            )
+            if art_result[1]:
+                image_data = art_result[1]
+                if not isinstance(image_data, bytes):
+                    logger.warning(
+                        f"Image data for article {article_id} is not bytes, "
+                        f"got {type(image_data)} instead"
+                    )
+                else:
+                    image_format = "png"
+                    if len(image_data) >= 2 and image_data[:2] == b"\xff\xd8":
+                        image_format = "jpeg"
+                    elif (
+                        len(image_data) >= 8
+                        and image_data[:8] == b"\x89PNG\r\n\x1a\n"
+                    ):
+                        image_format = "png"
+                    base64_data = base64.b64encode(image_data).decode("utf-8")
+                    featured_image = (
+                        f"data:image/{image_format};base64,{base64_data}"
+                    )
+                    logger.info(
+                        f"Successfully processed image for article {article_id} "
+                        f"(art_id: {art_result[0]}, format: {image_format})"
+                    )
+            else:
+                logger.info(
+                    f"Art record found for article {article_id} but image_data is None/empty"
+                )
+        else:
+            logger.info(f"No art record found for article {article_id}")
+    except Exception as e:
+        logger.warning(
+            f"Failed to fetch/process image for article {article_id}: {str(e)}",
+            exc_info=True,
+        )
+
+    missing_fields = []
+    if not article.get("content"):
+        missing_fields.append("content")
+    if not article.get("bullet_points"):
+        missing_fields.append("bullet_points")
+    if not featured_image:
+        missing_fields.append("featured_image (art)")
+    if missing_fields:
+        return {
+            "success": False,
+            "error": f"Article {article_id} is missing required fields for sync: {', '.join(missing_fields)}. Article must have content, bullet points, and art to sync to WordPress.",
+            "http_status": status.HTTP_400_BAD_REQUEST,
+        }
+
+    payload = {
+        "title": article.get("title") or "",
+        "article_content": article.get("content") or "",
+        "journalist_name": journalist_name or "",
+        "committee": article.get("committee") or "",
+        "youtube_id": article.get("youtube_id") or "",
+        "bullet_points": article.get("bullet_points") or "",
+        "meeting_date": meeting_date or "",
+        "view_count": article.get("view_count") or 0,
+        "featured_image": featured_image or "",
+        "status": "publish",
+    }
+    payload_log = payload.copy()
+    if payload_log.get("article_content"):
+        payload_log["article_content"] = f"[{len(payload_log['article_content'])} chars]"
+    if payload_log.get("featured_image"):
+        payload_log["featured_image"] = f"[{len(featured_image or '')} chars base64]"
+    logger.info(
+        f"Sending payload to WordPress for article {article_id}: {payload_log}"
+    )
+
+    wordpress_url = WORDPRESS_BASE_URL.rstrip("/") + WORDPRESS_API_PATH_CREATE_ARTICLE
+    try:
+        response = requests.post(
+            wordpress_url,
+            json=payload,
+            headers={"Content-Type": "application/json"},
+            timeout=30,
+        )
+        response.raise_for_status()
+        logger.info(f"Successfully synced article {article_id} to WordPress")
+        return {
+            "success": True,
+            "article_id": article_id,
+            "wordpress_response": response.json(),
+        }
+    except requests.exceptions.RequestException as e:
+        logger.error(f"Failed to POST to WordPress: {str(e)}")
+        return {
+            "success": False,
+            "error": f"Failed to sync to WordPress: {str(e)}",
+            "http_status": status.HTTP_502_BAD_GATEWAY,
+        }
+
+
 @app.post("/sync-article-to-wordpress/{article_id}")
 def sync_article_to_wordpress(article_id: int) -> Dict[str, Any]:
     """
     Fetch an article from the FastAPI database and POST it to the WordPress create-article endpoint.
-
-    Args:
-        article_id: The ID of the article to sync
-
-    Returns:
-        Dict containing the WordPress API response
     """
-    try:
-        if not database:
-            raise HTTPException(
-                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-                detail="Database not available",
-            )
-
-        # Fetch article from database
-        article = database.get_article_by_id(article_id)
-        if not article:
-            raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND,
-                detail=f"Article with ID {article_id} not found",
-            )
-
-        # Get journalist first_name and last_name and combine into journalist_name
-        journalist_name = ""
-        if article.get("journalist_id"):
-            try:
-                database.cursor.execute(
-                    "SELECT first_name, last_name FROM journalists WHERE id = ?",
-                    (article["journalist_id"],),
-                )
-                journalist_result = database.cursor.fetchone()
-                if journalist_result:
-                    first_name = journalist_result[0] or ""
-                    last_name = journalist_result[1] or ""
-                    if first_name and last_name:
-                        journalist_name = f"{first_name} {last_name}"
-                    elif first_name:
-                        journalist_name = first_name
-                    elif last_name:
-                        journalist_name = last_name
-            except Exception as e:
-                logger.warning(f"Failed to fetch journalist data: {str(e)}")
-
-        # Get meeting date from transcript (not article creation date)
-        meeting_date = ""
-        transcript_id = article.get("transcript_id")
-        if transcript_id:
-            try:
-                database.cursor.execute(
-                    "SELECT meeting_date FROM transcripts WHERE id = ?",
-                    (transcript_id,),
-                )
-                transcript_result = database.cursor.fetchone()
-                if transcript_result and transcript_result[0]:
-                    date_str = transcript_result[0]
-                    try:
-                        # Try multiple date formats that might be in the database
-                        date_obj = None
-
-                        # Try mm-dd-yyyy format (e.g., "11-26-2025")
-                        try:
-                            date_obj = datetime.strptime(date_str, "%m-%d-%Y")
-                        except ValueError:
-                            pass
-
-                        # Try mm/dd/yyyy format
-                        if not date_obj:
-                            try:
-                                date_obj = datetime.strptime(date_str, "%m/%d/%Y")
-                            except ValueError:
-                                pass
-
-                        # Try ISO format (YYYY-MM-DD or with time)
-                        if not date_obj:
-                            try:
-                                if date_str.endswith("Z"):
-                                    date_str = date_str.replace("Z", "+00:00")
-                                date_obj = datetime.fromisoformat(date_str)
-                            except ValueError:
-                                pass
-
-                        # Try YYYY-MM-DD format
-                        if not date_obj:
-                            try:
-                                date_obj = datetime.strptime(date_str, "%Y-%m-%d")
-                            except ValueError:
-                                pass
-
-                        if date_obj:
-                            # Format as ISO date (YYYY-MM-DD) for WordPress
-                            meeting_date = date_obj.strftime("%Y-%m-%d")
-                        else:
-                            # If all parsing attempts failed, use original value
-                            logger.warning(
-                                f"Could not parse meeting_date '{date_str}', using as-is"
-                            )
-                            meeting_date = date_str
-                    except Exception as e:
-                        logger.warning(
-                            f"Failed to format meeting_date: {str(e)}, using original value"
-                        )
-                        meeting_date = transcript_result[0]
-            except Exception as e:
-                logger.warning(
-                    f"Failed to fetch meeting_date from transcript: {str(e)}"
-                )
-
-        # Get image data from art record if available
-        featured_image = None
-        try:
-            # Query for art record linked to this article
-            database.cursor.execute(
-                "SELECT id, image_data, model FROM art WHERE article_id = ? LIMIT 1",
-                (article_id,),
-            )
-            art_result = database.cursor.fetchone()
-
-            if art_result:
-                logger.info(
-                    f"Found art record for article {article_id}: art_id={art_result[0]}, "
-                    f"has_image_data={art_result[1] is not None}, "
-                    f"image_data_type={type(art_result[1])}"
-                )
-
-                if art_result[1]:  # art_result[1] is image_data
-                    image_data = art_result[1]  # bytes
-
-                    # Check if image_data is actually bytes
-                    if not isinstance(image_data, bytes):
-                        logger.warning(
-                            f"Image data for article {article_id} is not bytes, "
-                            f"got {type(image_data)} instead"
-                        )
-                    else:
-                        # Auto-detect image format from magic bytes
-                        image_format = "png"  # default
-                        if len(image_data) >= 2:
-                            # JPEG starts with 0xFF 0xD8
-                            if image_data[:2] == b"\xff\xd8":
-                                image_format = "jpeg"
-                            # PNG starts with 0x89 0x50 0x4E 0x47
-                            elif (
-                                len(image_data) >= 8
-                                and image_data[:8] == b"\x89PNG\r\n\x1a\n"
-                            ):
-                                image_format = "png"
-
-                        # Encode image_data bytes to base64
-                        base64_data = base64.b64encode(image_data).decode("utf-8")
-
-                        # Format as WordPress data URL
-                        featured_image = (
-                            f"data:image/{image_format};base64,{base64_data}"
-                        )
-
-                        logger.info(
-                            f"Successfully processed image for article {article_id} "
-                            f"(art_id: {art_result[0]}, format: {image_format}, "
-                            f"size: {len(image_data)} bytes, base64_length: {len(base64_data)})"
-                        )
-                else:
-                    logger.info(
-                        f"Art record found for article {article_id} but image_data is None/empty"
-                    )
-            else:
-                logger.info(f"No art record found for article {article_id}")
-        except Exception as e:
-            # Log warning but don't fail the sync if image can't be processed
-            logger.warning(
-                f"Failed to fetch/process image for article {article_id}: {str(e)}",
-                exc_info=True,
-            )
-
-        # Validate that article has content, bullet points, and art before syncing
-        missing_fields = []
-        if not article.get("content"):
-            missing_fields.append("content")
-        if not article.get("bullet_points"):
-            missing_fields.append("bullet_points")
-        if not featured_image:
-            missing_fields.append("featured_image (art)")
-
-        if missing_fields:
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail=f"Article {article_id} is missing required fields for sync: {', '.join(missing_fields)}. Article must have content, bullet points, and art to sync to WordPress.",
-            )
-
-        # Build WordPress payload
-        payload = {
-            "title": article.get("title") or "",
-            "article_content": article.get("content") or "",
-            "journalist_name": journalist_name or "",
-            "committee": article.get("committee") or "",
-            "youtube_id": article.get("youtube_id") or "",
-            "bullet_points": article.get("bullet_points") or "",
-            "meeting_date": meeting_date or "",
-            "view_count": article.get("view_count") or 0,
-            "featured_image": featured_image or "",
-            "status": "publish",
-        }
-
-        if featured_image:
-            logger.info(
-                f"Added featured_image to payload for article {article_id} "
-                f"(length: {len(featured_image)} chars)"
-            )
-        else:
-            logger.info(f"No featured_image to add for article {article_id}")
-
-        # Log the payload being sent (excluding large content and image fields)
-        payload_log = payload.copy()
-        if payload_log.get("article_content"):
-            payload_log["article_content"] = (
-                f"[{len(payload_log['article_content'])} chars]"
-            )
-        if payload_log.get("featured_image"):
-            # Log image size without the actual base64 data
-            image_size = len(featured_image) if featured_image else 0
-            payload_log["featured_image"] = f"[{image_size} chars base64]"
-        logger.info(
-            f"Sending payload to WordPress for article {article_id}: {payload_log}"
-        )
-
-        # POST to WordPress endpoint
-        wordpress_url = "http://192.168.1.17:9004/wp-json/fr-mirror/v2/create-article"
-        try:
-            response = requests.post(
-                wordpress_url,
-                json=payload,
-                headers={"Content-Type": "application/json"},
-                timeout=30,
-            )
-            response.raise_for_status()
-
-            logger.info(f"Successfully synced article {article_id} to WordPress")
-            return {
-                "success": True,
-                "article_id": article_id,
-                "wordpress_response": response.json(),
-            }
-        except requests.exceptions.RequestException as e:
-            logger.error(f"Failed to POST to WordPress: {str(e)}")
-            raise HTTPException(
-                status_code=status.HTTP_502_BAD_GATEWAY,
-                detail=f"Failed to sync to WordPress: {str(e)}",
-            )
-
-    except HTTPException:
-        raise
-    except Exception as e:
-        logger.error(
-            f"Failed to sync article {article_id} to WordPress: {str(e)}", exc_info=True
-        )
+    if not database:
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Failed to sync article: {str(e)}",
+            detail="Database not available",
         )
+    result = _sync_one_article_to_wordpress(article_id, database)
+    if not result["success"]:
+        raise HTTPException(
+            status_code=result.get("http_status", status.HTTP_500_INTERNAL_SERVER_ERROR),
+            detail=result.get("error", "Sync failed"),
+        )
+    return result
 
 
 @app.post("/sync-articles-to-wordpress")
@@ -2172,7 +2153,7 @@ def sync_all_articles_to_wordpress(limit: Optional[int] = None) -> Dict[str, Any
         synced_count = 0
         failed_count = 0
         errors = []
-        wordpress_url = "http://192.168.1.17:9004/wp-json/fr-mirror/v2/create-article"
+        wordpress_url = WORDPRESS_BASE_URL.rstrip("/") + WORDPRESS_API_PATH_CREATE_ARTICLE
 
         # Loop through each article and sync
         for article in articles_to_sync:
@@ -2403,6 +2384,78 @@ def sync_all_articles_to_wordpress(limit: Optional[int] = None) -> Dict[str, Any
         )
 
 
+@app.post("/sync-missing-articles-to-wordpress")
+def sync_missing_articles_to_wordpress(limit: Optional[int] = None) -> Dict[str, Any]:
+    """
+    Sync to WordPress only articles that do not already exist on the site (by youtube_id).
+    Fetches existing youtube_ids from WordPress, then syncs each DB article whose youtube_id
+    is not in that set. Uses the same validation as single-article sync (content, bullet_points, art).
+    """
+    if not database:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Database not available",
+        )
+
+    existing_youtube_ids = _get_wordpress_article_youtube_ids()
+    logger.info(f"WordPress has {len(existing_youtube_ids)} article youtube_ids; syncing only missing")
+
+    all_articles = database.get_all_articles()
+    # Normalize youtube_id for comparison (strip whitespace)
+    to_sync = [
+        a for a in all_articles
+        if (a.get("youtube_id") or "").strip()
+        and (a.get("youtube_id") or "").strip() not in existing_youtube_ids
+    ]
+    if limit is not None and limit > 0:
+        to_sync = to_sync[:limit]
+    db_youtube_ids = [(a.get("youtube_id") or "").strip() for a in all_articles if (a.get("youtube_id") or "").strip()]
+    already_on_site = sum(1 for yid in db_youtube_ids if yid in existing_youtube_ids)
+
+    if not to_sync:
+        return {
+            "success": True,
+            "total_articles": len(all_articles),
+            "already_on_site": already_on_site,
+            "wordpress_youtube_ids_count": len(existing_youtube_ids),
+            "synced": 0,
+            "failed": 0,
+            "errors": [],
+            "message": "No missing articles to sync; all are already on WordPress.",
+        }
+
+    logger.info(f"Syncing {len(to_sync)} missing articles (skipping {already_on_site} already on site)")
+    synced = 0
+    failed = 0
+    errors = []
+    for article in to_sync:
+        article_id = article.get("id")
+        if not article_id:
+            failed += 1
+            errors.append({"article_id": None, "error": "Article missing ID field"})
+            continue
+        result = _sync_one_article_to_wordpress(article_id, database)
+        if result.get("success"):
+            synced += 1
+        else:
+            failed += 1
+            errors.append(
+                {"article_id": article_id, "error": result.get("error", "Unknown error")}
+            )
+            logger.warning(f"Sync failed for article {article_id}: {result.get('error')}")
+
+    return {
+        "success": True,
+        "total_articles": len(all_articles),
+        "already_on_site": already_on_site,
+        "wordpress_youtube_ids_count": len(existing_youtube_ids),
+        "synced": synced,
+        "failed": failed,
+        "errors": errors,
+        "message": f"Synced {synced} missing articles; {already_on_site} already on site.",
+    }
+
+
 @app.post("/queue/build")
 async def build_video_queue(
     limit: int = 5,
@@ -2617,6 +2670,7 @@ async def run_data_pipeline(
     tone: Tone = Tone.PROFESSIONAL,
     article_type: ArticleType = ArticleType.NEWS,
     model: ImageModel = ImageModel.GPT_IMAGE_1,
+    sync_to_wordpress: bool = False,
 ) -> Dict[str, Any]:
     """
     Run the full data pipeline using shared logic: build queue, fetch transcripts,
@@ -2645,6 +2699,7 @@ async def run_data_pipeline(
         "article_write": None,
         "bullet_points": None,
         "image_generate": None,
+        "wordpress_sync": None,
     }
 
     try:
@@ -2697,6 +2752,33 @@ async def run_data_pipeline(
         aggregated["image_generate"] = {"error": str(e)}
         logger.error(f"Pipeline image generate failed: {e}")
         return aggregated
+
+    if sync_to_wordpress and database:
+        # Sync articles that got images this run (they have content, bullet_points, and art)
+        image_results = (aggregated.get("image_generate") or {}).get("results") or []
+        article_ids = [
+            r["article_id"]
+            for r in image_results
+            if r.get("status") == "success" and "article_id" in r
+        ]
+        synced = 0
+        failed = 0
+        errors = []
+        for aid in article_ids:
+            result = _sync_one_article_to_wordpress(aid, database)
+            if result.get("success"):
+                synced += 1
+            else:
+                failed += 1
+                errors.append(
+                    {"article_id": aid, "error": result.get("error", "Unknown error")}
+                )
+                logger.warning(f"Pipeline WordPress sync failed for article {aid}: {result.get('error')}")
+        aggregated["wordpress_sync"] = {
+            "synced": synced,
+            "failed": failed,
+            "errors": errors,
+        }
 
     return aggregated
 
