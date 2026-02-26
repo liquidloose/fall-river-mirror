@@ -1,6 +1,9 @@
 """
-Unit tests for TranscriptManager class.
-Adjusted to current TranscriptManager API: __init__(database=None), no committee arg.
+Unit tests for the TranscriptManager class.
+
+TranscriptManager is not modified; tests use mocks for the database and
+YouTube API so behavior can be asserted in isolation. Caching, cache checks,
+YouTube fetch, and Whisper fallback are covered. API: ``__init__(database=None)``.
 """
 
 import pytest
@@ -10,11 +13,16 @@ from app.data.enum_classes import AIAgent
 
 
 class TestTranscriptManager:
-    """Test cases for TranscriptManager class."""
+    """
+    TranscriptManager initialization, caching, and fetch behavior.
+
+    Fixtures provide a mock database with the methods and attributes
+    the manager uses (e.g. transcript_exists_by_youtube_id, test_write_permissions).
+    """
 
     @pytest.fixture
     def mock_database(self):
-        """Mock database for testing (matches current Database usage)."""
+        """Mock Database with cursor, conn, db_path, and methods used by TranscriptManager."""
         mock_db = Mock()
         mock_db.cursor = Mock()
         mock_db.conn = Mock()
@@ -38,9 +46,9 @@ class TestTranscriptManager:
     def test_cache_transcript_success(
         self, transcript_manager, mock_database, mock_transcript_data
     ):
-        """Test successful transcript caching (current _cache_transcript signature)."""
+        """_cache_transcript calls the DB cursor with youtube_id, content, and video_metadata; execute is invoked."""
         mock_cursor = mock_database.cursor
-        mock_cursor.fetchone.return_value = (1,)  # table exists
+        mock_cursor.fetchone.return_value = (1,)  # table-exists check
         video_metadata = {
             "title": "Test Meeting",
             "published_at": None,
@@ -64,7 +72,7 @@ class TestTranscriptManager:
         assert mock_cursor.execute.call_count >= 1
 
     def test_is_transcript_cached_true(self, transcript_manager, mock_database):
-        """Test transcript cache check when transcript exists."""
+        """_is_transcript_cached returns True when transcript_exists_by_youtube_id returns True."""
         mock_database.transcript_exists_by_youtube_id.return_value = True
         result = transcript_manager._is_transcript_cached("TEST123")
         assert result is True
@@ -73,7 +81,7 @@ class TestTranscriptManager:
         )
 
     def test_is_transcript_cached_false(self, transcript_manager, mock_database):
-        """Test transcript cache check when transcript doesn't exist."""
+        """_is_transcript_cached returns False when transcript_exists_by_youtube_id returns False."""
         mock_database.transcript_exists_by_youtube_id.return_value = False
         result = transcript_manager._is_transcript_cached("TEST123")
         assert result is False
@@ -83,8 +91,8 @@ class TestTranscriptManager:
 
     @patch("app.data.transcript_manager.YouTubeTranscriptApi")
     def test_fetch_from_youtube_success(self, mock_youtube_api, transcript_manager):
-        """Test successful YouTube transcript fetching (returns rich dict)."""
-        # API chain: list(id) -> find_manually_created_transcript -> fetch() -> .snippets
+        """_fetch_from_youtube returns a dict with transcript, video_metadata, and source when API returns snippets."""
+        # TranscriptManager uses: list(id) -> find_manually_created_transcript -> fetch() -> .snippets
         mock_snippet = Mock()
         mock_snippet.text = "Mocked transcript content"
         mock_snippet.start = 0.0
@@ -110,7 +118,7 @@ class TestTranscriptManager:
     def test_fetch_from_youtube_fallback_to_whisper(
         self, mock_whisper, mock_youtube_api, transcript_manager
     ):
-        """Test fallback to Whisper when YouTube API fails."""
+        """When the YouTube API raises VideoUnavailable, _fetch_from_youtube uses _fetch_via_whisper and returns its transcript."""
         from youtube_transcript_api._errors import VideoUnavailable
 
         mock_list_obj = Mock()
@@ -132,12 +140,12 @@ class TestTranscriptManager:
         mock_whisper.assert_called_once_with("TEST123")
 
     def test_can_cache_with_database(self, transcript_manager):
-        """Test cache availability when database is present and writable."""
+        """_can_cache returns True when database is set and test_write_permissions returns True."""
         result = transcript_manager._can_cache()
         assert result is True
 
     def test_can_cache_without_database(self):
-        """Test cache availability when database is None."""
+        """_can_cache returns False when database is None."""
         tm = TranscriptManager(database=None)
         result = tm._can_cache()
         assert result is False

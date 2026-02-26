@@ -1,5 +1,9 @@
 """
-Integration tests for database operations.
+Integration tests for the Database class and SQLite schema.
+
+Uses an in-memory database per test (or per class) so each run gets a clean
+schema. Asserts that tables exist, CRUD works for the transcripts table,
+and connection lifecycle behaves correctly. Schema matches app.data.create_database.
 """
 
 import pytest
@@ -7,18 +11,23 @@ from app.data.create_database import Database
 
 
 class TestDatabaseIntegration:
-    """Integration tests for database operations."""
+    """
+    Database initialization, transcripts table CRUD, and connection handling.
+
+    All tests use the current production schema (e.g. transcripts columns
+    committee, youtube_id, content, meeting_date, video_title).
+    """
 
     @pytest.fixture
     def temp_database(self):
-        """Create an in-memory database for testing (no temp files)."""
+        """In-memory Database instance; no files on disk. Closed after the test."""
         db = Database(":memory:")
         yield db
         if db.is_connected:
             db.close()
 
     def test_database_initialization(self, temp_database):
-        """Test database initialization and table creation."""
+        """After init, DB is connected and all expected tables exist (transcripts, articles, journalists, etc.)."""
         db = temp_database
 
         # Database should be connected
@@ -42,7 +51,7 @@ class TestDatabaseIntegration:
             assert table in tables
 
     def test_transcript_crud_operations(self, temp_database):
-        """Test CRUD operations for transcripts (current schema)."""
+        """INSERT, SELECT, UPDATE, and DELETE on transcripts using current column names."""
         db = temp_database
         cursor = db.cursor
 
@@ -114,7 +123,7 @@ class TestDatabaseIntegration:
         assert db.is_connected is True
 
     def test_concurrent_operations(self, temp_database):
-        """Test concurrent database operations (current schema)."""
+        """Multiple transcript rows can be inserted and selected in order by meeting_date."""
         db = temp_database
         cursor = db.cursor
 
