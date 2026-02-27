@@ -71,6 +71,7 @@ services:
 
   mirror-ai:
     image: fr-mirror-ai
+    user: 1000:1000
     container_name: mirror-ai
     restart: unless-stopped
     networks:

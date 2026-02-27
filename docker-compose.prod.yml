@@ -5,6 +5,7 @@ services:
   mirror-ai:
     image: fr-mirror-ai
     container_name: mirror-ai
+    user: "1000:1000"
     restart: unless-stopped
     networks:
       - fr-mirror-bridge

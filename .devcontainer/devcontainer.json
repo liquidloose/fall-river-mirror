@@ -4,8 +4,7 @@
     "service": "mirror-ai",
     "workspaceFolder": "/code",
     "updateRemoteUserUID": true,
-    "containerUser": "root",
-    "remoteUser": "vscode",
+    "remoteUser": "app",
     "customizations": {
         "vscode": {
             "extensions": [
