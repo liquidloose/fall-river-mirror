@@ -3,6 +3,9 @@
     "dockerComposeFile": "../docker-compose.yml",
     "service": "mirror-ai",
     "workspaceFolder": "/code",
+    "updateRemoteUserUID": true,
+    "containerUser": "root",
+    "remoteUser": "vscode",
     "customizations": {
         "vscode": {
             "extensions": [
