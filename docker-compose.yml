@@ -81,7 +81,7 @@ services:
       - "8080:8080"  # OAuth redirect callback port
     volumes:
       - .:/code
-      - ~/.ssh:/root/.ssh:ro
+      - ~/.ssh:/home/app/.ssh:ro
     environment:
       - DATABASE_URL
       - YOUTUBE_COOKIES_PATH
