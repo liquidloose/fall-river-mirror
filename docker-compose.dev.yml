@@ -1,0 +1,8 @@
+# Override for dev mode: full stack with local WordPress. Adds .env.dev so
+# mirror-ai uses WORDPRESS_BASE_URL pointing at the local WordPress container.
+# Usage: docker compose -f docker-compose.yml -f docker-compose.dev.yml up
+services:
+  mirror-ai:
+    env_file:
+      - .env
+      - .env.dev

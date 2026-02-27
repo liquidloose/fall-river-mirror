@@ -1,0 +1,8 @@
+# Override for production mode: run only mirror-ai. Replaces env_file so the
+# container gets shared .env plus .env.prod (WordPress URL = fallrivermirror.com).
+# Usage: docker-compose -f docker-compose.yml -f docker-compose.prod.yml up mirror-ai
+services:
+  mirror-ai:
+    env_file:
+      - .env   # shared (API keys, DB, paths, etc.)
+      - .env.prod   # WORDPRESS_BASE_URL and any other prod-only vars
