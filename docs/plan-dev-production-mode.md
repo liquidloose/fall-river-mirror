@@ -1,49 +1,35 @@
-# Plan: Dev vs production mode
+# Dev vs production mode
 
-Description of how the system should look **after** this change. Use this when implementing (e.g. tomorrow).
+How the system is set up after the prod-only compose change.
 
 ## Goal
 
-- **Development**: Full local stack — WordPress + MySQL start with the app; FastAPI talks to local WordPress. Use local URLs in config.
-- **Production**: Only FastAPI runs; no local WordPress or MySQL. FastAPI talks to the **live** WordPress instance. Use production URLs in config.
+- **Development**: Full local stack — WordPress + MySQL + mirror-ai (FastAPI). FastAPI talks to local WordPress. Use local URLs in `.env`.
+- **Production**: Only mirror-ai (FastAPI) runs; no local WordPress or MySQL. FastAPI talks to the live WordPress instance at fallrivermirror.com. Use production values in `.env.prod`.
 
 ## Two modes
 
 | Aspect | Development | Production |
 |--------|-------------|------------|
-| **What runs** | mirror-ai (FastAPI) + db (MySQL) + wordpress + my-wpcli + phpmyadmin | mirror-ai (FastAPI) only |
+| **What runs** | mirror-ai + db + wordpress + my-wpcli + phpmyadmin | mirror-ai only |
 | **WordPress** | Local container (same compose network) | Not started; use live site |
 | **MySQL** | Local container | Not started |
-| **How to start** | e.g. `docker compose --profile dev up` | e.g. `docker compose up` (no profile) |
-| **WORDPRESS_BASE_URL** | Local address (e.g. `http://wordpress:80` from inside container, or host port like `http://localhost:9004` if applicable) | Public URL of live WordPress (e.g. `https://yoursite.com`) |
-| **Other env** | Dev-specific if any (e.g. debug, local API keys) | Production values |
+| **How to start** | `docker compose up` | `docker compose -f docker-compose.prod.yml up` |
+| **Env file** | `.env` (local values, e.g. WORDPRESS_BASE_URL to local IP or `http://wordpress:80`) | `.env.prod` (production values; WORDPRESS_BASE_URL=https://fallrivermirror.com) |
 
-## Env / config (no duplication)
+## Env / config
 
-Use **one base `.env`** with all shared variables (API keys, ports, DB, etc.). Only the vars that **differ by mode** go in small override files — so you never list everything twice.
+- **`.env`** — used by both modes. Contains all variables for the full stack and mirror-ai (API keys, DB, ports, etc.). For dev, set `WORDPRESS_BASE_URL` to your local WordPress (e.g. `http://wordpress:80` or `http://localhost:9004`).
+- **`.env.prod`** — used only by [docker-compose.prod.yml](../docker-compose.prod.yml), loaded *after* `.env` so it overrides. Contains only the values that differ in production; at minimum `WORDPRESS_BASE_URL=https://fallrivermirror.com`.
 
-- **`.env`** — full set of variables (same for both modes).
-- **`.env.dev`** — only overrides for development, e.g.:
-  - `WORDPRESS_BASE_URL=http://wordpress:80`
-  - `APP_ENV=development`
-- **`.env.production`** — only overrides for production, e.g.:
-  - `WORDPRESS_BASE_URL=https://your-live-site.com`
-  - `APP_ENV=production`
-
-Compose can load multiple `env_file` entries for a service; later files override earlier. So `mirror-ai` gets `env_file: [.env, .env.dev]` when running dev and `[.env, .env.production]` when running prod (e.g. via two small compose override files that each set the right second file). Result: one place for all shared vars, two tiny files with just the 2–3 mode-specific values.
+No override compose for dev; production is a standalone compose file with its own env file.
 
 ## Docker Compose
 
-- Services that are **dev-only**: `db`, `wordpress`, `my-wpcli`, `phpmyadmin` — add a profile (e.g. `profiles: ["dev"]`) so they only start when the dev profile is used.
-- **mirror-ai**: No profile; always runs. Gets `WORDPRESS_BASE_URL` (and optional `APP_ENV`) from the active env file so it knows whether to talk to local or live WordPress.
+- **Development**: [docker-compose.yml](../docker-compose.yml) defines the full stack. mirror-ai uses `env_file: .env`.
+- **Production**: [docker-compose.prod.yml](../docker-compose.prod.yml) defines only the mirror-ai service and uses `env_file: [.env, .env.prod]` so `.env.prod` overrides (e.g. WORDPRESS_BASE_URL). No merge with the base compose file.
 
-## After implementation
+## Usage summary
 
-- README (or this doc) should state:
-  - **Dev:** e.g. `docker compose -f docker-compose.yml -f docker-compose.dev.yml --profile dev up` (override adds `env_file: [.env, .env.dev]` for mirror-ai).
-  - **Prod:** e.g. `docker compose -f docker-compose.yml -f docker-compose.prod.yml up` (override adds `env_file: [.env, .env.production]` for mirror-ai).
-- `.env.sample` = full list; add `.env.dev.example` and `.env.production.example` with only the 2–3 override vars so new setups don’t duplicate.
-
----
-
-*Use this spec when implementing the dev/production mode.*
+- **Dev:** `docker compose up` (from the directory containing docker-compose.yml and .env).
+- **Prod:** `docker compose -f docker-compose.prod.yml up` (use .env.prod with production values, including WORDPRESS_BASE_URL=https://fallrivermirror.com).

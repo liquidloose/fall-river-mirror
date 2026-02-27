@@ -28,16 +28,28 @@ from app.services.pipeline_service import PipelineService
 from app.services.wordpress_sync_service import WordPressSyncService
 
 # Routers
-from app.routers import health, transcripts, articles, images, queue, pipeline, wordpress, journalist, crawler
+from app.routers import (
+    health,
+    transcripts,
+    articles,
+    images,
+    queue,
+    pipeline,
+    wordpress,
+    journalist,
+    crawler,
+)
 
-# Configure logging with both console and file output
+# testConfigure logging: always console; file only if writable (app.log may be root-owned in Docker)
+_handlers = [logging.StreamHandler()]
+try:
+    _handlers.append(logging.FileHandler("app.log"))
+except (OSError, PermissionError):
+    pass
 logging.basicConfig(
     level=logging.DEBUG,
     format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
-    handlers=[
-        logging.StreamHandler(),  # Console output
-        logging.FileHandler("app.log"),  # File output
-    ],
+    handlers=_handlers,
 )
 logger = logging.getLogger(__name__)
 
@@ -124,7 +136,6 @@ class AppDeps:
 def get_app_deps(request: Request) -> AppDeps:
     """FastAPI dependency that returns app deps. Override in tests via app.dependency_overrides."""
     return request.app.state.deps
-
 
 
 # Service layer (OOP)

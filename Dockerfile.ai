@@ -1,7 +1,7 @@
 FROM python:3.12-bookworm
 
-# Install FFmpeg for audio processing
-RUN apt-get update && apt-get install -y ffmpeg sqlite3 git xvfb curl unzip && rm -rf /var/lib/apt/lists/*
+# Install FFmpeg, gosu (for dropping root in entrypoint), and other deps
+RUN apt-get update && apt-get install -y ffmpeg sqlite3 git xvfb curl unzip gosu && rm -rf /var/lib/apt/lists/*
 
 # Install Deno (required for yt-dlp YouTube extraction - solves JS challenges)
 RUN curl -fsSL https://deno.land/install.sh | sh
@@ -17,22 +17,28 @@ COPY ./requirements.txt /code/requirements.txt
 RUN pip install --no-cache-dir --upgrade pip
 RUN pip install --no-cache-dir -r /code/requirements.txt
 
-# Install Playwright system dependencies and browsers
+# Install Playwright system dependencies and browsers (as root; browsers go to /root/.cache/ms-playwright)
 RUN playwright install-deps
 RUN playwright install chromium
+
+# Create app user with UID/GID 1000 to match host (same pattern as WordPress Dockerfile)
+RUN groupadd -g 1000 app && useradd -m -u 1000 -g 1000 app
 
 # Configure git for the working directory
 RUN git config --global --add safe.directory /code
 
-# Copy entrypoint script
+# Copy entrypoint script and app code
 COPY ./entrypoint.sh /entrypoint.sh
 RUN chmod +x /entrypoint.sh
-
-# Set DISPLAY environment variable
-ENV DISPLAY=:99
-
-# Copy the app code
 COPY ./app /code/app
 
-# Use entrypoint to start Xvfb before the app
+# Own /code and runtime dirs (Deno, Playwright) by app so process can run as 1000:1000
+RUN chown -R app:app /code \
+    && chown -R app:app /root/.deno \
+    && chown -R app:app /root/.cache/ms-playwright
+
+# App user will use Playwright browsers from this path
+ENV PLAYWRIGHT_BROWSERS_PATH=/root/.cache/ms-playwright
+ENV DISPLAY=:99
+
 ENTRYPOINT ["/entrypoint.sh"]

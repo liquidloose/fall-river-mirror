@@ -1,8 +1,32 @@
-# Override for production mode: run only mirror-ai. Replaces env_file so the
-# container gets shared .env plus .env.prod (WordPress URL = fallrivermirror.com).
-# Usage: docker-compose -f docker-compose.yml -f docker-compose.prod.yml up mirror-ai
+# Standalone compose for production: runs only mirror-ai (FastAPI).
+# Loads .env then .env.prod (prod overrides only WORDPRESS_BASE_URL=https://fallrivermirror.com).
+# Usage: docker compose -f docker-compose.prod.yml up
 services:
   mirror-ai:
+    image: fr-mirror-ai
+    container_name: mirror-ai
+    restart: unless-stopped
+    networks:
+      - fr-mirror-bridge
+    ports:
+      - "${API_PORT}:80"  # FastAPI application
+      - "8080:8080"  # OAuth redirect callback port
+    volumes:
+      - .:/code
+      - ~/.ssh:/root/.ssh:ro
+    environment:
+      - DATABASE_URL
+      - YOUTUBE_COOKIES_PATH
     env_file:
-      - .env   # shared (API keys, DB, paths, etc.)
-      - .env.prod   # WORDPRESS_BASE_URL and any other prod-only vars
+      - .env
+      - .env.prod
+    command: >
+      sh -c "
+        git config --global user.email ${GIT_USER_EMAIL} &&
+        git config --global user.name ${GIT_USER_NAME} &&
+        uvicorn app.main:app --host 0.0.0.0 --port 80 --reload
+      "
+
+networks:
+  fr-mirror-bridge:
+    driver: bridge
