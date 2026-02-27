@@ -35,7 +35,7 @@ the-fall-river-mirror-mailer-*.json
 /WordPress/wp-content/themes/twentytwentyfive/
 /WordPress/wp-content/themes/twentytwentyfour/
 /WordPress/wp-content/themes/twentytwentythree/
-
+asdf
 # Python cache files
 __pycache__/
 /vendor/*
