@@ -1,4 +1,6 @@
 .env
+.env.dev
+.env.production
 
 # Google OAuth credentials (sensitive)
 client_secret.json
