@@ -80,9 +80,10 @@ docker build -f Dockerfile.ai -t fr-mirror-ai .
 
 ### Running the Environment
 
-Now you are ready to create the environment! Type `docker compose up` in your terminal from inside the directory where the Dockerfiles live. The sites will be available at localhost running on the ports that you specified in your .env file: `<your-ip/localhost-goes-here>:<your-port-number-goes-here>`
+Now you are ready to create the environment! The sites will be available at localhost on the ports in your `.env` file.
 
-**Production:** To run only the mirror-ai service against the live WordPress site, use `docker compose -f docker-compose.prod.yml up`. The stack uses `.env` for all variables and `.env.prod` to override only `WORDPRESS_BASE_URL=https://fallrivermirror.com`. See [docs/plan-dev-production-mode.md](docs/plan-dev-production-mode.md) for details.
+- **Dev (full stack):** `docker compose up` — WordPress, MySQL, and mirror-ai; uses `.env` (set `WORDPRESS_BASE_URL` to your local WordPress, e.g. `http://wordpress:80` or `http://localhost:9004`).
+- **Production (mirror-ai only):** `docker compose -f docker-compose.prod.yml up` — uses `.env` plus `.env.prod` (override `WORDPRESS_BASE_URL=https://fallrivermirror.com`). See [docs/plan-dev-production-mode.md](docs/plan-dev-production-mode.md) for details.
 
 
 ## API Endpoints

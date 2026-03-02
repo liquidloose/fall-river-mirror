@@ -110,3 +110,27 @@ class XAITextQuery:
                 status_code=500,
                 content={"error": f"Failed to get response from xAI: {str(e)}"},
             )
+
+    def get_raw_response(self, context: str, message: str) -> str | JSONResponse:
+        """
+        Single completion (system + user -> sample). Returns raw response text only.
+        Use for JSON or other structured output where a headline is not needed.
+        Returns JSONResponse on missing API key or API error.
+        """
+        if not self.api_key:
+            return JSONResponse(
+                status_code=500,
+                content={"error": "XAI_API_KEY environment variable is not set"},
+            )
+        try:
+            client = Client(api_key=self.api_key, timeout=3600)
+            chat = client.chat.create(model="grok-4")
+            chat.append(system(context))
+            chat.append(user(message))
+            response = chat.sample()
+            return response.content or ""
+        except Exception as e:
+            return JSONResponse(
+                status_code=500,
+                content={"error": f"Failed to get response from xAI: {str(e)}"},
+            )
