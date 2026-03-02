@@ -1,5 +1,10 @@
+# Profiles: dev (WordPress stack + mirror-ai-dev), prod (mirror-ai only).
+#   Dev, AI only:   docker compose --profile dev up -d mirror-ai-dev
+#   Dev, full stack: docker compose --profile dev up -d
+#   Prod (AI only): docker compose --profile prod up -d
 services:
   db:
+    profiles: [dev]
     image: mysql:8.4
     networks:
       - fr-mirror-bridge
@@ -12,6 +17,7 @@ services:
       MYSQL_PASSWORD: ${DB_PASSWORD}
 
   wordpress:
+    profiles: [dev]
     depends_on:
       - db
     user: 1000:1000
@@ -43,6 +49,7 @@ services:
         target: "/var/www/html/wp-config.php"
 
   my-wpcli:
+    profiles: [dev]
     image: wordpress:cli
     networks:
       - fr-mirror-bridge
@@ -59,6 +66,7 @@ services:
     tty: true
 
   phpmyadmin:
+    profiles: [dev]
     image: phpmyadmin/phpmyadmin
     networks:
       - fr-mirror-bridge
@@ -71,10 +79,14 @@ services:
     depends_on:
       - db
 
-  mirror-ai:
+  mirror-ai-dev:
+    profiles: [dev]
+    build:
+      context: .
+      dockerfile: Dockerfile.ai
     image: fr-mirror-ai
     user: 1000:1000
-    container_name: mirror-ai
+    container_name: mirror-ai-dev
     restart: unless-stopped
     networks:
       - fr-mirror-bridge
@@ -89,6 +101,36 @@ services:
       - YOUTUBE_COOKIES_PATH
     env_file:
       - .env
+    command: >
+      sh -c "
+        git config --global user.email ${GIT_USER_EMAIL} &&
+        git config --global user.name ${GIT_USER_NAME} && 
+        uvicorn app.main:app --host 0.0.0.0 --port 80 --reload
+      "
+
+  mirror-ai-prod:
+    profiles: [prod]
+    build:
+      context: .
+      dockerfile: Dockerfile.ai
+    image: fr-mirror-ai
+    user: 1000:1000
+    container_name: mirror-ai-prod
+    restart: unless-stopped
+    networks:
+      - fr-mirror-bridge
+    ports:
+      - "${API_PORT}:80"  # FastAPI application
+      - "8080:8080"  # OAuth redirect callback port
+    volumes:
+      - .:/code
+      - ~/.ssh:/home/app/.ssh:ro
+    environment:
+      - DATABASE_URL
+      - YOUTUBE_COOKIES_PATH
+    env_file:
+      - .env
+      - .env.prod
     command: >
       sh -c "
         git config --global user.email ${GIT_USER_EMAIL} &&
