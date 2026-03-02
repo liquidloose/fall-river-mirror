@@ -129,8 +129,8 @@ if ($configExtra = getenv_docker('WORDPRESS_CONFIG_EXTRA', '')) {
 	eval($configExtra);
 }
 
-define('JWT_AUTH_SECRET_KEY', 'Pi1[^BPm{NOsHEQf@$xl%x{!;Ey1k72^Nt_r$jft,OoG[v6KGWWip#blbZn@bEZI');
-define('JWT_AUTH_CORS_ENABLE', true);
+define( 'JWT_AUTH_SECRET_KEY', getenv_docker( 'JWT_AUTH_SECRET_KEY', '' ) );
+define( 'JWT_AUTH_CORS_ENABLE', true );
 
 define( 'AS3CF_SETTINGS', serialize( array(
 	'provider'          => 'gcp',
@@ -139,6 +139,8 @@ define( 'AS3CF_SETTINGS', serialize( array(
 	'object-ownership'  => 'bucket-owner-full-control',
 	'force-https'       => false,
 ) ) );
+
+
 
 /* That's all, stop editing! Happy publishing. */
 

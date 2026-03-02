@@ -17,6 +17,7 @@ logger = logging.getLogger(__name__)
 
 DEFAULT_BASE_URL = "http://192.168.1.17:9004"
 DEFAULT_API_PATH_CREATE = "/wp-json/fr-mirror/v2/create-article"
+DEFAULT_API_PATH_UPDATE = "/wp-json/fr-mirror/v2/update-article"
 DEFAULT_API_PATH_YOUTUBE_IDS = "/wp-json/fr-mirror/v2/article-youtube-ids"
 
 
@@ -30,18 +31,30 @@ class WordPressSyncService:
         database: Optional[Database],
         base_url: Optional[str] = None,
         api_path_create: Optional[str] = None,
+        api_path_update: Optional[str] = None,
         api_path_youtube_ids: Optional[str] = None,
     ) -> None:
         self._database = database
         self._base_url = (base_url or os.environ.get("WORDPRESS_BASE_URL") or DEFAULT_BASE_URL).rstrip("/")
         self._api_path_create = api_path_create or os.environ.get("WORDPRESS_API_PATH_CREATE_ARTICLE") or DEFAULT_API_PATH_CREATE
+        self._api_path_update = api_path_update or os.environ.get("WORDPRESS_API_PATH_UPDATE_ARTICLE") or DEFAULT_API_PATH_UPDATE
         self._api_path_youtube_ids = api_path_youtube_ids or os.environ.get("WORDPRESS_API_PATH_ARTICLE_YOUTUBE_IDS") or DEFAULT_API_PATH_YOUTUBE_IDS
+        self._jwt = (os.environ.get("WORDPRESS_JWT_TOKEN") or "").strip()
+
+    def _headers(self) -> Dict[str, str]:
+        """Request headers; includes Bearer token when WORDPRESS_JWT_TOKEN is set."""
+        h = {"Content-Type": "application/json"}
+        if self._jwt:
+            h["Authorization"] = f"Bearer {self._jwt}"
+        return h
 
     def get_article_youtube_ids(self, base_url: Optional[str] = None) -> Set[str]:
         """Fetch the set of youtube_ids that already have an article on WordPress. Returns empty set on error."""
         url = (base_url or self._base_url) + self._api_path_youtube_ids
         try:
-            r = requests.get(url, timeout=15)
+            r = requests.get(url, headers=self._headers(), timeout=15)
+            if r.status_code == 401:
+                logger.warning("WordPress returned 401 Unauthorized for article-youtube-ids: %s", url)
             r.raise_for_status()
             data = r.json()
             raw = data.get("youtube_ids") or []
@@ -186,9 +199,11 @@ class WordPressSyncService:
             response = requests.post(
                 wordpress_url,
                 json=payload,
-                headers={"Content-Type": "application/json"},
+                headers=self._headers(),
                 timeout=30,
             )
+            if response.status_code == 401:
+                logger.warning("WordPress returned 401 Unauthorized for create-article: %s", wordpress_url)
             response.raise_for_status()
             logger.info(f"Successfully synced article {article_id} to WordPress")
             return {
@@ -201,5 +216,55 @@ class WordPressSyncService:
             return {
                 "success": False,
                 "error": f"Failed to sync to WordPress: {str(e)}",
+                "http_status": status.HTTP_502_BAD_GATEWAY,
+            }
+
+    def update_article_title_and_content(self, article_id: int) -> Dict[str, Any]:
+        """
+        Send the current article title and content from our DB to WordPress update-article endpoint.
+        WordPress should update only title and content of the existing post; do not delete or change slug.
+        """
+        db = self._database
+        if not db:
+            return {
+                "success": False,
+                "error": "Database not available",
+                "http_status": status.HTTP_500_INTERNAL_SERVER_ERROR,
+            }
+        article = db.get_article_by_id(article_id)
+        if not article:
+            return {
+                "success": False,
+                "error": f"Article with ID {article_id} not found",
+                "http_status": status.HTTP_404_NOT_FOUND,
+            }
+        payload = {
+            "article_id": article_id,
+            "youtube_id": (article.get("youtube_id") or "").strip(),
+            "title": article.get("title") or "",
+            "content": article.get("content") or "",
+        }
+        url = self._base_url + self._api_path_update
+        try:
+            response = requests.post(
+                url,
+                json=payload,
+                headers=self._headers(),
+                timeout=30,
+            )
+            if response.status_code == 401:
+                logger.warning("WordPress returned 401 Unauthorized for update-article: %s", url)
+            response.raise_for_status()
+            logger.info("Successfully sent title/content update for article_id=%s to WordPress", article_id)
+            return {
+                "success": True,
+                "article_id": article_id,
+                "wordpress_response": response.json() if response.content else None,
+            }
+        except requests.exceptions.RequestException as e:
+            logger.error("Failed to POST update-article to WordPress: %s", e)
+            return {
+                "success": False,
+                "error": f"Failed to update article on WordPress: {str(e)}",
                 "http_status": status.HTTP_502_BAD_GATEWAY,
             }

@@ -38,6 +38,7 @@ from app.routers import (
     wordpress,
     journalist,
     crawler,
+    editor,
 )
 
 # testConfigure logging: always console; file only if writable (app.log may be root-owned in Docker)
@@ -177,3 +178,4 @@ app.include_router(pipeline.router)
 app.include_router(wordpress.router)
 app.include_router(journalist.router)
 app.include_router(crawler.router)
+app.include_router(editor.router)

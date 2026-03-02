@@ -23,6 +23,8 @@ services:
     extra_hosts:
       - "api.wordpress.org:198.143.164.251"
       - "downloads.wordpress.org:198.143.164.250"
+    env_file:
+      - .env
     environment:
       WORDPRESS_DB_HOST: db
       WORDPRESS_DB_NAME: ${DB_NAME}

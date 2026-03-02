@@ -208,6 +208,8 @@ class Database:
         self._add_column_if_not_exists("articles", "bullet_points", "TEXT")
         # Migration: add view_count column if it doesn't exist
         self._add_column_if_not_exists("articles", "view_count", "INTEGER")
+        # Migration: add spell_checked column if it doesn't exist (0=false, 1=true)
+        self._add_column_if_not_exists("articles", "spell_checked", "INTEGER")
         # Backfill view_count for existing articles
         self._backfill_article_view_counts()
 
@@ -742,11 +744,10 @@ class Database:
         Returns:
             Dict with article data or None if not found
         """
-        self._log_operation("get_article_by_id", {"article_id": article_id})
-
         try:
+            self._log_operation("get_article_by_id", {"article_id": article_id})
             self.cursor.execute(
-                "SELECT id, committee, youtube_id, journalist_id, title, content, transcript_id, date, tone, article_type, bullet_points, view_count FROM articles WHERE id = ?",
+                "SELECT id, committee, youtube_id, journalist_id, title, content, transcript_id, date, tone, article_type, bullet_points, view_count, spell_checked FROM articles WHERE id = ?",
                 (article_id,),
             )
             result = self.cursor.fetchone()
@@ -765,9 +766,15 @@ class Database:
                     "article_type": result[9],
                     "bullet_points": result[10],
                     "view_count": result[11],
+                    "spell_checked": bool(result[12]) if result[12] is not None else False,
                 }
             return None
         except Exception as e:
+            self.logger.exception(
+                "get_article_by_id failed: article_id=%s - %s",
+                article_id,
+                e,
+            )
             self._log_error("get_article_by_id", e, {"article_id": article_id})
             return None
 
@@ -814,27 +821,55 @@ class Database:
             content: The new article content
 
         Returns:
-            True if update succeeded, False otherwise
+            True if update succeeded and persisted, False otherwise
         """
-        self._log_operation(
-            "update_article_content",
-            {"article_id": article_id, "content_len": len(content)},
-        )
-
+        article_id = int(article_id)
+        content = content if content is not None else ""
+        content_len = len(content)
         try:
+            self._log_operation(
+                "update_article_content",
+                {"article_id": article_id, "content_len": content_len},
+            )
             self.cursor.execute(
                 "UPDATE articles SET content = ? WHERE id = ?",
                 (content, article_id),
             )
             self.conn.commit()
-            updated = self.cursor.rowcount > 0
-            if updated:
-                self.logger.info(f"Updated content for article ID: {article_id}")
-            else:
-                self.logger.warning(f"No article found with ID: {article_id}")
-            return updated
+            self.cursor.execute("SELECT content FROM articles WHERE id = ?", (article_id,))
+            row = self.cursor.fetchone()
+            if row is not None and row[0] == content:
+                self.logger.info(
+                    "update_article_content: verified for article_id=%s, content_len=%s",
+                    article_id,
+                    content_len,
+                )
+                return True
+            if row is None:
+                self.logger.warning(
+                    "update_article_content: no row for article_id=%s after UPDATE",
+                    article_id,
+                )
+                return False
+            self.logger.warning(
+                "update_article_content: read-back mismatch for article_id=%s (db_len=%s vs expected=%s)",
+                article_id,
+                len(row[0]) if row[0] else 0,
+                content_len,
+            )
+            return False
         except Exception as e:
-            self._log_error("update_article_content", e, {"article_id": article_id})
+            self.logger.exception(
+                "update_article_content failed: article_id=%s, content_len=%s - %s",
+                article_id,
+                content_len,
+                e,
+            )
+            self._log_error(
+                "update_article_content",
+                e,
+                {"article_id": article_id, "content_len": content_len},
+            )
             return False
 
     def update_article_title(self, article_id: int, title: str) -> bool:
@@ -846,27 +881,90 @@ class Database:
             title: The new article title
 
         Returns:
-            True if update succeeded, False otherwise
+            True if update succeeded and read-back verified, False otherwise
         """
-        self._log_operation(
-            "update_article_title",
-            {"article_id": article_id, "title": title},
-        )
-
+        title = title if title is not None else ""
+        title_len = len(title)
         try:
+            self._log_operation(
+                "update_article_title",
+                {"article_id": article_id, "title_len": title_len},
+            )
             self.cursor.execute(
                 "UPDATE articles SET title = ? WHERE id = ?",
                 (title, article_id),
             )
             self.conn.commit()
-            updated = self.cursor.rowcount > 0
-            if updated:
-                self.logger.info(f"Updated title for article ID: {article_id}")
-            else:
-                self.logger.warning(f"No article found with ID: {article_id}")
-            return updated
+            self.cursor.execute("SELECT title FROM articles WHERE id = ?", (article_id,))
+            row = self.cursor.fetchone()
+            if row is not None and row[0] == title:
+                self.logger.info(
+                    "update_article_title: verified for article_id=%s, title_len=%s",
+                    article_id,
+                    title_len,
+                )
+                return True
+            if row is None:
+                self.logger.warning(
+                    "update_article_title: no row for article_id=%s after UPDATE",
+                    article_id,
+                )
+                return False
+            self.logger.warning(
+                "update_article_title: read-back mismatch for article_id=%s (db_len=%s vs expected=%s)",
+                article_id,
+                len(row[0]) if row[0] else 0,
+                title_len,
+            )
+            return False
         except Exception as e:
-            self._log_error("update_article_title", e, {"article_id": article_id})
+            self.logger.exception(
+                "update_article_title failed: article_id=%s, title_len=%s - %s",
+                article_id,
+                title_len,
+                e,
+            )
+            self._log_error(
+                "update_article_title",
+                e,
+                {"article_id": article_id, "title_len": title_len},
+            )
+            return False
+
+    def update_article_spell_checked(self, article_id: int, spell_checked: bool) -> bool:
+        """
+        Set the spell_checked flag for an article (True after spell-check has been run).
+
+        Args:
+            article_id: The unique identifier of the article
+            spell_checked: True if spell-checked, False otherwise
+
+        Returns:
+            True if update succeeded, False otherwise
+        """
+        try:
+            self._log_operation(
+                "update_article_spell_checked",
+                {"article_id": article_id, "spell_checked": spell_checked},
+            )
+            value = 1 if spell_checked else 0
+            self.cursor.execute(
+                "UPDATE articles SET spell_checked = ? WHERE id = ?",
+                (value, article_id),
+            )
+            self.conn.commit()
+            return self.cursor.rowcount > 0
+        except Exception as e:
+            self.logger.exception(
+                "update_article_spell_checked failed: article_id=%s - %s",
+                article_id,
+                e,
+            )
+            self._log_error(
+                "update_article_spell_checked",
+                e,
+                {"article_id": article_id, "spell_checked": spell_checked},
+            )
             return False
 
     def delete_article_by_id(self, article_id: int) -> bool:
@@ -1167,7 +1265,7 @@ class Database:
         try:
             self.cursor.execute(
                 "SELECT id, committee, youtube_id, journalist_id, title, content, "
-                "transcript_id, date, tone, article_type, bullet_points, view_count FROM articles"
+                "transcript_id, date, tone, article_type, bullet_points, view_count, spell_checked FROM articles"
             )
             results = self.cursor.fetchall()
             return [
@@ -1184,6 +1282,7 @@ class Database:
                     "article_type": row[9],
                     "bullet_points": row[10],
                     "view_count": row[11],
+                    "spell_checked": bool(row[12]) if len(row) > 12 and row[12] is not None else False,
                 }
                 for row in results
             ]
