@@ -179,6 +179,21 @@ class VideoQueueManager:
             response.raise_for_status()
             data = response.json()
 
+            # Log API response to diagnose "Could not find channel ID" (quota, 403, empty items)
+            items = data.get("items") or []
+            api_error = data.get("error")
+            logger.info(
+                "YouTube channels API response: status=%s, items_count=%s, error=%s",
+                response.status_code,
+                len(items),
+                api_error,
+            )
+            if api_error:
+                logger.error(
+                    "YouTube API error: %s",
+                    api_error.get("message", api_error),
+                )
+
             if "items" in data and len(data["items"]) > 0:
                 if channel_info["type"] == "handle":
                     return data["items"][0]["id"]
@@ -188,6 +203,21 @@ class VideoQueueManager:
             logger.error(f"No channel found for {channel_info}")
             return None
 
+        except requests.exceptions.RequestException as e:
+            resp = getattr(e, "response", None)
+            if resp is not None:
+                try:
+                    err_body = resp.json()
+                except Exception:
+                    err_body = resp.text[:500] if resp.text else None
+                logger.error(
+                    "YouTube API request failed: %s; response: %s",
+                    str(e),
+                    err_body,
+                )
+            else:
+                logger.error("Failed to get channel ID: %s", str(e))
+            return None
         except Exception as e:
             logger.error(f"Failed to get channel ID: {str(e)}")
             return None

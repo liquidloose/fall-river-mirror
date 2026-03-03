@@ -108,6 +108,9 @@ Now you are ready to create the environment! The sites will be available at loca
 ### YouTube Crawler
 - `GET /yt_crawler/{video_id}` - Process YouTube videos and generate articles
 
+### WordPress
+- `GET /wordpress/test-jwt` - Verify JWT against the configured WordPress base URL (e.g. fallrivermirror.com). Read-only; sends a GET to the article-youtube-ids endpoint and returns success/status. Does not create or modify any content.
+
 ## API Documentation
 
 Once your server is running, you can access:

@@ -11,6 +11,22 @@ router = APIRouter(tags=["wordpress"])
 logger = logging.getLogger(__name__)
 
 
+@router.get("/wordpress/test-jwt")
+def test_jwt(
+    deps: AppDependencies = Depends(AppDependencies),
+) -> Dict[str, Any]:
+    """Verify JWT against the configured WordPress base URL (read-only; GET to article-youtube-ids)."""
+    if not deps.wordpress_sync_service:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="WordPress sync service not available",
+        )
+    result = deps.wordpress_sync_service.test_jwt_get()
+    if not result["success"] and result.get("status_code") == 401:
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail=result.get("error", "JWT rejected"))
+    return result
+
+
 @router.post("/sync-article-to-wordpress/{article_id}")
 def sync_article_to_wordpress(
     article_id: int,

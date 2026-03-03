@@ -84,6 +84,14 @@ curl -X POST "http://localhost:8001/transcript/fetch/25" \
   -d '{"channel_url": "https://www.youtube.com/@DifferentChannel"}'
 ```
 
+## Troubleshooting: "Could not find channel ID"
+
+If the pipeline or queue build fails with `Could not find channel ID for: https://www.youtube.com/@...`:
+
+1. **Check logs** – The app logs the YouTube API response: `YouTube channels API response: status=..., items_count=..., error=...`. If `error` is set, that’s the reason (e.g. quota, forbidden). If `items_count=0`, the API returned no channel for that handle.
+2. **Use the channel ID URL** – To avoid handle lookup, set `DEFAULT_YOUTUBE_CHANNEL_URL` to the direct channel URL: `https://www.youtube.com/channel/UCxxxxxxxxxxxxxxxxxx` (get the ID from the channel page or from the logs once lookup works).
+3. **Prod env** – Ensure `YOUTUBE_API_KEY` is set in the environment used by the running app (e.g. in `.env.prod` or the prod compose env), and that YouTube Data API v3 is enabled and has quota in Google Cloud.
+
 ## Getting API Keys
 
 ### YouTube Data API v3

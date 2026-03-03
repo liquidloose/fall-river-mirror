@@ -16,6 +16,7 @@ except ImportError:
 from fastapi import APIRouter, FastAPI, HTTPException, Request, Depends, status, Body
 from fastapi.responses import JSONResponse, Response
 import requests
+from starlette.middleware.base import BaseHTTPMiddleware
 
 # Local imports
 from app import TranscriptManager, ArticleGenerator
@@ -101,6 +102,46 @@ app = FastAPI(
     description="API for generating articles using AI processing",
     version="1.0.0",
 )
+
+# Optional docs protection: set DOCS_SECRET in env to require ?secret=DOCS_SECRET or cookie for /docs, /redoc, /openapi.json
+DOCS_PROTECTED_PATHS = ("/docs", "/redoc", "/openapi.json")
+DOCS_COOKIE_NAME = "docs_secret"
+
+
+class DocsProtectionMiddleware(BaseHTTPMiddleware):
+    """When DOCS_SECRET is set, require secret (query or cookie) for docs and openapi."""
+
+    async def dispatch(self, request: Request, call_next):
+        path = request.scope.get("path") or ""
+        if path not in DOCS_PROTECTED_PATHS:
+            return await call_next(request)
+        secret = (os.environ.get("DOCS_SECRET") or "").strip()
+        if not secret:
+            return await call_next(request)
+        query_secret = request.query_params.get("secret") or ""
+        cookie_secret = request.cookies.get(DOCS_COOKIE_NAME) or ""
+        allowed = query_secret == secret or cookie_secret == secret
+        if not allowed:
+            return Response(
+                content="Docs are protected. Provide ?secret=YOUR_DOCS_SECRET or set DOCS_SECRET in .env and leave unset to disable.",
+                status_code=401,
+                media_type="text/plain",
+            )
+        response = await call_next(request)
+        # Set cookie when access was via query param so Swagger UI's fetch to /openapi.json succeeds
+        if query_secret == secret and path in ("/docs", "/redoc"):
+            response.set_cookie(
+                key=DOCS_COOKIE_NAME,
+                value=secret,
+                max_age=3600,
+                path="/",
+                httponly=True,
+                samesite="lax",
+            )
+        return response
+
+
+app.add_middleware(DocsProtectionMiddleware)
 
 logger.info("FastAPI app initialized!")
 

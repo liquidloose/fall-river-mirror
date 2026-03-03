@@ -63,6 +63,36 @@ class WordPressSyncService:
             logger.warning(f"Could not fetch WordPress article youtube_ids: {e}")
             return set()
 
+    def test_jwt_get(self) -> Dict[str, Any]:
+        """
+        Send a GET request to the article-youtube-ids endpoint to verify JWT.
+        Read-only; does not create or modify any content. Returns success, status_code, and optional response summary.
+        """
+        url = self._base_url + self._api_path_youtube_ids
+        try:
+            r = requests.get(url, headers=self._headers(), timeout=15)
+            response_body: Optional[Dict[str, Any]] = None
+            try:
+                data = r.json()
+                raw = data.get("youtube_ids") or []
+                response_body = {"youtube_ids_count": len(raw), "youtube_ids": list(raw)[:5]}
+            except Exception:
+                response_body = None
+            return {
+                "success": 200 <= r.status_code < 300,
+                "status_code": r.status_code,
+                "response_body": response_body,
+                "error": None if r.ok else (r.text or f"HTTP {r.status_code}"),
+            }
+        except requests.exceptions.RequestException as e:
+            logger.warning("WordPress JWT test GET failed: %s", e)
+            return {
+                "success": False,
+                "status_code": -1,
+                "response_body": None,
+                "error": str(e),
+            }
+
     def sync_one_article(self, article_id: int) -> Dict[str, Any]:
         """
         Fetch an article from the database and POST it to the WordPress create-article endpoint.
