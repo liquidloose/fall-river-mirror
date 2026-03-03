@@ -2,8 +2,9 @@ name: Trigger pipeline
 
 on:
   schedule:
-    # Every 15 minutes
+    # Every 15 minutes (UTC)
     - cron: "*/15 * * * *"
+  workflow_dispatch:  # Run manually from Actions tab
 
 jobs:
   trigger:
