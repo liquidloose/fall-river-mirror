@@ -3,7 +3,7 @@ name: Test cron
 on:
   schedule:
     - cron: "*/1 * * * *"
-
+  workflow_dispatch:  # Run manually from Actions tab
 jobs:
   test:
     runs-on: ubuntu-latest
