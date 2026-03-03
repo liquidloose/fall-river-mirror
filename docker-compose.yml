@@ -101,6 +101,7 @@ services:
       - YOUTUBE_COOKIES_PATH
     env_file:
       - .env
+      - .env.dev
     command: >
       sh -c "
         git config --global user.email ${GIT_USER_EMAIL} &&

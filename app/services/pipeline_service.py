@@ -85,7 +85,7 @@ class PipelineService:
             """SELECT COUNT(*)
                FROM video_queue AS T1
                LEFT JOIN transcripts AS T2 ON T1.youtube_id = T2.youtube_id
-               WHERE T1.transcript_available = 1 AND T2.youtube_id IS NULL"""
+               WHERE T2.youtube_id IS NULL"""
         )
         available_count = cursor.fetchone()[0]
         auto_build_triggered = False
@@ -106,7 +106,8 @@ class PipelineService:
             """SELECT T1.youtube_id
                FROM video_queue AS T1
                LEFT JOIN transcripts AS T2 ON T1.youtube_id = T2.youtube_id
-               WHERE T1.transcript_available = 1 AND T2.youtube_id IS NULL
+               WHERE T2.youtube_id IS NULL
+               ORDER BY T1.transcript_available DESC
                LIMIT ?""",
             (amount,),
         )
@@ -114,7 +115,7 @@ class PipelineService:
         if not queue_items:
             return {
                 "success": False,
-                "message": "No videos with transcripts available in queue or all already fetched",
+                "message": "No videos in queue without a transcript",
                 "transcripts_fetched": 0,
                 "transcripts_failed": 0,
                 "results": [],

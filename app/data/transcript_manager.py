@@ -105,16 +105,17 @@ class TranscriptManager:
             transcript = rich_data["transcript"]  # Extract transcript string
             video_metadata = rich_data["video_metadata"]  # Extract metadata
             source = rich_data.get("source", "youtube_transcript_api")  # Extract source
+            model = rich_data.get("model", self.category)  # Grok or Whisper from fetch path
 
-            # Store transcript in database if available
+            # Store transcript in database if available (use model from fetch, not instance state)
             if self._can_cache():
                 logger.info(
-                    f"Caching transcript for video {youtube_id} with category {self.category}"
+                    f"Caching transcript for video {youtube_id} with model {getattr(model, 'value', model)}"
                 )
-                self._cache_transcript(youtube_id, transcript, video_metadata)
+                self._cache_transcript(youtube_id, transcript, video_metadata, model=model)
 
             return self._formatted_youtube_response(
-                youtube_id, transcript, video_metadata, source=source
+                youtube_id, transcript, video_metadata, source=source, model=model
             )
 
         except Exception as e:
@@ -140,28 +141,30 @@ class TranscriptManager:
             raise Exception("Transcript data not found in database")
 
         # Return the transcript content from the database
-        content = transcript_data[3]  # content is at index 3
+        # Tuple indices: 0=id, 1=committee, 2=youtube_id, 3=content, 4=meeting_date, 5=yt_published_date, 6=fetch_date, 7=model
+        content = transcript_data[3]
         logger.info(
             f"Successfully retrieved transcript for video {video_id} from database"
         )
 
         all_transcripts = self._get_all_transcripts_info()
+        cached_model = transcript_data[7] if len(transcript_data) > 7 else None  # model column
 
         return {
             "status": "healthy",
             "message": "Transcript retrieved from database cache",
             "source": "database_cache",
-            "category": transcript_data[5],
+            "model": cached_model,
             "youtube_id": video_id,
             "transcript_id": transcript_data[0],
             "content": content,
-            "cached_at": transcript_data[4],  # fetch_date is at index 4
+            "transcript": content,
+            "cached_at": transcript_data[6],  # fetch_date is at index 6
             "database_path": self.database.db_path,
             "database_contents": {
                 "total_transcripts": len(all_transcripts),
                 "all_transcripts": all_transcripts,
             },
-            "category": all_transcripts,
         }
 
     def _cache_transcript(
@@ -170,6 +173,7 @@ class TranscriptManager:
         content: str,
         video_metadata: Dict[str, Any],
         committee: Optional[str] = None,
+        model: Optional[Any] = None,
     ) -> int:
         """
         Add a YouTube transcript to the database.
@@ -178,15 +182,16 @@ class TranscriptManager:
             youtube_id: YouTube video ID
             content: Full transcript content
             committee: Committee name (default: "YouTube")
-            category: Transcript category (default: "Video Transcript")
+            model: AIAgent (Grok/Whisper) used for this transcript; defaults to self.category if omitted
 
         Returns:
             int: The ID of the newly created transcript
         """
+        model_to_store = model if model is not None else self.category
         operation_details = {
             "youtube_id": youtube_id,
             "committee": committee,
-            "category": f"{self.category.value} Transcript",
+            "model": getattr(model_to_store, "value", model_to_store),
             "content_length": len(content),
         }
         logger.info(f"add_youtube_transcript: {operation_details}")
@@ -229,10 +234,10 @@ class TranscriptManager:
                     logger.error("No database instance available for table creation")
                     return -1  # Return error code instead of undefined variable
 
-            logger.info(f"NewCategory: {self.category}")
+            logger.info(f"Storing transcript with model: {model_to_store}")
             # Now insert the transcript
             logger.info(
-                f"Inserting transcript into database: {committee}, {youtube_id}, content_length: {len(content)}, {fetch_date}, {self.category}"
+                f"Inserting transcript into database: {committee}, {youtube_id}, content_length: {len(content)}, {fetch_date}, {model_to_store}"
             )
 
             yt_published_date = video_metadata.get("published_at")
@@ -260,7 +265,7 @@ class TranscriptManager:
                         meeting_date,
                         yt_published_date,
                         fetch_date,
-                        self.category,
+                        model_to_store,
                         video_title,
                         video_duration_seconds,
                         video_duration_formatted,
@@ -320,6 +325,9 @@ class TranscriptManager:
         Returns:
             Dict containing transcript, video metadata (title, duration, date, etc.)
         """
+        # Start with Grok; switch to Whisper only when we take the fallback path
+        self.category = AIAgent.GROK
+
         # First try YouTube Transcript API
         try:
             # Configure YouTubeTranscriptApi with proxy or cookies
@@ -403,11 +411,12 @@ class TranscriptManager:
                 logger.warning(f"Could not fetch video metadata: {str(e)}")
                 video_metadata = None
 
-            # Return rich data object
+            # Return rich data object (model = Grok for YouTube API path)
             return {
                 "transcript": json.dumps(transcript_dict),
                 "video_metadata": video_metadata,
                 "source": "youtube_transcript_api",
+                "model": AIAgent.GROK,
             }
 
         except IpBlocked as e:
@@ -431,9 +440,9 @@ class TranscriptManager:
                 f"Attempting fallback to OpenAI Whisper for video: {youtube_id}"
             )
 
-            # change the value of the category that's stored in state management
-            print("changing self.category from", self.category)
-            logger.info(f"Changing state.category to: {self.category}")
+            # Switch category to Whisper so cache and response use correct model
+            self.category = AIAgent.WHISPER
+            logger.info("Switched category to Whisper for fallback transcription")
 
             # Fallback to OpenAI Whisper
             whisper_transcript = self._fetch_via_whisper(youtube_id)
@@ -452,11 +461,12 @@ class TranscriptManager:
                 logger.warning(f"Could not fetch video metadata: {str(e)}")
                 video_metadata = None
 
-            # Return in same format as YouTube API response
+            # Return in same format as YouTube API response (model = Whisper for fallback)
             return {
                 "transcript": whisper_transcript,  # Plain text string from Whisper
                 "video_metadata": video_metadata,
                 "source": "openai_whisper",
+                "model": AIAgent.WHISPER,
             }
 
     # =============================================================================
@@ -466,13 +476,11 @@ class TranscriptManager:
     def _fetch_via_whisper(self, video_id: str) -> str:
         """
         Download video and transcribe using OpenAI Whisper API.
+        Caller must set self.category = AIAgent.WHISPER before calling when using Whisper fallback.
         """
         whisper_processor = WhisperProcessor(video_id=video_id)
-
-        self.category = AIAgent.WHISPER
-
         logger.info(
-            f"Transcribing video {video_id} with self.category.value: {self.category.value}"
+            f"Transcribing video {video_id} with Whisper (category: {self.category.value})"
         )
         return whisper_processor.transcribe_youtube_video(video_id)
 
@@ -590,6 +598,7 @@ class TranscriptManager:
         transcript: str,
         video_metadata: Dict[str, Any] = None,
         source: str = "youtube_transcript_api",
+        model: Optional[Any] = None,
     ) -> Dict[str, Any]:
         """Format response for transcript fetched from YouTube with video metadata."""
         all_transcripts = self._get_all_transcripts_info()
@@ -601,10 +610,11 @@ class TranscriptManager:
             "database_cache": "Database Cache",
         }
         source_display = source_display_map.get(source, source)
+        model_display = getattr(model, "value", model) if model is not None else self.category.value
 
         response = {
             "message": "Transcript fetched from YouTube",
-            "model": self.category.value,
+            "model": model_display,
             "source": source_display,
             "youtube_id": youtube_id,
             "transcript": transcript,
