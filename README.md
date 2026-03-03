@@ -136,6 +136,14 @@ Transcripts are automatically cached in the database:
 ### Server Reload Command
 
 
+### Scheduled pipeline (GitHub Actions)
+
+The workflow `.github/workflows/trigger-pipeline.yml` runs every 15 minutes and POSTs to your deployed API’s `/pipeline/run` endpoint. For it to work, add a repository secret in GitHub (Settings → Secrets and variables → Actions):
+
+- **`PIPELINE_API_URL`** – Base URL of your API with no trailing slash (e.g. `http://YOUR_DROPLET_IP:3004` or `https://your-domain.com`). The workflow appends `/pipeline/run?...` to this.
+
+Scheduled runs use the default branch; ensure the workflow file is on that branch.
+
 ### Testing the API
 
 You can test the endpoints using:
