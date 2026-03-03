@@ -44,6 +44,10 @@ OPENAI_API_KEY=your_openai_api_key_here
 DALLE_API_KEY=your_dalle_api_key_here
 ```
 
+#### Webshare proxy (cloud/VPS – YouTube blocks datacenter IPs)
+Transcript checks and transcript API use `WEBSHARE_PROXY_USERNAME` and `WEBSHARE_PROXY_PASSWORD` only.  
+For Whisper fallback (yt-dlp), you can optionally set `WEBSHARE_PROXY_HOST` and `WEBSHARE_PROXY_PORT` (one proxy IP from your Webshare list) so audio downloads go through the proxy.
+
 ## Setting Up Your .env File
 
 1. Copy the example below to a new file named `.env` in the project root:

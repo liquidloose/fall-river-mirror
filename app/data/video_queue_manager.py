@@ -6,6 +6,7 @@ import re
 import requests
 from .create_database import Database
 from youtube_transcript_api import YouTubeTranscriptApi
+from youtube_transcript_api.proxies import WebshareProxyConfig
 from youtube_transcript_api._errors import (
     TranscriptsDisabled,
     NoTranscriptFound,
@@ -526,22 +527,27 @@ class VideoQueueManager:
         """
         Check if captions are available for a video using youtube-transcript-api.
 
-        This method uses the same library that TranscriptManager uses to actually
-        fetch transcripts, ensuring accurate detection of available transcripts.
-        Currently using plain HTTP client (no cookies/proxy) for testing.
+        Uses Webshare proxy when WEBSHARE_PROXY_USERNAME and WEBSHARE_PROXY_PASSWORD
+        are set (required on cloud providers where YouTube blocks datacenter IPs).
 
         Args:
-            youtube_id: The 11-character YouTube video ID (e.g., 'dQw4w9WgXcQ')
+            youtube_id: The 11-character YouTube video ID.
 
         Returns:
-            bool: True if at least one caption track is available, False otherwise
+            True if at least one caption track is available, False otherwise.
         """
         try:
-            from requests import Session
-
-            # Use plain HTTP client (no cookies, no proxy) for testing
-            http_client = Session()
-            ytt_api = YouTubeTranscriptApi(http_client=http_client)
+            proxy_username = os.getenv("WEBSHARE_PROXY_USERNAME")
+            proxy_password = os.getenv("WEBSHARE_PROXY_PASSWORD")
+            if proxy_username and proxy_password:
+                proxy_config = WebshareProxyConfig(
+                    proxy_username=proxy_username,
+                    proxy_password=proxy_password,
+                )
+                ytt_api = YouTubeTranscriptApi(proxy_config=proxy_config)
+            else:
+                from requests import Session
+                ytt_api = YouTubeTranscriptApi(http_client=Session())
 
             # Try to list available transcripts (doesn't fetch the actual content)
             transcript_list = ytt_api.list(youtube_id)
