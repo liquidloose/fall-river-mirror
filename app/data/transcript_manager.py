@@ -112,7 +112,18 @@ class TranscriptManager:
                 logger.info(
                     f"Caching transcript for video {youtube_id} with model {getattr(model, 'value', model)}"
                 )
-                self._cache_transcript(youtube_id, transcript, video_metadata, model=model)
+                cache_id = self._cache_transcript(youtube_id, transcript, video_metadata, model=model)
+                if cache_id == -1:
+                    raise Exception(
+                        f"Failed to save transcript for {youtube_id} to database (cache returned -1)"
+                    )
+            else:
+                logger.warning(
+                    "Transcript fetched but not cached (database unavailable or not writable). Failing so pipeline keeps video in queue."
+                )
+                raise Exception(
+                    "Transcript could not be cached; database unavailable or not writable. Check logs and DB permissions."
+                )
 
             return self._formatted_youtube_response(
                 youtube_id, transcript, video_metadata, source=source, model=model
@@ -188,6 +199,7 @@ class TranscriptManager:
             int: The ID of the newly created transcript
         """
         model_to_store = model if model is not None else self.category
+        video_metadata = video_metadata or {}
         operation_details = {
             "youtube_id": youtube_id,
             "committee": committee,
@@ -234,10 +246,13 @@ class TranscriptManager:
                     logger.error("No database instance available for table creation")
                     return -1  # Return error code instead of undefined variable
 
-            logger.info(f"Storing transcript with model: {model_to_store}")
+            model_value = getattr(model_to_store, "value", model_to_store)
+            if not isinstance(model_value, str):
+                model_value = str(model_value)
+            logger.info(f"Storing transcript with model: {model_value}")
             # Now insert the transcript
             logger.info(
-                f"Inserting transcript into database: {committee}, {youtube_id}, content_length: {len(content)}, {fetch_date}, {model_to_store}"
+                f"Inserting transcript into database: {committee}, {youtube_id}, content_length: {len(content)}, {fetch_date}, {model_value}"
             )
 
             yt_published_date = video_metadata.get("published_at")
@@ -265,7 +280,7 @@ class TranscriptManager:
                         meeting_date,
                         yt_published_date,
                         fetch_date,
-                        model_to_store,
+                        model_value,
                         video_title,
                         video_duration_seconds,
                         video_duration_formatted,

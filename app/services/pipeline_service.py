@@ -8,7 +8,7 @@ import logging
 import os
 import time
 from datetime import datetime
-from typing import Any, Dict, Optional
+from typing import Any, Dict, Optional, Set
 
 from fastapi.responses import JSONResponse
 
@@ -45,9 +45,12 @@ class PipelineService:
         self._image_service = image_service
 
     async def run_build_queue(
-        self, channel_url: str, limit: int
+        self,
+        channel_url: str,
+        limit: int,
+        skip_youtube_ids_on_wp: Optional[Set[str]] = None,
     ) -> Dict[str, Any]:
-        """Build video queue; returns result dict."""
+        """Build video queue; returns result dict. skip_youtube_ids_on_wp: do not queue these (already on WordPress)."""
         db = self._database
         if not db:
             return {"success": False, "error": "Database not available", "results": []}
@@ -55,6 +58,7 @@ class PipelineService:
             results = await queue_manager.queue_new_videos(
                 channel_url,
                 target_new_videos=limit,
+                skip_youtube_ids_on_wp=skip_youtube_ids_on_wp or set(),
             )
         return {
             "success": True,
@@ -67,8 +71,9 @@ class PipelineService:
         amount: int,
         auto_build: bool,
         channel_url: Optional[str] = None,
+        skip_youtube_ids_on_wp: Optional[Set[str]] = None,
     ) -> Dict[str, Any]:
-        """Bulk fetch transcripts from queue; returns result dict."""
+        """Bulk fetch transcripts from queue; returns result dict. skip_youtube_ids_on_wp: do not fetch these (already on WordPress)."""
         db = self._database
         transcript_mgr = self._transcript_manager
         if not db or not transcript_mgr:
@@ -79,6 +84,7 @@ class PipelineService:
                 "transcripts_failed": 0,
                 "results": [],
             }
+        on_wp = skip_youtube_ids_on_wp or set()
         channel_url = channel_url or os.getenv("DEFAULT_YOUTUBE_CHANNEL_URL")
         cursor = db.cursor
         cursor.execute(
@@ -98,6 +104,7 @@ class PipelineService:
                     build_results = await queue_manager.queue_new_videos(
                         channel_url,
                         target_new_videos=shortfall,
+                        skip_youtube_ids_on_wp=on_wp,
                     )
                 auto_build_added = build_results.get("newly_queued", 0)
             except Exception as e:
@@ -111,7 +118,17 @@ class PipelineService:
                LIMIT ?""",
             (amount,),
         )
-        queue_items = cursor.fetchall()
+        raw_queue_items = cursor.fetchall()
+        # Skip videos already on WordPress: remove from queue and do not fetch transcript
+        queue_items = []
+        for row in raw_queue_items:
+            yid = (row[0] or "").strip()
+            if yid and yid in on_wp:
+                cursor.execute("DELETE FROM video_queue WHERE youtube_id = ?", (yid,))
+                db.conn.commit()
+                logger.info("Skipping %s - already on WordPress (removed from queue)", yid)
+                continue
+            queue_items.append(row)
         if not queue_items:
             return {
                 "success": False,
@@ -134,10 +151,22 @@ class PipelineService:
                         error_content.get("error", "Unknown error during transcript fetch")
                     )
                 transcripts_fetched += 1
+                from_cache = transcript_result.get("source") == "database_cache"
+                # Verify new transcripts are actually in DB so we don't report success without persist
+                if not from_cache:
+                    cursor.execute(
+                        "SELECT id FROM transcripts WHERE youtube_id = ?", (youtube_id,)
+                    )
+                    if not cursor.fetchone():
+                        raise Exception(
+                            "Transcript was not saved to database (verify failed after cache)"
+                        )
                 results.append({
                     "youtube_id": youtube_id,
                     "status": "success",
                     "source": transcript_result.get("source"),
+                    "from_cache": from_cache,
+                    "saved_to_db": from_cache or True,
                 })
                 cursor.execute(
                     "DELETE FROM video_queue WHERE youtube_id = ?", (youtube_id,)
@@ -173,8 +202,9 @@ class PipelineService:
         journalist: Journalist,
         tone: Tone,
         article_type: ArticleType,
+        skip_youtube_ids: Optional[Set[str]] = None,
     ) -> Dict[str, Any]:
-        """Bulk write articles from transcripts; returns result dict."""
+        """Bulk write articles from transcripts; returns result dict. skip_youtube_ids: do not write articles for these (e.g. already on WordPress)."""
         db = self._database
         journalist_mgr = self._journalist_manager
         if not db or not journalist_mgr:
@@ -210,24 +240,72 @@ class PipelineService:
             )
         journalist_id = journalist_data["id"]
         cursor = db.cursor
-        cursor.execute(
-            """SELECT t.id, t.committee, t.youtube_id, t.content
-               FROM transcripts t
-               LEFT JOIN articles a ON t.id = a.transcript_id
-               WHERE a.id IS NULL
-               ORDER BY t.id ASC
-               LIMIT ?""",
-            (amount,),
-        )
+        if skip_youtube_ids:
+            placeholders = ",".join(["?"] * len(skip_youtube_ids))
+            cursor.execute(
+                f"""SELECT t.id, t.committee, t.youtube_id, t.content
+                   FROM transcripts t
+                   LEFT JOIN articles a ON t.id = a.transcript_id
+                   WHERE a.id IS NULL AND (t.youtube_id IS NULL OR t.youtube_id NOT IN ({placeholders}))
+                   ORDER BY t.id ASC
+                   LIMIT ?""",
+                (*skip_youtube_ids, amount),
+            )
+        else:
+            cursor.execute(
+                """SELECT t.id, t.committee, t.youtube_id, t.content
+                   FROM transcripts t
+                   LEFT JOIN articles a ON t.id = a.transcript_id
+                   WHERE a.id IS NULL
+                   ORDER BY t.id ASC
+                   LIMIT ?""",
+                (amount,),
+            )
         transcripts = cursor.fetchall()
+        # #region agent log
+        try:
+            _tids = [r[0] for r in transcripts]
+            _dup = len(_tids) != len(set(_tids))
+            open("/code/.cursor/debug.log", "a").write(
+                json.dumps({"hypothesisId": "H1_H4", "location": "pipeline_service.run_bulk_write_articles", "message": "article_write transcript selection", "data": {"transcript_ids": _tids, "count": len(_tids), "has_duplicate_transcript_ids": _dup}, "timestamp": int(time.time() * 1000)}) + "\n"
+            )
+        except Exception:
+            pass
+        # #endregion
         if not transcripts:
+            # Diagnose why 0: count transcripts without articles, and how many excluded by WordPress
+            cursor.execute(
+                """SELECT COUNT(*) FROM transcripts t
+                   LEFT JOIN articles a ON t.id = a.transcript_id WHERE a.id IS NULL"""
+            )
+            without_article = cursor.fetchone()[0]
+            excluded_by_wp = 0
+            if skip_youtube_ids:
+                cursor.execute(
+                    """SELECT COUNT(*) FROM transcripts t
+                       LEFT JOIN articles a ON t.id = a.transcript_id
+                       WHERE a.id IS NULL AND t.youtube_id IS NOT NULL AND t.youtube_id IN ("""
+                    + ",".join(["?"] * len(skip_youtube_ids)) + ")",
+                    tuple(skip_youtube_ids),
+                )
+                excluded_by_wp = cursor.fetchone()[0]
+            excluded_msg = f"; {excluded_by_wp} excluded (already on WordPress)" if excluded_by_wp else ""
+            message = (
+                f"No transcripts eligible for article write: {without_article} without articles{excluded_msg}"
+                if without_article or excluded_by_wp else "No transcripts found in database"
+            )
             return {
                 "success": False,
-                "message": "No transcripts found in database",
+                "message": message,
                 "articles_generated": 0,
                 "articles_failed": 0,
                 "article_ids": [],
                 "results": [],
+                "diagnostics": {
+                    "transcripts_without_article": without_article,
+                    "excluded_by_wordpress": excluded_by_wp,
+                    "skip_youtube_ids_count": len(skip_youtube_ids) if skip_youtube_ids else 0,
+                },
             }
         results = []
         article_ids = []

@@ -1263,11 +1263,13 @@ class Database:
         """
         self._log_operation("get_all_articles", {})
         try:
-            self.cursor.execute(
+            # Use conn.execute() so this query gets its own cursor; the shared
+            # self.cursor can be overwritten by concurrent requests (e.g. pipeline
+            # LIMIT queries), causing fetchall() to return the wrong result set.
+            results = self.conn.execute(
                 "SELECT id, committee, youtube_id, journalist_id, title, content, "
                 "transcript_id, date, tone, article_type, bullet_points, view_count, spell_checked FROM articles"
-            )
-            results = self.cursor.fetchall()
+            ).fetchall()
             return [
                 {
                     "id": row[0],

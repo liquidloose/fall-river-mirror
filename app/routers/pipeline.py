@@ -57,8 +57,15 @@ async def run_data_pipeline(
         "wordpress_sync": None,
     }
 
+    # Fetch WordPress article youtube_ids once: skip these everywhere (don't queue, don't pull transcript)
+    on_wp_ids = set()
+    if deps.wordpress_sync_service:
+        on_wp_ids = deps.wordpress_sync_service.get_article_youtube_ids()
+
     try:
-        aggregated["queue_build"] = await pipeline.run_build_queue(channel_url, amount)
+        aggregated["queue_build"] = await pipeline.run_build_queue(
+            channel_url, amount, skip_youtube_ids_on_wp=on_wp_ids
+        )
     except Exception as e:
         aggregated["success"] = False
         aggregated["queue_build"] = {"error": str(e)}
@@ -67,7 +74,7 @@ async def run_data_pipeline(
 
     try:
         aggregated["transcript_fetch"] = await pipeline.run_bulk_fetch_transcripts(
-            amount, auto_build, channel_url
+            amount, auto_build, channel_url, skip_youtube_ids_on_wp=on_wp_ids
         )
     except Exception as e:
         aggregated["success"] = False
@@ -76,8 +83,9 @@ async def run_data_pipeline(
         return aggregated
 
     try:
+        # Write articles for all transcripts that don't have one (1:1). WordPress skip is only when syncing.
         aggregated["article_write"] = await pipeline.run_bulk_write_articles(
-            amount, journalist, tone, article_type
+            amount, journalist, tone, article_type, skip_youtube_ids=None
         )
     except Exception as e:
         aggregated["success"] = False
@@ -110,6 +118,21 @@ async def run_data_pipeline(
                 for r in image_results
                 if r.get("status") == "success" and "article_id" in r
             ]
+            # #region agent log
+            try:
+                import json
+                existing_wp = wp_svc.get_article_youtube_ids()
+                db = deps.database
+                for aid in article_ids:
+                    art = db.get_article_by_id(aid) if db else None
+                    yid = (art.get("youtube_id") or "").strip() if art else None
+                    already = yid in existing_wp if yid else None
+                    open("/code/.cursor/debug.log", "a").write(
+                        json.dumps({"hypothesisId": "H2_H3", "location": "pipeline.run_data_pipeline", "message": "wordpress sync candidate", "data": {"article_id": aid, "youtube_id": yid, "already_on_wordpress": already}, "timestamp": __import__("time").time() * 1000}) + "\n"
+                    )
+            except Exception:
+                pass
+            # #endregion
             synced = 0
             failed = 0
             errors = []

@@ -144,6 +144,29 @@ The workflow `.github/workflows/trigger-pipeline.yml` runs every 15 minutes and 
 
 Scheduled runs use the default branch; ensure the workflow file is on that branch.
 
+**Alternative: cron on the server (e.g. DigitalOcean Droplet)**  
+If the API runs on the same machine, use crontab for a reliable schedule (e.g. every 15 minutes):
+
+```bash
+crontab -e
+```
+
+Add (API on port 3004, same host). Use full path to `curl` so cron finds it; the `echo` ensures a log line even if the request fails:
+
+```cron
+*/15 * * * * echo "$(date -u) pipeline cron start" >> /tmp/pipeline-cron.log 2>&1; /usr/bin/curl -sSf -o /tmp/pipeline-response.json -w "\n\%{http_code}" -X POST "http://127.0.0.1:3004/pipeline/run?amount=2&auto_build=true&journalist=FRJ1&tone=professional&article_type=news&model=gpt-image-1&sync_to_wordpress=true" >> /tmp/pipeline-cron.log 2>&1
+```
+
+If `curl` is elsewhere, run `which curl` and use that path. In crontab, `%` is special (turns into newline), so the curl format must use `\%{http_code}` not `%{http_code}`. Check that `crond` is running: `systemctl status crond`. View cron output: `tail -f /tmp/pipeline-cron.log`.
+
+**Test cron (runs every minute, appends to a log):**
+
+```cron
+* * * * * echo "$(date -u) hello world" >> /tmp/hello-cron.log 2>&1
+```
+
+After a few minutes, `cat /tmp/hello-cron.log` or `tail -f /tmp/hello-cron.log` to confirm. Remove the line from crontab when done testing.
+
 ### Testing the API
 
 You can test the endpoints using:

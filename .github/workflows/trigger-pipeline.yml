@@ -21,3 +21,5 @@ jobs:
             cat /tmp/pipeline-response.json || true
             exit 1
           fi
+          echo "Pipeline response:"
+          jq '{success, amount, article_write: .article_write, transcript_fetch: .transcript_fetch}' /tmp/pipeline-response.json 2>/dev/null || cat /tmp/pipeline-response.json

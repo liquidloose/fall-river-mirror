@@ -13,6 +13,31 @@ router = APIRouter(tags=["transcripts"])
 logger = logging.getLogger(__name__)
 
 
+@router.get("/transcripts/count")
+def get_transcript_count(
+    deps: AppDependencies = Depends(AppDependencies),
+) -> Dict[str, Any]:
+    """Get the total count of transcripts. Should match article count (1:1)."""
+    if not deps.database:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Database not available",
+        )
+    try:
+        deps.database.cursor.execute("SELECT COUNT(*) FROM transcripts")
+        count = deps.database.cursor.fetchone()[0]
+        return {
+            "total_transcripts": count,
+            "message": f"There are {count} transcripts in the database",
+        }
+    except Exception as e:
+        logger.error("Failed to get transcript count: %s", e)
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to get transcript count: {str(e)}",
+        )
+
+
 @router.get("/transcript/fetch/{youtube_id}", response_model=None)
 def get_transcript_endpoint(
     youtube_id: str,

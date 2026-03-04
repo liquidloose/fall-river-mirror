@@ -1,4 +1,5 @@
 {
+    "sqlite.sqlite3": "/usr/bin/sqlite3",
     "editor.defaultFormatter": null,
     "editor.formatOnSave": true,
     "notebook.defaultFormatter": "ms-python.black-formatter",

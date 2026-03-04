@@ -5,6 +5,7 @@ WordPress sync service: fetch article YouTube IDs from WordPress and sync articl
 import base64
 import logging
 import os
+import time
 from datetime import datetime
 from typing import Any, Dict, Optional, Set
 
@@ -51,6 +52,8 @@ class WordPressSyncService:
     def get_article_youtube_ids(self, base_url: Optional[str] = None) -> Set[str]:
         """Fetch the set of youtube_ids that already have an article on WordPress. Returns empty set on error."""
         url = (base_url or self._base_url) + self._api_path_youtube_ids
+        sep = "&" if "?" in url else "?"
+        url = f"{url}{sep}nocache={int(time.time())}"
         try:
             r = requests.get(url, headers=self._headers(), timeout=15)
             if r.status_code == 401:
@@ -69,6 +72,7 @@ class WordPressSyncService:
         Read-only; does not create or modify any content. Returns success, status_code, and optional response summary.
         """
         url = self._base_url + self._api_path_youtube_ids
+        url = f"{url}?nocache={int(time.time())}"
         try:
             r = requests.get(url, headers=self._headers(), timeout=15)
             response_body: Optional[Dict[str, Any]] = None
@@ -212,12 +216,20 @@ class WordPressSyncService:
                 "http_status": status.HTTP_400_BAD_REQUEST,
             }
 
+        youtube_id = (article.get("youtube_id") or "").strip()
+        existing_on_wp = youtube_id in self.get_article_youtube_ids() if youtube_id else False
+
+        if existing_on_wp:
+            # Already on WordPress: skip. We don't create or update; content is already there.
+            logger.info("Skipping article %s (youtube_id=%s already on WordPress)", article_id, youtube_id)
+            return {"success": True, "article_id": article_id, "skipped": True, "reason": "already_on_wordpress"}
+        # New on WordPress: create post
         payload = {
             "title": article.get("title") or "",
             "article_content": article.get("content") or "",
             "journalist_name": journalist_name or "",
             "committee": article.get("committee") or "",
-            "youtube_id": article.get("youtube_id") or "",
+            "youtube_id": youtube_id or "",
             "bullet_points": article.get("bullet_points") or "",
             "meeting_date": meeting_date or "",
             "view_count": article.get("view_count") or 0,
@@ -235,7 +247,7 @@ class WordPressSyncService:
             if response.status_code == 401:
                 logger.warning("WordPress returned 401 Unauthorized for create-article: %s", wordpress_url)
             response.raise_for_status()
-            logger.info(f"Successfully synced article {article_id} to WordPress")
+            logger.info(f"Successfully synced article {article_id} to WordPress (create)")
             return {
                 "success": True,
                 "article_id": article_id,

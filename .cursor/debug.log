@@ -1,0 +1,1 @@
+{"hypothesisId": "H1_H4", "location": "pipeline_service.run_bulk_write_articles", "message": "article_write transcript selection", "data": {"transcript_ids": [104], "count": 1, "has_duplicate_transcript_ids": false}, "timestamp": 1772644895076}

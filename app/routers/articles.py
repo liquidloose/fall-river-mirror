@@ -230,9 +230,18 @@ def delete_article_endpoint(
 
 @router.delete("/articles/remove-duplicate-per-transcript")
 def remove_duplicate_articles_per_transcript(
+    dry_run: bool = False,
     deps: AppDependencies = Depends(AppDependencies),
 ) -> Dict[str, Any]:
-    """Find transcripts with more than one article and delete the extra article(s)."""
+    """Find transcripts with more than one article and delete the extra article(s). Use dry_run=true to see what would be deleted without deleting. This endpoint never deletes transcripts."""
+    # #region agent log
+    try:
+        open("/code/.cursor/debug.log", "a").write(
+            __import__("json").dumps({"hypothesisId": "H5", "location": "articles.remove_duplicate_articles_per_transcript", "message": "remove-duplicate-per-transcript invoked", "data": {"dry_run": dry_run}, "timestamp": int(__import__("time").time() * 1000)}) + "\n"
+        )
+    except Exception:
+        pass
+    # #endregion
     try:
         db = deps.database
         if not db:
@@ -266,6 +275,22 @@ def remove_duplicate_articles_per_transcript(
                 "articles_deleted": 0,
                 "art_deleted": 0,
                 "deleted_article_ids": [],
+                "dry_run": dry_run,
+            }
+        if len(to_delete) > 50:
+            logger.warning(
+                "remove-duplicate-per-transcript would delete %s articles (transcripts_affected=%s). Use dry_run=true to preview. This endpoint does NOT delete transcripts.",
+                len(to_delete),
+                transcripts_affected,
+            )
+        if dry_run:
+            return {
+                "success": True,
+                "message": f"Dry run: would delete {len(to_delete)} duplicate article(s) from {transcripts_affected} transcript(s). No changes made.",
+                "transcripts_affected": transcripts_affected,
+                "articles_would_delete": len(to_delete),
+                "deleted_article_ids": to_delete,
+                "dry_run": True,
             }
         articles_deleted = 0
         art_deleted = 0
@@ -281,6 +306,7 @@ def remove_duplicate_articles_per_transcript(
             "articles_deleted": articles_deleted,
             "art_deleted": art_deleted,
             "deleted_article_ids": to_delete,
+            "dry_run": False,
         }
     except HTTPException:
         raise

@@ -220,3 +220,23 @@ app.include_router(wordpress.router)
 app.include_router(journalist.router)
 app.include_router(crawler.router)
 app.include_router(editor.router)
+
+
+@app.on_event("startup")
+def _log_db_counts_on_startup() -> None:
+    """Log transcript and article counts at startup so we can detect DB replacement or data loss."""
+    db = app.state.database if hasattr(app.state, "database") else None
+    if not db:
+        return
+    try:
+        db.cursor.execute("SELECT COUNT(*) FROM transcripts")
+        tc = db.cursor.fetchone()[0]
+        db.cursor.execute("SELECT COUNT(*) FROM articles")
+        ac = db.cursor.fetchone()[0]
+        logger.info(
+            "Database counts at startup: transcripts=%s, articles=%s (expected: equal; if counts dropped, DB file may have been replaced or restored).",
+            tc,
+            ac,
+        )
+    except Exception as e:
+        logger.warning("Could not log startup DB counts: %s", e)

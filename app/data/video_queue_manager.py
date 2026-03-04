@@ -339,6 +339,7 @@ class VideoQueueManager:
         channel_url: str,
         scroll_count: int = 5,
         target_new_videos: Optional[int] = None,
+        skip_youtube_ids_on_wp: Optional[Set[str]] = None,
     ) -> Dict[str, Any]:
         """
         Compare fetched IDs with existing data and add only new videos to the queue.
@@ -348,32 +349,29 @@ class VideoQueueManager:
         2. Gets all youtube_ids already in video_queue table
         3. Fetches video IDs from YouTube API in batches
         4. For each discovered video:
+           - Skip if already on WordPress (skip_youtube_ids_on_wp)
            - Skip if already has transcript
            - Skip if already in queue
-           - Add to queue only if both checks pass
+           - Add to queue only if all checks pass
         5. If target_new_videos is set, continues scraping until that many new videos are added
 
         Args:
             channel_url: URL of the YouTube channel to scrape
             scroll_count: Ignored (kept for API compatibility)
             target_new_videos: Target number of new videos to add to queue (None = fetch all videos)
+            skip_youtube_ids_on_wp: Do not queue these (article already on WordPress)
 
         Returns:
-            Dict containing results:
-                - total_discovered: Number of videos found on YouTube
-                - already_exists: Number of videos that already have transcripts
-                - already_in_queue: Number of videos already in the queue
-                - newly_queued: Number of videos actually added to queue (new rows)
-                - skipped: Number of videos skipped (already exist or in queue)
-                - failed: Number of videos that failed to process
-                - youtube_ids: List of all discovered IDs
+            Dict containing results (including already_on_wordpress count).
         """
         logger.info(f"Starting queue_new_videos for: {channel_url}")
+        on_wp = skip_youtube_ids_on_wp or set()
 
         results = {
             "total_discovered": 0,
             "already_exists": 0,
             "already_in_queue": 0,
+            "already_on_wordpress": 0,
             "newly_queued": 0,
             "skipped": 0,
             "failed": 0,
@@ -415,21 +413,28 @@ class VideoQueueManager:
                         results["youtube_ids"].append(youtube_id)
 
                         try:
-                            # Check 1: If video ID exists in transcripts, skip it
-                            if youtube_id in existing_ids:
+                            # Check 1: If already on WordPress, skip (don't queue)
+                            if youtube_id in on_wp:
+                                logger.debug(
+                                    f"Skipping {youtube_id} - already on WordPress"
+                                )
+                                results["already_on_wordpress"] += 1
+                                results["skipped"] += 1
+                            # Check 2: If video ID exists in transcripts, skip it
+                            elif youtube_id in existing_ids:
                                 logger.debug(
                                     f"Skipping {youtube_id} - transcript already exists"
                                 )
                                 results["already_exists"] += 1
                                 results["skipped"] += 1
-                            # Check 2: If video ID already in queue, skip it
+                            # Check 3: If video ID already in queue, skip it
                             elif youtube_id in queued_ids:
                                 logger.debug(
                                     f"Skipping {youtube_id} - already in queue"
                                 )
                                 results["already_in_queue"] += 1
                                 results["skipped"] += 1
-                            # Add to queue only if both checks pass
+                            # Add to queue only if all checks pass
                             else:
                                 if self._add_to_queue(youtube_id):
                                     logger.info(f"Added {youtube_id} to video queue")
@@ -480,19 +485,26 @@ class VideoQueueManager:
                 # Step 4: Compare and add new videos to queue
                 for youtube_id in scraped_ids:
                     try:
-                        # Check 1: If video ID exists in transcripts, skip it
-                        if youtube_id in existing_ids:
+                        # Check 1: If already on WordPress, skip (don't queue)
+                        if youtube_id in on_wp:
+                            logger.debug(
+                                f"Skipping {youtube_id} - already on WordPress"
+                            )
+                            results["already_on_wordpress"] += 1
+                            results["skipped"] += 1
+                        # Check 2: If video ID exists in transcripts, skip it
+                        elif youtube_id in existing_ids:
                             logger.debug(
                                 f"Skipping {youtube_id} - transcript already exists"
                             )
                             results["already_exists"] += 1
                             results["skipped"] += 1
-                        # Check 2: If video ID already in queue, skip it
+                        # Check 3: If video ID already in queue, skip it
                         elif youtube_id in queued_ids:
                             logger.debug(f"Skipping {youtube_id} - already in queue")
                             results["already_in_queue"] += 1
                             results["skipped"] += 1
-                        # Add to queue only if both checks pass
+                        # Add to queue only if all checks pass
                         else:
                             if self._add_to_queue(youtube_id):
                                 logger.info(f"Added {youtube_id} to video queue")
@@ -511,6 +523,7 @@ class VideoQueueManager:
 
             logger.info(
                 f"Queue processing complete: {results['total_discovered']} discovered, "
+                f"{results.get('already_on_wordpress', 0)} already on WordPress, "
                 f"{results['already_exists']} already have transcripts, "
                 f"{results['already_in_queue']} already in queue, "
                 f"{results['newly_queued']} newly queued, "
