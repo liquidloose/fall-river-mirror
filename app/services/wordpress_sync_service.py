@@ -7,7 +7,7 @@ import logging
 import os
 import time
 from datetime import datetime
-from typing import Any, Dict, Optional, Set
+from typing import Any, Dict, List, Optional, Set
 
 import requests
 from fastapi import status
@@ -96,6 +96,51 @@ class WordPressSyncService:
                 "response_body": None,
                 "error": str(e),
             }
+
+    def get_article_audit_data_from_wordpress(self) -> List[Dict[str, Any]]:
+        """
+        Fetch all article posts from the built-in WP REST API (wp/v2/article).
+        Returns a normalized list of {youtube_id, post_id, title, content} for audit comparison.
+        Uses per_page=100 and context=edit; paginates until all articles are fetched.
+        Returns empty list on error.
+        """
+        base = self._base_url.rstrip("/")
+        all_items: List[Dict[str, Any]] = []
+        page = 1
+        try:
+            while True:
+                url = f"{base}/wp-json/wp/v2/article?per_page=100&context=edit&page={page}"
+                r = requests.get(url, headers=self._headers(), timeout=15)
+                if r.status_code == 401:
+                    logger.warning("WordPress returned 401 for wp/v2/article (audit): %s", url)
+                r.raise_for_status()
+                data = r.json()
+                if not isinstance(data, list):
+                    break
+                for item in data:
+                    meta = item.get("meta") or {}
+                    yid = (meta.get("_article_youtube_id") or "")
+                    yid = (yid if isinstance(yid, str) else str(yid)).strip()
+                    title_obj = item.get("title") or {}
+                    title = title_obj.get("raw") or title_obj.get("rendered") or ""
+                    title = title if isinstance(title, str) else str(title)
+                    content = meta.get("_article_content") or (item.get("content") or {}).get("raw") or ""
+                    content = content if isinstance(content, str) else str(content)
+                    all_items.append({
+                        "youtube_id": yid,
+                        "post_id": item.get("id"),
+                        "title": title,
+                        "content": content,
+                    })
+                total_header = r.headers.get("X-WP-Total")
+                total = int(total_header) if total_header is not None and str(total_header).isdigit() else len(data)
+                if len(data) < 100 or len(all_items) >= total:
+                    break
+                page += 1
+            return all_items
+        except Exception as e:
+            logger.warning("Could not fetch WordPress article audit data: %s", e)
+            return []
 
     def sync_one_article(self, article_id: int) -> Dict[str, Any]:
         """
