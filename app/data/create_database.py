@@ -778,6 +778,88 @@ class Database:
             self._log_error("get_article_by_id", e, {"article_id": article_id})
             return None
 
+    def get_article_by_youtube_id(self, youtube_id: str) -> Optional[dict]:
+        """
+        Retrieve an article by its youtube_id.
+
+        Args:
+            youtube_id: The YouTube ID of the article
+
+        Returns:
+            Dict with article data (same shape as get_article_by_id) or None if not found
+        """
+        try:
+            self._log_operation("get_article_by_youtube_id", {"youtube_id": youtube_id})
+            self.cursor.execute(
+                "SELECT id, committee, youtube_id, journalist_id, title, content, transcript_id, date, tone, article_type, bullet_points, view_count, spell_checked FROM articles WHERE youtube_id = ?",
+                (youtube_id,),
+            )
+            result = self.cursor.fetchone()
+
+            if result:
+                return {
+                    "id": result[0],
+                    "committee": result[1],
+                    "youtube_id": result[2],
+                    "journalist_id": result[3],
+                    "title": result[4],
+                    "content": result[5],
+                    "transcript_id": result[6],
+                    "date": result[7],
+                    "tone": result[8],
+                    "article_type": result[9],
+                    "bullet_points": result[10],
+                    "view_count": result[11],
+                    "spell_checked": bool(result[12]) if result[12] is not None else False,
+                }
+            return None
+        except Exception as e:
+            self.logger.exception(
+                "get_article_by_youtube_id failed: youtube_id=%s - %s",
+                youtube_id,
+                e,
+            )
+            self._log_error("get_article_by_youtube_id", e, {"youtube_id": youtube_id})
+            return None
+
+    def get_art_by_article_id(self, article_id: int) -> Optional[dict]:
+        """
+        Retrieve the first art record for an article (e.g. for featured image).
+
+        Args:
+            article_id: The article ID
+
+        Returns:
+            Dict with art data (at least id, image_data) or None if not found
+        """
+        try:
+            self._log_operation("get_art_by_article_id", {"article_id": article_id})
+            self.cursor.execute(
+                "SELECT id, artist_name, title, prompt, medium, aesthetic, image_data, snippet, transcript_id, article_id, created_date, model FROM art WHERE article_id = ? LIMIT 1",
+                (article_id,),
+            )
+            result = self.cursor.fetchone()
+
+            if result:
+                return {
+                    "id": result[0],
+                    "artist_name": result[1],
+                    "title": result[2],
+                    "prompt": result[3],
+                    "medium": result[4],
+                    "aesthetic": result[5],
+                    "image_data": result[6],
+                    "snippet": result[7],
+                    "transcript_id": result[8],
+                    "article_id": result[9],
+                    "created_date": result[10],
+                    "model": result[11],
+                }
+            return None
+        except Exception as e:
+            self._log_error("get_art_by_article_id", e, {"article_id": article_id})
+            return None
+
     def update_article_bullet_points(self, article_id: int, bullet_points: str) -> bool:
         """
         Update bullet points for an existing article.

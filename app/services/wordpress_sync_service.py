@@ -355,3 +355,80 @@ class WordPressSyncService:
                 "error": f"Failed to update article on WordPress: {str(e)}",
                 "http_status": status.HTTP_502_BAD_GATEWAY,
             }
+
+    def repair_article_featured_image(self, youtube_id: str) -> Dict[str, Any]:
+        """
+        Repair the WordPress post's featured image from the article's art in SQLite (fixes broken image link).
+        Resolves article by youtube_id, gets art image_data from DB, builds base64 data URL,
+        and POSTs to WordPress update-article with featured_image.
+        """
+        db = self._database
+        if not db:
+            return {
+                "success": False,
+                "error": "Database not available",
+                "http_status": status.HTTP_500_INTERNAL_SERVER_ERROR,
+            }
+        youtube_id = (youtube_id or "").strip()
+        if not youtube_id:
+            return {
+                "success": False,
+                "error": "youtube_id is required",
+                "http_status": status.HTTP_400_BAD_REQUEST,
+            }
+        article = db.get_article_by_youtube_id(youtube_id)
+        if not article:
+            return {
+                "success": False,
+                "error": "Article not found for youtube_id",
+                "http_status": status.HTTP_404_NOT_FOUND,
+            }
+        art = db.get_art_by_article_id(article["id"])
+        if not art or not art.get("image_data"):
+            return {
+                "success": False,
+                "error": "No image for this article",
+                "http_status": status.HTTP_404_NOT_FOUND,
+            }
+        image_data = art["image_data"]
+        if not isinstance(image_data, bytes):
+            return {
+                "success": False,
+                "error": "No image for this article",
+                "http_status": status.HTTP_404_NOT_FOUND,
+            }
+        image_format = "png"
+        if len(image_data) >= 2 and image_data[:2] == b"\xff\xd8":
+            image_format = "jpeg"
+        elif len(image_data) >= 8 and image_data[:8] == b"\x89PNG\r\n\x1a\n":
+            image_format = "png"
+        base64_data = base64.b64encode(image_data).decode("utf-8")
+        data_url = f"data:image/{image_format};base64,{base64_data}"
+        payload = {"youtube_id": youtube_id, "featured_image": data_url}
+        url = self._base_url + self._api_path_update
+        try:
+            response = requests.post(
+                url,
+                json=payload,
+                headers=self._headers(),
+                timeout=30,
+            )
+            if response.status_code == 401:
+                logger.warning("WordPress returned 401 Unauthorized for update-article (repair featured image): %s", url)
+            response.raise_for_status()
+            logger.info("Successfully repaired featured image for youtube_id=%s on WordPress", youtube_id)
+            return {
+                "success": True,
+                "youtube_id": youtube_id,
+                "wordpress_response": response.json() if response.content else None,
+            }
+        except requests.exceptions.RequestException as e:
+            resp = getattr(e, "response", None)
+            status_code = resp.status_code if resp is not None else status.HTTP_502_BAD_GATEWAY
+            err_msg = (resp.text[:500] if resp is not None and resp.text else str(e))
+            logger.error("Failed to POST update-article (repair featured image) to WordPress: %s", e)
+            return {
+                "success": False,
+                "error": err_msg,
+                "http_status": status_code,
+            }

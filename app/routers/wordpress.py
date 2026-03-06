@@ -6,8 +6,15 @@ import logging
 from typing import Any, Dict, List, Optional
 
 from fastapi import APIRouter, Depends, HTTPException, status
+from pydantic import BaseModel, Field
 
 from app.dependencies import AppDependencies
+
+
+class RepairArticleFeaturedImageBody(BaseModel):
+    """Request body for repair-article-featured-image."""
+
+    youtube_id: str = Field(..., min_length=1, description="YouTube ID of the article")
 
 router = APIRouter(tags=["wordpress"])
 logger = logging.getLogger(__name__)
@@ -51,6 +58,31 @@ def sync_article_to_wordpress(
         raise HTTPException(
             status_code=result.get("http_status", status.HTTP_500_INTERNAL_SERVER_ERROR),
             detail=result.get("error", "Sync failed"),
+        )
+    return result
+
+
+@router.post("/wordpress/repair-article-featured-image")
+def repair_article_featured_image(
+    body: RepairArticleFeaturedImageBody,
+    deps: AppDependencies = Depends(AppDependencies),
+) -> Dict[str, Any]:
+    """Repair the WordPress post's featured image from the article's art in SQLite (fixes broken image link)."""
+    if not deps.database:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Database not available",
+        )
+    if not deps.wordpress_sync_service:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="WordPress sync service not available",
+        )
+    result = deps.wordpress_sync_service.repair_article_featured_image(body.youtube_id)
+    if not result["success"]:
+        raise HTTPException(
+            status_code=result.get("http_status", status.HTTP_500_INTERNAL_SERVER_ERROR),
+            detail=result.get("error", "Repair featured image failed"),
         )
     return result
 
