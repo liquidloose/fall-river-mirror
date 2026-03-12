@@ -22,6 +22,9 @@ the-fall-river-mirror-mailer-*.json
 
 # Explicitly ignore plugins and other directories
 /WordPress/wp-content/plugins/
+# Plugin submodules; track in their own repos only
+/WordPress/wp-content/plugins/to-tha-top/
+/WordPress/wp-content/plugins/dark-and-light/
 /WordPress/wp-content/uploads/
 /WordPress/wp-content/cache/
 /WordPress/wp-content/backup-db/
