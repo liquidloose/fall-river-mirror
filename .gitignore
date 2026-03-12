@@ -5,6 +5,7 @@
 # Google OAuth credentials (sensitive)
 client_secret.json
 youtube_token.json
+youtube_cookies.txt
 cookies.txt
 
 # GCP service account key (private key; path set via GCP_KEY_FILE_PATH in .env)
