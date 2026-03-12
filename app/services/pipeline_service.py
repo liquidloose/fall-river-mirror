@@ -72,8 +72,11 @@ class PipelineService:
         auto_build: bool,
         channel_url: Optional[str] = None,
         skip_youtube_ids_on_wp: Optional[Set[str]] = None,
+        include_whisper_items: bool = True,
     ) -> Dict[str, Any]:
-        """Bulk fetch transcripts from queue; returns result dict. skip_youtube_ids_on_wp: do not fetch these (already on WordPress)."""
+        """Bulk fetch transcripts from queue; returns result dict.
+        skip_youtube_ids_on_wp: do not fetch these (already on WordPress).
+        include_whisper_items: if False, only select videos with captions (transcript_available=1); skip Whisper-needed items."""
         db = self._database
         transcript_mgr = self._transcript_manager
         if not db or not transcript_mgr:
@@ -87,11 +90,14 @@ class PipelineService:
         on_wp = skip_youtube_ids_on_wp or set()
         channel_url = channel_url or os.getenv("DEFAULT_YOUTUBE_CHANNEL_URL")
         cursor = db.cursor
+        # Restrict to caption-available only when Skip Whisper mode
+        caption_only_clause = "" if include_whisper_items else " AND T1.transcript_available = 1"
         cursor.execute(
             """SELECT COUNT(*)
                FROM video_queue AS T1
                LEFT JOIN transcripts AS T2 ON T1.youtube_id = T2.youtube_id
                WHERE T2.youtube_id IS NULL"""
+            + caption_only_clause
         )
         available_count = cursor.fetchone()[0]
         auto_build_triggered = False
@@ -109,12 +115,15 @@ class PipelineService:
                 auto_build_added = build_results.get("newly_queued", 0)
             except Exception as e:
                 logger.warning(f"Auto-build queue failed: {e}. Proceeding with available.")
+        # When include_whisper_items: process Whisper-needed first, then oldest. Otherwise only caption-available (oldest first).
         cursor.execute(
-            """SELECT T1.youtube_id
+            """SELECT T1.youtube_id, T1.transcript_available
                FROM video_queue AS T1
                LEFT JOIN transcripts AS T2 ON T1.youtube_id = T2.youtube_id
-               WHERE T2.youtube_id IS NULL
-               ORDER BY T1.transcript_available DESC
+               WHERE T2.youtube_id IS NULL"""
+            + caption_only_clause
+            + """
+               ORDER BY T1.transcript_available ASC, T1.id ASC
                LIMIT ?""",
             (amount,),
         )
@@ -143,8 +152,13 @@ class PipelineService:
         RATE_LIMIT_MS = 5000
         for row in queue_items:
             youtube_id = row[0]
+            transcript_available = row[1] if len(row) > 1 else 1
             try:
-                transcript_result = transcript_mgr.get_transcript(youtube_id)
+                if transcript_available == 0:
+                    logger.info("Queue item %s has no captions; using Whisper", youtube_id)
+                    transcript_result = transcript_mgr.get_transcript_via_whisper(youtube_id)
+                else:
+                    transcript_result = transcript_mgr.get_transcript(youtube_id)
                 if isinstance(transcript_result, JSONResponse):
                     error_content = json.loads(transcript_result.body.decode())
                     raise Exception(
@@ -262,16 +276,6 @@ class PipelineService:
                 (amount,),
             )
         transcripts = cursor.fetchall()
-        # #region agent log
-        try:
-            _tids = [r[0] for r in transcripts]
-            _dup = len(_tids) != len(set(_tids))
-            open("/code/.cursor/debug.log", "a").write(
-                json.dumps({"hypothesisId": "H1_H4", "location": "pipeline_service.run_bulk_write_articles", "message": "article_write transcript selection", "data": {"transcript_ids": _tids, "count": len(_tids), "has_duplicate_transcript_ids": _dup}, "timestamp": int(time.time() * 1000)}) + "\n"
-            )
-        except Exception:
-            pass
-        # #endregion
         if not transcripts:
             # Diagnose why 0: count transcripts without articles, and how many excluded by WordPress
             cursor.execute(

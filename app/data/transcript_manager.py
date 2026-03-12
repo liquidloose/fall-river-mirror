@@ -139,6 +139,53 @@ class TranscriptManager:
                 content={"error": e_message},
             )
 
+    def get_transcript_via_whisper(self, youtube_id: str) -> Dict[str, Any] | JSONResponse:
+        """
+        Fetch transcript using OpenAI Whisper only (skip YouTube captions).
+        Use for queue items where transcript_available=0 (no captions on YouTube).
+        Checks cache first; if missing, downloads video and transcribes with Whisper, then caches.
+        """
+        try:
+            if self._is_transcript_cached(youtube_id):
+                return self._get_cached_transcript(youtube_id)
+            logger.info(
+                "Transcript for video %s not in cache; fetching via Whisper (no captions on YouTube).",
+                youtube_id,
+            )
+            self.category = AIAgent.WHISPER
+            whisper_transcript = self._fetch_via_whisper(youtube_id)
+            video_metadata = None
+            try:
+                api_key = os.getenv("YOUTUBE_API_KEY")
+                if api_key:
+                    youtube_api = YouTubeMetadataFetcher(api_key)
+                    video_metadata = youtube_api.get_video_published_date(youtube_id)
+            except Exception as e:
+                logger.warning("Could not fetch video metadata for Whisper transcript: %s", e)
+            if self._can_cache():
+                cache_id = self._cache_transcript(
+                    youtube_id, whisper_transcript, video_metadata or {}, model=AIAgent.WHISPER
+                )
+                if cache_id == -1:
+                    raise Exception("Failed to save Whisper transcript to database")
+            else:
+                raise Exception(
+                    "Transcript could not be cached; database unavailable or not writable."
+                )
+            return self._formatted_youtube_response(
+                youtube_id,
+                whisper_transcript,
+                video_metadata,
+                source="openai_whisper",
+                model=AIAgent.WHISPER,
+            )
+        except Exception as e:
+            logger.error("get_transcript_via_whisper failed for %s: %s", youtube_id, e, exc_info=True)
+            return JSONResponse(
+                status_code=500,
+                content={"error": str(e)},
+            )
+
     # =============================================================================
     # DATABASE CACHE METHODS
     # =============================================================================

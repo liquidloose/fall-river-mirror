@@ -860,6 +860,28 @@ class Database:
             self._log_error("get_art_by_article_id", e, {"article_id": article_id})
             return None
 
+    def get_featured_image_by_youtube_id(self, youtube_id: str) -> Optional[tuple]:
+        """
+        Get featured image bytes and format for an article by youtube_id (one query).
+        Returns (image_data: bytes, format: str) or None. Format is "png" or "jpeg".
+        """
+        try:
+            self.cursor.execute(
+                "SELECT art.image_data FROM art JOIN articles ON art.article_id = articles.id WHERE articles.youtube_id = ? AND art.image_data IS NOT NULL LIMIT 1",
+                (youtube_id.strip(),),
+            )
+            row = self.cursor.fetchone()
+            if not row or not row[0]:
+                return None
+            image_data = row[0]
+            if not isinstance(image_data, bytes):
+                return None
+            fmt = "jpeg" if len(image_data) >= 2 and image_data[:2] == b"\xff\xd8" else "png"
+            return (image_data, fmt)
+        except Exception as e:
+            self._log_error("get_featured_image_by_youtube_id", e, {"youtube_id": youtube_id})
+            return None
+
     def update_article_bullet_points(self, article_id: int, bullet_points: str) -> bool:
         """
         Update bullet points for an existing article.

@@ -37,25 +37,25 @@ class WhisperProcessor:
         if deno_path not in os.environ.get("PATH", ""):
             os.environ["PATH"] = f"{deno_path}:{os.environ.get('PATH', '')}"
 
-        # Configure Webshare proxy for yt-dlp downloads
-        # Uses static proxy IP from Webshare proxy list (format: http://user:pass@IP:port)
-        self.proxy_username = os.getenv("WEBSHARE_PROXY_USERNAME")
-        self.proxy_password = os.getenv("WEBSHARE_PROXY_PASSWORD")
-        self.proxy_host = os.getenv("WEBSHARE_PROXY_HOST")  # IP from Webshare proxy list
-        self.proxy_port = os.getenv("WEBSHARE_PROXY_PORT", "8153")
-        self.proxy_enabled = bool(self.proxy_username and self.proxy_password and self.proxy_host)
+        # Proxy disabled for Whisper: yt-dlp uses cookies + direct IP; proxy often causes
+        # "This video is not available" from YouTube. Transcript fetching can still use
+        # Webshare via youtube-transcript-api elsewhere.
+        self.proxy_enabled = False
 
-        if self.proxy_enabled:
-            logger.info(f"Webshare proxy configured: {self.proxy_host}:{self.proxy_port}")
+        # Cookie file for yt-dlp (Netscape format). Required when YouTube returns "Sign in to confirm you're not a bot".
+        cookie_env = os.getenv("YOUTUBE_COOKIES_PATH")
+        self.cookiefile = None
+        if cookie_env:
+            cookie_path = cookie_env.strip()
+            if os.path.isfile(cookie_path):
+                self.cookiefile = cookie_path
+                logger.info("yt-dlp will use cookies from: %s", self.cookiefile)
+            else:
+                logger.warning("YOUTUBE_COOKIES_PATH set but file not found: %s", cookie_path)
 
     def _get_proxy_url(self) -> Optional[str]:
-        """Generate proxy URL for Webshare static proxy."""
-        if not self.proxy_enabled:
-            return None
-
-        proxy_url = f"http://{self.proxy_username}:{self.proxy_password}@{self.proxy_host}:{self.proxy_port}"
-        logger.info(f"Using Webshare proxy: {self.proxy_host}:{self.proxy_port}")
-        return proxy_url
+        """Proxy disabled for Whisper; returns None so yt-dlp uses direct connection + cookies."""
+        return None
 
     def transcribe_youtube_video(self, video_id: str) -> str:
         """
@@ -98,6 +98,10 @@ class WhisperProcessor:
             proxy_url = self._get_proxy_url()
             if proxy_url:
                 ydl_opts["proxy"] = proxy_url
+
+            # Cookies avoid "Sign in to confirm you're not a bot" when YouTube blocks anonymous yt-dlp
+            if self.cookiefile:
+                ydl_opts["cookiefile"] = self.cookiefile
 
             youtube_url = f"https://www.youtube.com/watch?v={video_id}"
 

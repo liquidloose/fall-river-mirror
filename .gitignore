@@ -5,7 +5,7 @@
 # Google OAuth credentials (sensitive)
 client_secret.json
 youtube_token.json
-youtube_cookies.txt
+cookies.txt
 
 # GCP service account key (private key; path set via GCP_KEY_FILE_PATH in .env)
 the-fall-river-mirror-mailer-*.json
@@ -42,9 +42,6 @@ __pycache__/
 
 /app/data/fr-mirror.db
 app.log
-
-# YouTube cookies (contains session tokens)
-youtube_cookies.txt
 
 # YouTube OAuth credentials and tokens (contains sensitive credentials)
 client_secret.json

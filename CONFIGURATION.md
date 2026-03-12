@@ -44,6 +44,13 @@ OPENAI_API_KEY=your_openai_api_key_here
 DALLE_API_KEY=your_dalle_api_key_here
 ```
 
+#### WordPress sync (create-article, update-article, repair featured image)
+```bash
+WORDPRESS_BASE_URL=https://yoursite.com
+WORDPRESS_JWT_TOKEN=your_jwt_here
+```
+The app calls WordPress at `WORDPRESS_BASE_URL` + `/wp-json/fr-mirror/v2/...` (create-article, update-article, article-youtube-ids). **The theme's `/includes` that register these REST routes are not in this repo** (submodule or separate deploy). If that code is missing, WordPress returns **404** and we return **404** to the client—no success. Success from our side only when WordPress actually returns 2xx.
+
 #### Webshare proxy (cloud/VPS – YouTube blocks datacenter IPs)
 Transcript checks and transcript API use `WEBSHARE_PROXY_USERNAME` and `WEBSHARE_PROXY_PASSWORD` only.  
 For Whisper fallback (yt-dlp), you can optionally set `WEBSHARE_PROXY_HOST` and `WEBSHARE_PROXY_PORT` (one proxy IP from your Webshare list) so audio downloads go through the proxy.

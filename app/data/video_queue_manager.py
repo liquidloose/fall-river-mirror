@@ -427,10 +427,10 @@ class VideoQueueManager:
                                 )
                                 results["already_exists"] += 1
                                 results["skipped"] += 1
-                            # Check 3: If video ID already in queue, skip it
+                            # Check 3: Already in queue — don't add duplicate (will be processed by pipeline)
                             elif youtube_id in queued_ids:
                                 logger.debug(
-                                    f"Skipping {youtube_id} - already in queue"
+                                    f"Not adding duplicate {youtube_id} - already in queue (will be processed)"
                                 )
                                 results["already_in_queue"] += 1
                                 results["skipped"] += 1
@@ -499,9 +499,11 @@ class VideoQueueManager:
                             )
                             results["already_exists"] += 1
                             results["skipped"] += 1
-                        # Check 3: If video ID already in queue, skip it
+                        # Check 3: Already in queue — don't add duplicate (will be processed by pipeline)
                         elif youtube_id in queued_ids:
-                            logger.debug(f"Skipping {youtube_id} - already in queue")
+                            logger.debug(
+                                f"Not adding duplicate {youtube_id} - already in queue (will be processed)"
+                            )
                             results["already_in_queue"] += 1
                             results["skipped"] += 1
                         # Add to queue only if all checks pass
@@ -629,7 +631,7 @@ class VideoQueueManager:
                         f"Added {youtube_id} to queue (no transcript - will require Whisper)"
                     )
             else:
-                logger.debug(f"Skipped {youtube_id} - already in queue")
+                logger.debug(f"Not adding duplicate {youtube_id} - already in queue")
 
             return was_inserted
 

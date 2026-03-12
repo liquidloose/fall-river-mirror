@@ -49,6 +49,16 @@ class ImageModel(str, Enum):
     GROK = "grok-imagine-image"
 
 
+class PipelineQueueMode(str, Enum):
+    """Whether to build the queue from the channel (use Whisper when needed) or only process existing queue (skip Whisper path)."""
+
+    USE_WHISPER = "Use Whisper"
+    """Build queue from channel, then fetch transcripts; use Whisper for videos without captions (default)."""
+
+    SKIP_WHISPER = "Skip Whisper"
+    """Skip queue build; only fetch transcripts for videos already in the queue."""
+
+
 # Request/Response models
 # Using inheritance to avoid code duplication:
 # - BaseArticleRequest: Contains all common fields as optional

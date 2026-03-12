@@ -1,11 +1,14 @@
 """WordPress sync endpoints."""
 
+import json
 import difflib
 import html
 import logging
+from datetime import datetime, timezone
 from typing import Any, Dict, List, Optional
 
 from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi.responses import JSONResponse, Response
 from pydantic import BaseModel, Field
 
 from app.dependencies import AppDependencies
@@ -31,9 +34,37 @@ def test_jwt(
             detail="WordPress sync service not available",
         )
     result = deps.wordpress_sync_service.test_jwt_get()
-    if not result["success"] and result.get("status_code") == 401:
-        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail=result.get("error", "JWT rejected"))
+    if result.get("success") is not True:
+        status_code = result.get("status_code") or status.HTTP_502_BAD_GATEWAY
+        if status_code == 401:
+            status_code = status.HTTP_401_UNAUTHORIZED
+        body = {"detail": result.get("error", "JWT check failed")}
+        if result.get("raw_response") is not None:
+            body["raw_response"] = result["raw_response"]
+        return JSONResponse(status_code=status_code, content=body)
     return result
+
+
+@router.post("/wordpress/refresh-jwt-token", status_code=status.HTTP_204_NO_CONTENT)
+def refresh_wordpress_jwt_token(
+    deps: AppDependencies = Depends(AppDependencies),
+) -> None:
+    """
+    Request a new WordPress JWT using service credentials from env.
+    On success, updates WORDPRESS_JWT_TOKEN in-process and returns 204 with no body.
+    """
+    svc = deps.wordpress_sync_service
+    if not svc:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="WordPress sync service not available",
+        )
+    result = svc.refresh_jwt_token()
+    if result.get("success") is not True:
+        status_code = result.get("status_code", status.HTTP_500_INTERNAL_SERVER_ERROR)
+        detail = result.get("error") or "Failed to refresh WordPress JWT token"
+        raise HTTPException(status_code=status_code, detail=detail)
+    return Response(status_code=status.HTTP_204_NO_CONTENT)
 
 
 @router.post("/sync-article-to-wordpress/{article_id}")
@@ -54,11 +85,12 @@ def sync_article_to_wordpress(
             detail="WordPress sync service not available",
         )
     result = svc.sync_one_article(article_id)
-    if not result["success"]:
-        raise HTTPException(
-            status_code=result.get("http_status", status.HTTP_500_INTERNAL_SERVER_ERROR),
-            detail=result.get("error", "Sync failed"),
-        )
+    if result.get("success") is not True:
+        status_code = result.get("http_status", status.HTTP_500_INTERNAL_SERVER_ERROR)
+        body = {"detail": result.get("error", "Sync failed")}
+        if result.get("raw_response") is not None:
+            body["raw_response"] = result["raw_response"]
+        return JSONResponse(status_code=status_code, content=body)
     return result
 
 
@@ -67,7 +99,8 @@ def repair_article_featured_image(
     body: RepairArticleFeaturedImageBody,
     deps: AppDependencies = Depends(AppDependencies),
 ) -> Dict[str, Any]:
-    """Repair the WordPress post's featured image from the article's art in SQLite (fixes broken image link)."""
+    """Get featured image for youtube_id from DB and POST to WordPress update-article (sets featured image)."""
+    logger.info("repair-article-featured-image: youtube_id=%s", body.youtube_id)
     if not deps.database:
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
@@ -79,11 +112,48 @@ def repair_article_featured_image(
             detail="WordPress sync service not available",
         )
     result = deps.wordpress_sync_service.repair_article_featured_image(body.youtube_id)
-    if not result["success"]:
-        raise HTTPException(
-            status_code=result.get("http_status", status.HTTP_500_INTERNAL_SERVER_ERROR),
-            detail=result.get("error", "Repair featured image failed"),
+    if result.get("success") is not True:
+        raw = result.get("response") or "Repair featured image failed"
+        try:
+            detail = json.loads(raw) if isinstance(raw, str) and raw.strip().startswith("{") else raw
+        except (ValueError, TypeError):
+            detail = raw
+        return JSONResponse(
+            status_code=result.get("status_code", status.HTTP_500_INTERNAL_SERVER_ERROR),
+            content={"detail": detail},
         )
+    return result
+
+
+@router.post("/wordpress/repair-missing-featured-images")
+def repair_missing_featured_images(
+    iteration_limit: Optional[int] = 100,
+    repair_limit: Optional[int] = 1,
+    deps: AppDependencies = Depends(AppDependencies),
+) -> Dict[str, Any]:
+    """
+    Scan WordPress article posts via the REST API and repair missing/broken featured images.
+
+    - iteration_limit: max number of posts to inspect this run.
+    - repair_limit: max number of repairs to attempt this run.
+
+    Returns a JSON report listing all posts with broken/missing images (up to iteration_limit),
+    including titles, youtube_ids, and per-item repair status.
+    """
+    svc = deps.wordpress_sync_service
+    if not svc:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="WordPress sync service not available",
+        )
+    result = svc.repair_missing_featured_images(
+        iteration_limit=iteration_limit,
+        repair_limit=repair_limit,
+    )
+    if result.get("success") is not True:
+        status_code = result.get("http_status", status.HTTP_500_INTERNAL_SERVER_ERROR)
+        detail = result.get("error") or "Failed to repair missing featured images"
+        raise HTTPException(status_code=status_code, detail=detail)
     return result
 
 

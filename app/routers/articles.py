@@ -234,14 +234,6 @@ def remove_duplicate_articles_per_transcript(
     deps: AppDependencies = Depends(AppDependencies),
 ) -> Dict[str, Any]:
     """Find transcripts with more than one article and delete the extra article(s). Use dry_run=true to see what would be deleted without deleting. This endpoint never deletes transcripts."""
-    # #region agent log
-    try:
-        open("/code/.cursor/debug.log", "a").write(
-            __import__("json").dumps({"hypothesisId": "H5", "location": "articles.remove_duplicate_articles_per_transcript", "message": "remove-duplicate-per-transcript invoked", "data": {"dry_run": dry_run}, "timestamp": int(__import__("time").time() * 1000)}) + "\n"
-        )
-    except Exception:
-        pass
-    # #endregion
     try:
         db = deps.database
         if not db:

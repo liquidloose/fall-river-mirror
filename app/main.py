@@ -108,6 +108,16 @@ DOCS_PROTECTED_PATHS = ("/docs", "/redoc", "/openapi.json")
 DOCS_COOKIE_NAME = "docs_secret"
 
 
+class RequestLogMiddleware(BaseHTTPMiddleware):
+    """Log incoming requests to /wordpress/repair-article-featured-image so we can confirm the request hits this app."""
+
+    async def dispatch(self, request: Request, call_next):
+        path = (request.scope.get("path") or "").split("?")[0]
+        if path.endswith("/wordpress/repair-article-featured-image") and request.scope.get("method") == "POST":
+            logger.info("REQUEST RECEIVED: POST /wordpress/repair-article-featured-image")
+        return await call_next(request)
+
+
 class DocsProtectionMiddleware(BaseHTTPMiddleware):
     """When DOCS_SECRET is set, require secret (query or cookie) for docs and openapi."""
 
@@ -141,6 +151,7 @@ class DocsProtectionMiddleware(BaseHTTPMiddleware):
         return response
 
 
+app.add_middleware(RequestLogMiddleware)
 app.add_middleware(DocsProtectionMiddleware)
 
 logger.info("FastAPI app initialized!")

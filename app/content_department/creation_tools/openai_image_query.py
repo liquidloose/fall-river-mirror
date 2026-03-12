@@ -35,7 +35,7 @@ class OpenAIImageQuery:
         prompt: str,
         medium: str = None,
         aesthetic: str = None,
-        model: str = "gpt-image-1",
+        model: str = "gpt-image-5.4",
         size: str = "1536x1024",  # Landscape aspect ratio for featured images
     ) -> dict:
         """
@@ -100,4 +100,15 @@ class OpenAIImageQuery:
                 return {"error": "No image data returned from OpenAI"}
 
         except Exception as e:
-            return {"error": f"Failed to generate image from OpenAI: {str(e)}"}
+            err_msg = str(e)
+            if hasattr(e, "response") and e.response is not None:
+                try:
+                    body = e.response.text or e.response.content
+                    if body:
+                        logger.warning(
+                            "OpenAI images API error response body: %s",
+                            body[:500] if len(body) > 500 else body,
+                        )
+                except Exception:
+                    pass
+            return {"error": f"Failed to generate image from OpenAI: {err_msg}"}

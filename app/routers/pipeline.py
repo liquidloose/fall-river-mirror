@@ -7,7 +7,7 @@ from typing import Any, Dict, Optional
 from fastapi import APIRouter, Depends, HTTPException, status
 
 from app.dependencies import AppDependencies
-from app.data.enum_classes import ArticleType, Artist, ImageModel, Journalist, Tone
+from app.data.enum_classes import ArticleType, Artist, ImageModel, Journalist, PipelineQueueMode, Tone
 
 router = APIRouter(tags=["pipeline"])
 logger = logging.getLogger(__name__)
@@ -17,15 +17,17 @@ logger = logging.getLogger(__name__)
 async def run_data_pipeline(
     amount: int,
     channel_url: Optional[str] = None,
+    queue_mode: PipelineQueueMode = PipelineQueueMode.SKIP_WHISPER,
     auto_build: bool = True,
     journalist: Journalist = Journalist.FR_J1,
     tone: Tone = Tone.PROFESSIONAL,
     article_type: ArticleType = ArticleType.NEWS,
     model: ImageModel = ImageModel.GPT_IMAGE_1,
-    sync_to_wordpress: bool = False,
+    sync_to_wordpress: bool = True,
     deps: AppDependencies = Depends(AppDependencies),
 ) -> Dict[str, Any]:
-    """Run the full data pipeline: build queue, fetch transcripts, write articles, bullet points, images. Optionally sync to WordPress."""
+    """Run the full data pipeline: build queue (or skip), fetch transcripts, write articles, bullet points, images. Optionally sync to WordPress.
+    queue_mode: Use Whisper = build queue and use Whisper when needed; Skip Whisper = skip queue build, only process existing queue."""
     if not deps.database:
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
@@ -49,6 +51,7 @@ async def run_data_pipeline(
         "success": True,
         "message": "Pipeline run complete",
         "amount": amount,
+        "queue_mode": queue_mode.value,
         "queue_build": None,
         "transcript_fetch": None,
         "article_write": None,
@@ -62,19 +65,26 @@ async def run_data_pipeline(
     if deps.wordpress_sync_service:
         on_wp_ids = deps.wordpress_sync_service.get_article_youtube_ids()
 
-    try:
-        aggregated["queue_build"] = await pipeline.run_build_queue(
-            channel_url, amount, skip_youtube_ids_on_wp=on_wp_ids
-        )
-    except Exception as e:
-        aggregated["success"] = False
-        aggregated["queue_build"] = {"error": str(e)}
-        logger.error(f"Pipeline queue build failed: {e}")
-        return aggregated
+    skip_queue_build = queue_mode == PipelineQueueMode.SKIP_WHISPER
+    if skip_queue_build:
+        aggregated["queue_build"] = {"skipped": True, "message": "Queue build skipped (Skip Whisper mode)"}
+    else:
+        try:
+            aggregated["queue_build"] = await pipeline.run_build_queue(
+                channel_url, amount, skip_youtube_ids_on_wp=on_wp_ids
+            )
+        except Exception as e:
+            aggregated["success"] = False
+            aggregated["queue_build"] = {"error": str(e)}
+            logger.error(f"Pipeline queue build failed: {e}")
+            return aggregated
 
+    # When Skip Whisper, do not auto-build queue and only process videos that have captions (exclude Whisper-needed)
+    auto_build_for_fetch = auto_build and not skip_queue_build
+    include_whisper_items = queue_mode == PipelineQueueMode.USE_WHISPER
     try:
         aggregated["transcript_fetch"] = await pipeline.run_bulk_fetch_transcripts(
-            amount, auto_build, channel_url, skip_youtube_ids_on_wp=on_wp_ids
+            amount, auto_build_for_fetch, channel_url, skip_youtube_ids_on_wp=on_wp_ids, include_whisper_items=include_whisper_items
         )
     except Exception as e:
         aggregated["success"] = False
@@ -118,21 +128,6 @@ async def run_data_pipeline(
                 for r in image_results
                 if r.get("status") == "success" and "article_id" in r
             ]
-            # #region agent log
-            try:
-                import json
-                existing_wp = wp_svc.get_article_youtube_ids()
-                db = deps.database
-                for aid in article_ids:
-                    art = db.get_article_by_id(aid) if db else None
-                    yid = (art.get("youtube_id") or "").strip() if art else None
-                    already = yid in existing_wp if yid else None
-                    open("/code/.cursor/debug.log", "a").write(
-                        json.dumps({"hypothesisId": "H2_H3", "location": "pipeline.run_data_pipeline", "message": "wordpress sync candidate", "data": {"article_id": aid, "youtube_id": yid, "already_on_wordpress": already}, "timestamp": __import__("time").time() * 1000}) + "\n"
-                    )
-            except Exception:
-                pass
-            # #endregion
             synced = 0
             failed = 0
             errors = []
