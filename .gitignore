@@ -16,7 +16,8 @@ the-fall-river-mirror-mailer-*.json
 /WordPress/wp-content/*
 !/WordPress/wp-content/themes/
 /WordPress/wp-content/themes/*
-# fall-river-mirror-theme is a submodule; track it in its own repo only
+!/WordPress/wp-content/themes/fall-river-mirror-theme/
+# fall-river-mirror-theme is a submodule; track it only in its own repo (ignore working tree contents here)
 
 # Explicitly ignore plugins and other directories
 /WordPress/wp-content/plugins/
