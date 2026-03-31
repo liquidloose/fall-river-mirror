@@ -233,6 +233,18 @@ app.include_router(crawler.router)
 app.include_router(editor.router)
 
 
+@app.exception_handler(Exception)
+async def unhandled_exception_handler(request: Request, exc: Exception):
+    """Log any unhandled exception so it appears in app.log; then return 500."""
+    if isinstance(exc, HTTPException):
+        raise exc
+    logger.error("Unhandled exception: %s", exc, exc_info=True)
+    return JSONResponse(
+        status_code=500,
+        content={"detail": "Internal server error"},
+    )
+
+
 @app.on_event("startup")
 def _log_db_counts_on_startup() -> None:
     """Log transcript and article counts at startup so we can detect DB replacement or data loss."""

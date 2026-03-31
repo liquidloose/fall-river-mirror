@@ -1,7 +1,11 @@
+import json
 import os
 import random
 import logging
 from typing import Dict, Any, Optional
+
+from fastapi.responses import JSONResponse
+
 from ..creation_tools.base_creator import BaseCreator
 from ..creation_tools.openai_image_query import OpenAIImageQuery
 from ..creation_tools.xai_text_query import XAITextQuery
@@ -91,8 +95,14 @@ class BaseArtist(BaseCreator):
                 message=f"Summarize these bullet points into a brief visual description:\n\n{bullet_points}",
             )
 
-            if hasattr(response, "status_code"):
-                logger.warning(f"Snippet generation failed: {response.content}")
+            if isinstance(response, JSONResponse):
+                try:
+                    err = json.loads(response.body.decode()).get(
+                        "error", "Unknown xAI API error"
+                    )
+                except Exception:
+                    err = response.body.decode(errors="replace")[:500]
+                logger.warning("Snippet generation failed: %s", err)
                 return bullet_points[:300]
 
             snippet = response.get("content", response.get("response", ""))

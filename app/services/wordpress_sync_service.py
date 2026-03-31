@@ -604,11 +604,24 @@ class WordPressSyncService:
                     wordpress_url,
                 )
             response.raise_for_status()
-            logger.info(f"Successfully synced article {article_id} to WordPress (create)")
+            logger.info("Successfully synced article %s to WordPress (create)", article_id)
+            try:
+                wp_response = response.json()
+            except (ValueError, TypeError) as e:
+                logger.error(
+                    "sync_one_article: WordPress returned non-JSON response for article %s: %s",
+                    article_id, e,
+                )
+                return {
+                    "success": False,
+                    "error": f"WordPress response was not valid JSON: {e}",
+                    "http_status": response.status_code,
+                    "raw_response": (response.text or "")[:2000],
+                }
             return {
                 "success": True,
                 "article_id": article_id,
-                "wordpress_response": response.json(),
+                "wordpress_response": wp_response,
             }
         except requests.exceptions.RequestException as e:
             resp = getattr(e, "response", None)
@@ -625,6 +638,17 @@ class WordPressSyncService:
                 "error": body if body else str(e),
                 "http_status": status_code,
                 "raw_response": body or None,
+            }
+        except Exception as e:
+            logger.error(
+                "sync_one_article unexpected error for article %s: %s",
+                article_id, e,
+                exc_info=True,
+            )
+            return {
+                "success": False,
+                "error": str(e),
+                "http_status": status.HTTP_500_INTERNAL_SERVER_ERROR,
             }
 
     def update_article_title_and_content(self, article_id: int) -> Dict[str, Any]:

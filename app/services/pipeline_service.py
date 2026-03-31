@@ -116,43 +116,61 @@ class PipelineService:
             except Exception as e:
                 logger.warning(f"Auto-build queue failed: {e}. Proceeding with available.")
         # When include_whisper_items: process Whisper-needed first, then oldest. Otherwise only caption-available (oldest first).
-        cursor.execute(
-            """SELECT T1.youtube_id, T1.transcript_available
-               FROM video_queue AS T1
-               LEFT JOIN transcripts AS T2 ON T1.youtube_id = T2.youtube_id
-               WHERE T2.youtube_id IS NULL"""
-            + caption_only_clause
-            + """
-               ORDER BY T1.transcript_available ASC, T1.id ASC
-               LIMIT ?""",
-            (amount,),
-        )
-        raw_queue_items = cursor.fetchall()
-        # Skip videos already on WordPress: remove from queue and do not fetch transcript
-        queue_items = []
-        for row in raw_queue_items:
-            yid = (row[0] or "").strip()
-            if yid and yid in on_wp:
+        results = []
+        transcripts_fetched = 0
+        transcripts_failed = 0
+        attempts = 0
+        RATE_LIMIT_MS = 5000
+        # Skip failures until we get `amount` successes, queue is empty, or we cycle without any success.
+        # Failed rows are removed and re-inserted so they sort last (new id), instead of blocking the head.
+        attempted_failures_in_streak: Set[str] = set()
+
+        def _pop_next_queue_row():
+            cursor.execute(
+                """SELECT T1.youtube_id, T1.transcript_available
+                   FROM video_queue AS T1
+                   LEFT JOIN transcripts AS T2 ON T1.youtube_id = T2.youtube_id
+                   WHERE T2.youtube_id IS NULL"""
+                + caption_only_clause
+                + """
+                   ORDER BY T1.transcript_available ASC, T1.id ASC
+                   LIMIT 1""",
+            )
+            return cursor.fetchone()
+
+        def _requeue_at_end(yid: str, transcript_available: int) -> None:
+            cursor.execute("DELETE FROM video_queue WHERE youtube_id = ?", (yid,))
+            cursor.execute(
+                "INSERT INTO video_queue (youtube_id, transcript_available) VALUES (?, ?)",
+                (yid, transcript_available),
+            )
+            db.conn.commit()
+
+        while transcripts_fetched < amount:
+            row = _pop_next_queue_row()
+            if not row:
+                break
+            youtube_id = row[0]
+            transcript_available = row[1] if len(row) > 1 else 1
+            yid = (youtube_id or "").strip()
+            if not yid:
+                cursor.execute("DELETE FROM video_queue WHERE youtube_id = ?", (youtube_id,))
+                db.conn.commit()
+                continue
+            if yid in on_wp:
                 cursor.execute("DELETE FROM video_queue WHERE youtube_id = ?", (yid,))
                 db.conn.commit()
                 logger.info("Skipping %s - already on WordPress (removed from queue)", yid)
                 continue
-            queue_items.append(row)
-        if not queue_items:
-            return {
-                "success": False,
-                "message": "No videos in queue without a transcript",
-                "transcripts_fetched": 0,
-                "transcripts_failed": 0,
-                "results": [],
-            }
-        results = []
-        transcripts_fetched = 0
-        transcripts_failed = 0
-        RATE_LIMIT_MS = 5000
-        for row in queue_items:
-            youtube_id = row[0]
-            transcript_available = row[1] if len(row) > 1 else 1
+            if yid in attempted_failures_in_streak:
+                logger.info(
+                    "Transcript fetch: queue cycled without enough successes "
+                    "(failed streak covers pending items); stopping with %s fetched (requested %s)",
+                    transcripts_fetched,
+                    amount,
+                )
+                break
+            attempts += 1
             try:
                 if transcript_available == 0:
                     logger.info("Queue item %s has no captions; using Whisper", youtube_id)
@@ -165,6 +183,7 @@ class PipelineService:
                         error_content.get("error", "Unknown error during transcript fetch")
                     )
                 transcripts_fetched += 1
+                attempted_failures_in_streak.clear()
                 from_cache = transcript_result.get("source") == "database_cache"
                 # Verify new transcripts are actually in DB so we don't report success without persist
                 if not from_cache:
@@ -182,18 +201,49 @@ class PipelineService:
                     "from_cache": from_cache,
                     "saved_to_db": from_cache or True,
                 })
+                text_len = len(
+                    transcript_result.get("transcript")
+                    or transcript_result.get("content")
+                    or ""
+                )
+                logger.info(
+                    "Transcript fetch OK: youtube_id=%s source=%s from_cache=%s chars=%s",
+                    youtube_id,
+                    transcript_result.get("source"),
+                    from_cache,
+                    text_len,
+                )
                 cursor.execute(
                     "DELETE FROM video_queue WHERE youtube_id = ?", (youtube_id,)
                 )
                 db.conn.commit()
             except Exception as e:
                 transcripts_failed += 1
-                results.append({"youtube_id": youtube_id, "status": "failed", "error": str(e)})
+                attempted_failures_in_streak.add(yid)
+                _requeue_at_end(yid, transcript_available)
+                results.append({
+                    "youtube_id": youtube_id,
+                    "status": "failed",
+                    "error": str(e),
+                    "requeued": True,
+                })
+                logger.warning(
+                    "Pipeline transcript fetch failed for youtube_id=%s (moved to end of queue): %s",
+                    youtube_id,
+                    e,
+                )
             time.sleep(RATE_LIMIT_MS / 1000.0)
+
+        if attempts == 0 and transcripts_fetched == 0:
+            return {
+                "success": False,
+                "message": "No videos in queue without a transcript",
+                "transcripts_fetched": 0,
+                "transcripts_failed": 0,
+                "results": [],
+            }
         message = (
-            f"Processed {len(queue_items)} videos from queue"
-            if len(queue_items) >= amount
-            else f"Processed {len(queue_items)} videos from queue (requested {amount}, only {len(queue_items)} available)"
+            f"Processed {attempts} attempt(s); fetched {transcripts_fetched} (requested up to {amount})"
         )
         response = {
             "success": True,
@@ -347,6 +397,7 @@ class PipelineService:
             except Exception as e:
                 articles_failed += 1
                 results.append({"youtube_id": youtube_id, "status": "failed", "error": str(e)})
+                logger.warning("Pipeline article write failed for youtube_id=%s: %s", youtube_id, e)
         return {
             "success": True,
             "message": f"Processed {len(transcripts)} transcripts",
@@ -357,22 +408,32 @@ class PipelineService:
         }
 
     def run_bullet_points_batch(self, amount: int) -> Dict[str, Any]:
-        """Generate bullet points for articles that don't have them; returns result dict."""
+        """Generate bullet points for articles that don't have them; returns result dict.
+        Newest articles first so a pipeline run bullets the article just written, not stale rows."""
         db = self._database
         if not db:
             return {"processed": 0, "skipped": 0, "errors": []}
-        articles = db.get_all_articles()
+        all_articles = db.get_all_articles()
+        articles = [a for a in all_articles if not a.get("bullet_points")]
+        articles.sort(key=lambda a: a["id"], reverse=True)
         journalist = AureliusStone()
-        results = {"processed": 0, "skipped": 0, "errors": []}
+        results = {
+            "processed": 0,
+            "skipped": len(all_articles) - len(articles),
+            "errors": [],
+        }
         for article in articles:
             if results["processed"] >= amount:
                 break
-            if article.get("bullet_points"):
-                results["skipped"] += 1
+            try:
+                result = journalist.generate_bullet_points(article["content"])
+            except Exception as e:
+                results["errors"].append({"id": article["id"], "error": str(e)})
+                logger.warning("Pipeline bullet points failed for article id=%s: %s", article["id"], e)
                 continue
-            result = journalist.generate_bullet_points(article["content"])
             if result.get("error"):
                 results["errors"].append({"id": article["id"], "error": result["error"]})
+                logger.warning("Pipeline bullet points error for article id=%s: %s", article["id"], result["error"])
                 continue
             db.update_article_bullet_points(article["id"], result["bullet_points"])
             results["processed"] += 1
@@ -406,6 +467,7 @@ class PipelineService:
                FROM articles a
                LEFT JOIN art ON a.id = art.article_id
                WHERE a.bullet_points IS NOT NULL AND a.bullet_points != '' AND art.id IS NULL
+               ORDER BY a.id DESC
                LIMIT ?""",
             (amount,),
         )
@@ -475,6 +537,7 @@ class PipelineService:
             except Exception as e:
                 images_failed += 1
                 results.append({"article_id": article_id, "status": "failed", "error": str(e)})
+                logger.warning("Pipeline image generate failed for article_id=%s: %s", article_id, e)
         return {
             "success": True,
             "message": f"Processed {len(articles)} articles",

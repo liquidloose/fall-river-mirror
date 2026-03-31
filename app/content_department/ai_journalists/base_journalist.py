@@ -1,5 +1,9 @@
+import json
 import logging
 from typing import Dict, Any, Optional
+
+from fastapi.responses import JSONResponse
+
 from ...data.enum_classes import Tone, ArticleType
 from ..creation_tools.base_creator import BaseCreator
 from ..creation_tools.xai_text_query import XAITextQuery
@@ -153,10 +157,16 @@ class BaseJournalist(BaseCreator):
                 tone=personality["tone"],
             )
 
-            if hasattr(response, "status_code"):
+            if isinstance(response, JSONResponse):
+                try:
+                    err = json.loads(response.body.decode()).get(
+                        "error", "Unknown xAI API error"
+                    )
+                except Exception:
+                    err = response.body.decode(errors="replace")[:500]
                 return {
                     "title": "Error",
-                    "content": f"Error generating article: {response.content}",
+                    "content": f"Error generating article: {err}",
                 }
 
             return self._format_response(response)
@@ -197,10 +207,16 @@ class BaseJournalist(BaseCreator):
                 tone="neutral",
             )
 
-            if hasattr(response, "status_code"):
+            if isinstance(response, JSONResponse):
+                try:
+                    err = json.loads(response.body.decode()).get(
+                        "error", "Unknown xAI API error"
+                    )
+                except Exception:
+                    err = response.body.decode(errors="replace")[:500]
                 return {
                     "bullet_points": None,
-                    "error": f"API error: {response.content}",
+                    "error": f"API error: {err}",
                 }
 
             bullet_points = response.get("response", "")
