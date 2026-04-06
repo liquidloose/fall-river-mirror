@@ -1,12 +1,12 @@
 """Editor endpoints: spell-check and correct official names in articles."""
 
 import logging
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List, Literal, Optional
 
 from fastapi import APIRouter, Depends, HTTPException, status
 
 from app.dependencies import AppDependencies
-from app.content_department.ai_editors import EditorAgent
+from app.content_department.ai_editors import EditorAgent, FactCheckAgent
 
 router = APIRouter(prefix="/editor", tags=["editor"])
 logger = logging.getLogger(__name__)
@@ -128,6 +128,95 @@ def spell_check_batch(
         "corrections_applied": corrections_applied,
         "no_errors_count": no_errors_count,
         "wordpress_synced_count": wordpress_synced_count,
+        "failed_count": len(failed),
+        "failed": failed,
+    }
+
+
+@router.post("/article/by-youtube/{youtube_id}/fact-check")
+def fact_check_article(
+    youtube_id: str,
+    scope: Literal["article", "bullet_points"] = "article",
+    deps: AppDependencies = Depends(AppDependencies),
+) -> Dict[str, Any]:
+    """Fact-check against transcript (look up by YouTube ID). Switch: scope=article (default) fact-checks title + content; scope=bullet_points fact-checks bullet points only."""
+    logger.info("Fact-check requested for youtube_id=%s, scope=%s", youtube_id, scope)
+    db = deps.database
+    if not db:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Database not available",
+        )
+    article = db.get_article_by_youtube_id(youtube_id)
+    if not article:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"No article found for YouTube ID {youtube_id}",
+        )
+    article_id = article["id"]
+    agent = FactCheckAgent(db)
+    result = agent.fact_check(article_id, scope=scope)
+    if not result["success"]:
+        msg = result.get("message", "")
+        if msg in ("Article has no linked transcript", "Transcript not found"):
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail=msg,
+            )
+    logger.info("Fact-check completed for youtube_id=%s (article_id=%s): %s", youtube_id, article_id, result.get("message", "ok"))
+    return {
+        "success": result["success"],
+        "message": result.get("message"),
+        "youtube_id": article.get("youtube_id"),
+        "title": article.get("title"),
+        "report": result.get("report"),
+    }
+
+
+@router.post("/fact-check-batch")
+def fact_check_batch(
+    limit: Optional[int] = None,
+    scope: Literal["article", "bullet_points"] = "article",
+    deps: AppDependencies = Depends(AppDependencies),
+) -> Dict[str, Any]:
+    """Run fact-check on multiple articles. Switch: scope=article (default) fact-checks title + content; scope=bullet_points fact-checks bullet points only. Optional limit caps how many to process. Skips articles without transcript_id."""
+    db = deps.database
+    if not db:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Database not available",
+        )
+    all_articles = db.get_all_articles()
+    eligible = [a for a in all_articles if a.get("transcript_id")]
+    if limit is not None and limit > 0:
+        articles = eligible[:limit]
+    else:
+        articles = eligible
+    processed = 0
+    failed: List[Dict[str, Any]] = []
+    reports: List[Dict[str, Any]] = []
+    agent = FactCheckAgent(db)
+    logger.info("Fact-check batch started: processing %s articles (limit=%s, scope=%s)", len(articles), limit, scope)
+    for article in articles:
+        article_id = article.get("id")
+        if not article_id:
+            continue
+        try:
+            result = agent.fact_check(article_id, scope=scope)
+            processed += 1
+            if not result.get("success"):
+                failed.append({"youtube_id": article.get("youtube_id"), "title": article.get("title"), "error": result.get("message", "Unknown error")})
+            else:
+                reports.append({"youtube_id": article.get("youtube_id"), "title": article.get("title"), "report": result.get("report")})
+        except Exception as e:
+            logger.exception("Fact-check batch failed for article_id=%s: %s", article_id, e)
+            failed.append({"youtube_id": article.get("youtube_id"), "title": article.get("title"), "error": str(e)})
+    logger.info("Fact-check batch completed: processed=%s, failed=%s", processed, len(failed))
+    return {
+        "success": True,
+        "total_eligible": len(eligible),
+        "processed": processed,
+        "reports": reports,
         "failed_count": len(failed),
         "failed": failed,
     }
