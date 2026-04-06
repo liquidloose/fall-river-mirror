@@ -1,6 +1,31 @@
 """
-Pipeline service: build queue, bulk fetch transcripts, bulk write articles,
-bullet points batch, image batch. Used by the pipeline router.
+Pipeline service orchestrating the full content production workflow.
+
+The pipeline runs in stages, each handled by a dedicated method on
+``PipelineService``:
+
+1. **Build queue** (``run_build_queue``) — Scrape a YouTube channel and
+   populate ``video_queue`` with new video IDs that haven't been
+   processed yet.
+
+2. **Fetch transcripts** (``run_bulk_fetch_transcripts``) — Pull
+   transcripts for queued videos, either from YouTube's built-in captions
+   or via OpenAI Whisper when captions are unavailable, and persist them
+   to ``transcripts``.
+
+3. **Write articles** (``run_bulk_write_articles``) — Feed transcripts to
+   an AI journalist (e.g. AureliusStone or FRJ1) to produce structured
+   articles, which are saved to ``articles``.
+
+4. **Bullet points** (``run_bullet_points_batch``) — Generate short
+   bullet-point summaries for articles that don't have them yet.
+
+5. **Image generation** (``run_image_batch``) — Create an AI-generated
+   cover image for each article that has bullet points but no art, saving
+   results to the ``art`` table.
+
+All methods return plain ``dict`` result objects so they can be serialised
+directly to JSON by the pipeline router.
 """
 
 import json
@@ -28,8 +53,23 @@ logger = logging.getLogger(__name__)
 
 class PipelineService:
     """
-    Runs pipeline steps: queue build, transcript fetch, article write,
-    bullet points, image generation. Each method returns a result dict.
+    Orchestrates each stage of the content production pipeline.
+
+    The service is intentionally dependency-injected: each collaborator
+    (database, transcript manager, etc.) is passed in at construction
+    time so individual stages can degrade gracefully when a dependency is
+    unavailable (they return a ``success: False`` dict rather than
+    raising).
+
+    Typical call order for a full pipeline run::
+
+        svc = PipelineService(db, transcript_mgr, journalist_mgr, image_svc)
+
+        await svc.run_build_queue(channel_url, limit=10)
+        await svc.run_bulk_fetch_transcripts(amount=10, auto_build=False)
+        await svc.run_bulk_write_articles(amount=10, journalist=..., tone=..., article_type=...)
+        svc.run_bullet_points_batch(amount=10)
+        svc.run_image_batch(amount=10, artist=..., model=...)
     """
 
     def __init__(
@@ -39,6 +79,16 @@ class PipelineService:
         journalist_manager: Optional[JournalistManager],
         image_service: Optional[ImageService],
     ) -> None:
+        """
+        Args:
+            database: SQLite database wrapper used by all pipeline stages.
+            transcript_manager: Handles YouTube caption fetching and Whisper
+                transcription.
+            journalist_manager: Persists and retrieves journalist profile
+                records used when saving articles.
+            image_service: Utility for downloading/decoding remote image URLs
+                before storing them in the database.
+        """
         self._database = database
         self._transcript_manager = transcript_manager
         self._journalist_manager = journalist_manager
@@ -50,7 +100,29 @@ class PipelineService:
         limit: int,
         skip_youtube_ids_on_wp: Optional[Set[str]] = None,
     ) -> Dict[str, Any]:
-        """Build video queue; returns result dict. skip_youtube_ids_on_wp: do not queue these (already on WordPress)."""
+        """Scrape a YouTube channel and add new videos to ``video_queue``.
+
+        Delegates to ``VideoQueueManager.queue_new_videos``, which walks the
+        channel's upload history until it has found ``limit`` videos that are
+        not yet in the queue or the transcripts table.
+
+        Args:
+            channel_url: Full YouTube channel URL (e.g.
+                ``https://www.youtube.com/@SomeChannel``).
+            limit: Maximum number of new videos to add to the queue.
+            skip_youtube_ids_on_wp: YouTube IDs that are already published on
+                WordPress and should therefore never be queued.
+
+        Returns:
+            A dict with keys:
+
+            - ``success`` (bool): ``False`` only when the database is
+              unavailable.
+            - ``message`` (str): Human-readable summary.
+            - ``results`` (dict): Raw output from
+              ``VideoQueueManager.queue_new_videos``, including a
+              ``newly_queued`` count.
+        """
         db = self._database
         if not db:
             return {"success": False, "error": "Database not available", "results": []}
@@ -74,9 +146,53 @@ class PipelineService:
         skip_youtube_ids_on_wp: Optional[Set[str]] = None,
         include_whisper_items: bool = True,
     ) -> Dict[str, Any]:
-        """Bulk fetch transcripts from queue; returns result dict.
-        skip_youtube_ids_on_wp: do not fetch these (already on WordPress).
-        include_whisper_items: if False, only select videos with captions (transcript_available=1); skip Whisper-needed items."""
+        """Fetch transcripts for queued videos and persist them to ``transcripts``.
+
+        Works through ``video_queue`` in priority order: videos that need
+        Whisper (``transcript_available=0``) are attempted first because they
+        are slower; caption-only videos follow.  A 5-second rate-limit delay
+        is applied between each attempt to avoid hammering the YouTube API or
+        Whisper service.
+
+        **Failure handling**: if a video fails to transcribe (including after
+        the Whisper fallback), it is logged at ERROR level, skipped for this
+        run, and left in the queue for the next run.  The loop continues with
+        the next queued video.  Only when zero transcripts are successfully
+        fetched across all attempts does the method return ``success: False``,
+        which stops all downstream pipeline steps.
+
+        **Auto-build**: when the queue has fewer pending items than
+        ``amount``, and ``auto_build=True``, the method calls
+        ``run_build_queue`` internally to top up the queue before processing.
+
+        Args:
+            amount: Target number of *successful* transcript fetches.
+            auto_build: When ``True`` and the queue is too short, auto-
+                matically scrape the channel for more videos before fetching.
+            channel_url: Channel to scrape during auto-build.  Falls back to
+                the ``DEFAULT_YOUTUBE_CHANNEL_URL`` environment variable.
+            skip_youtube_ids_on_wp: IDs already on WordPress; any matching
+                queue entries are silently removed rather than fetched.
+            include_whisper_items: When ``False``, only videos that have
+                native YouTube captions (``transcript_available=1``) are
+                processed.  Useful when Whisper quota is exhausted.
+
+        Returns:
+            A dict with keys:
+
+            - ``success`` (bool): ``False`` when a dependency is unavailable,
+              the queue was empty, or any transcript fetch fails.
+            - ``message`` (str): Human-readable summary of attempts vs.
+              successes.
+            - ``transcripts_fetched`` (int)
+            - ``transcripts_failed`` (int)
+            - ``results`` (list[dict]): Per-video status with ``youtube_id``,
+              ``status`` (``"success"`` / ``"failed"``), ``source``,
+              ``from_cache``, and ``saved_to_db`` fields.
+            - ``auto_build`` (dict, optional): Present only when an auto-
+              build was triggered; includes ``videos_added`` and
+              ``channel_url``.
+        """
         db = self._database
         transcript_mgr = self._transcript_manager
         if not db or not transcript_mgr:
@@ -90,7 +206,6 @@ class PipelineService:
         on_wp = skip_youtube_ids_on_wp or set()
         channel_url = channel_url or os.getenv("DEFAULT_YOUTUBE_CHANNEL_URL")
         cursor = db.cursor
-        # Restrict to caption-available only when Skip Whisper mode
         caption_only_clause = "" if include_whisper_items else " AND T1.transcript_available = 1"
         cursor.execute(
             """SELECT COUNT(*)
@@ -115,36 +230,35 @@ class PipelineService:
                 auto_build_added = build_results.get("newly_queued", 0)
             except Exception as e:
                 logger.warning(f"Auto-build queue failed: {e}. Proceeding with available.")
-        # When include_whisper_items: process Whisper-needed first, then oldest. Otherwise only caption-available (oldest first).
         results = []
         transcripts_fetched = 0
         transcripts_failed = 0
         attempts = 0
         RATE_LIMIT_MS = 5000
-        # Skip failures until we get `amount` successes, queue is empty, or we cycle without any success.
-        # Failed rows are removed and re-inserted so they sort last (new id), instead of blocking the head.
-        attempted_failures_in_streak: Set[str] = set()
+        # Track IDs that failed this run so we skip them in subsequent iterations
+        # without removing them from the queue (they stay for the next run).
+        failed_this_run: Set[str] = set()
 
         def _pop_next_queue_row():
+            exclude_clause = ""
+            exclude_params: tuple = ()
+            if failed_this_run:
+                placeholders = ",".join(["?"] * len(failed_this_run))
+                exclude_clause = f" AND T1.youtube_id NOT IN ({placeholders})"
+                exclude_params = tuple(failed_this_run)
             cursor.execute(
                 """SELECT T1.youtube_id, T1.transcript_available
                    FROM video_queue AS T1
                    LEFT JOIN transcripts AS T2 ON T1.youtube_id = T2.youtube_id
                    WHERE T2.youtube_id IS NULL"""
                 + caption_only_clause
+                + exclude_clause
                 + """
-                   ORDER BY T1.transcript_available ASC, T1.id ASC
+                   ORDER BY T1.id ASC
                    LIMIT 1""",
+                exclude_params,
             )
             return cursor.fetchone()
-
-        def _requeue_at_end(yid: str, transcript_available: int) -> None:
-            cursor.execute("DELETE FROM video_queue WHERE youtube_id = ?", (yid,))
-            cursor.execute(
-                "INSERT INTO video_queue (youtube_id, transcript_available) VALUES (?, ?)",
-                (yid, transcript_available),
-            )
-            db.conn.commit()
 
         while transcripts_fetched < amount:
             row = _pop_next_queue_row()
@@ -162,28 +276,17 @@ class PipelineService:
                 db.conn.commit()
                 logger.info("Skipping %s - already on WordPress (removed from queue)", yid)
                 continue
-            if yid in attempted_failures_in_streak:
-                logger.info(
-                    "Transcript fetch: queue cycled without enough successes "
-                    "(failed streak covers pending items); stopping with %s fetched (requested %s)",
-                    transcripts_fetched,
-                    amount,
-                )
-                break
             attempts += 1
             try:
-                if transcript_available == 0:
-                    logger.info("Queue item %s has no captions; using Whisper", youtube_id)
-                    transcript_result = transcript_mgr.get_transcript_via_whisper(youtube_id)
-                else:
-                    transcript_result = transcript_mgr.get_transcript(youtube_id)
+                transcript_result = transcript_mgr.get_transcript(
+                    youtube_id, allow_whisper_fallback=include_whisper_items
+                )
                 if isinstance(transcript_result, JSONResponse):
                     error_content = json.loads(transcript_result.body.decode())
                     raise Exception(
                         error_content.get("error", "Unknown error during transcript fetch")
                     )
                 transcripts_fetched += 1
-                attempted_failures_in_streak.clear()
                 from_cache = transcript_result.get("source") == "database_cache"
                 # Verify new transcripts are actually in DB so we don't report success without persist
                 if not from_cache:
@@ -219,28 +322,38 @@ class PipelineService:
                 db.conn.commit()
             except Exception as e:
                 transcripts_failed += 1
-                attempted_failures_in_streak.add(yid)
-                _requeue_at_end(yid, transcript_available)
+                failed_this_run.add(yid)
                 results.append({
                     "youtube_id": youtube_id,
                     "status": "failed",
                     "error": str(e),
-                    "requeued": True,
                 })
+                # Mark as transcript_available=0 so SKIP_WHISPER mode ignores it next run.
+                # It stays in the queue and will be retried when USE_WHISPER mode is active.
+                cursor.execute(
+                    "UPDATE video_queue SET transcript_available = 0 WHERE youtube_id = ?",
+                    (yid,),
+                )
+                db.conn.commit()
                 logger.warning(
-                    "Pipeline transcript fetch failed for youtube_id=%s (moved to end of queue): %s",
+                    "Transcript fetch failed for youtube_id=%s; marked transcript_available=0 in queue: %s",
                     youtube_id,
                     e,
                 )
             time.sleep(RATE_LIMIT_MS / 1000.0)
 
-        if attempts == 0 and transcripts_fetched == 0:
+        if transcripts_fetched == 0:
+            message = (
+                "No videos in queue without a transcript"
+                if attempts == 0
+                else f"All {attempts} transcript fetch attempt(s) failed; no transcripts fetched this run"
+            )
             return {
                 "success": False,
-                "message": "No videos in queue without a transcript",
+                "message": message,
                 "transcripts_fetched": 0,
-                "transcripts_failed": 0,
-                "results": [],
+                "transcripts_failed": transcripts_failed,
+                "results": results,
             }
         message = (
             f"Processed {attempts} attempt(s); fetched {transcripts_fetched} (requested up to {amount})"
@@ -268,7 +381,55 @@ class PipelineService:
         article_type: ArticleType,
         skip_youtube_ids: Optional[Set[str]] = None,
     ) -> Dict[str, Any]:
-        """Bulk write articles from transcripts; returns result dict. skip_youtube_ids: do not write articles for these (e.g. already on WordPress)."""
+        """Generate articles from stored transcripts using an AI journalist.
+
+        Selects up to ``amount`` transcripts that do not yet have a
+        corresponding article (``LEFT JOIN articles … WHERE a.id IS NULL``),
+        oldest first.  For each transcript the journalist's ``load_context``
+        and ``generate_article`` methods are called, and the resulting article
+        is saved via ``Database.add_article``.
+
+        If the journalist profile doesn't exist in the database yet it is
+        created automatically via ``JournalistManager.upsert_journalist``.
+
+        When no eligible transcripts are found, the method returns a detailed
+        diagnostics block explaining how many transcripts exist without
+        articles and how many were excluded due to the WordPress skip-list,
+        which helps distinguish "nothing to do" from "everything is already
+        published".
+
+        Args:
+            amount: Maximum number of articles to generate in this call.
+            journalist: Which AI journalist persona to use (see
+                ``Journalist`` enum).
+            tone: Writing tone to pass to the journalist's context loader
+                (e.g. ``Tone.NEUTRAL``, ``Tone.EDITORIAL``).
+            article_type: Article format/type (e.g. ``ArticleType.STANDARD``).
+            skip_youtube_ids: YouTube IDs whose transcripts should be ignored
+                because the corresponding article already exists on WordPress.
+
+        Returns:
+            A dict with keys:
+
+            - ``success`` (bool): ``False`` when dependencies are missing or
+              no eligible transcripts were found.
+            - ``message`` (str): Human-readable summary.
+            - ``articles_generated`` (int)
+            - ``articles_failed`` (int)
+            - ``article_ids`` (list[int]): Database IDs of newly created
+              articles.
+            - ``results`` (list[dict]): Per-transcript status with
+              ``youtube_id``, ``transcript_id``, ``status``, and ``title``.
+            - ``diagnostics`` (dict, optional): Present only when 0
+              transcripts were eligible; contains ``transcripts_without_
+              article``, ``excluded_by_wordpress``, and
+              ``skip_youtube_ids_count``.
+
+        Raises:
+            ValueError: If the ``journalist`` enum value has no corresponding
+                implementation class, or the journalist profile could not be
+                created in the database.
+        """
         db = self._database
         journalist_mgr = self._journalist_manager
         if not db or not journalist_mgr:
@@ -408,8 +569,33 @@ class PipelineService:
         }
 
     def run_bullet_points_batch(self, amount: int) -> Dict[str, Any]:
-        """Generate bullet points for articles that don't have them; returns result dict.
-        Newest articles first so a pipeline run bullets the article just written, not stale rows."""
+        """Generate bullet-point summaries for articles that don't have them yet.
+
+        Retrieves all articles, filters to those without ``bullet_points``,
+        then processes the newest ones first (descending ``id`` order).  This
+        ordering ensures that articles produced earlier in the same pipeline
+        run receive their summaries before older, potentially stale rows.
+
+        Bullet-point generation is handled by ``AureliusStone`` regardless of
+        which journalist originally wrote the article, since the summarisation
+        prompt is journalist-agnostic.
+
+        Errors on individual articles are collected in the ``errors`` list and
+        do not abort the batch.
+
+        Args:
+            amount: Maximum number of articles to process in this call.
+
+        Returns:
+            A dict with keys:
+
+            - ``processed`` (int): Number of articles successfully given
+              bullet points.
+            - ``skipped`` (int): Number of articles that already had bullet
+              points and were not re-processed.
+            - ``errors`` (list[dict]): Any per-article failures, each with
+              ``id`` and ``error`` keys.
+        """
         db = self._database
         if not db:
             return {"processed": 0, "skipped": 0, "errors": []}
@@ -442,7 +628,47 @@ class PipelineService:
     def run_image_batch(
         self, amount: int, artist: Artist, model: ImageModel
     ) -> Dict[str, Any]:
-        """Generate images for articles with bullet_points but no art; returns result dict."""
+        """Generate AI cover images for articles that have bullet points but no art.
+
+        Queries for articles where ``bullet_points`` is populated and no row
+        exists yet in the ``art`` table (``LEFT JOIN art … WHERE art.id IS
+        NULL``), newest first, up to ``amount``.
+
+        For each article the artist's ``generate_image`` method is called with
+        the article title and bullet points.  If the artist returns an
+        ``image_url``, the raw image bytes are fetched via
+        ``ImageService.decode_url`` and stored in the ``art`` table alongside
+        the prompt, medium, aesthetic, and other metadata.
+
+        A second existence check is performed inside the loop (before calling
+        the model) to guard against race conditions where art was added
+        between the initial query and the current iteration.
+
+        Args:
+            amount: Maximum number of images to generate.
+            artist: Which AI artist persona to use (see ``Artist`` enum).
+            model: Image model to use for generation (see ``ImageModel`` enum);
+                the enum value is passed directly to the artist and stored in
+                the database for provenance.
+
+        Returns:
+            A dict with keys:
+
+            - ``success`` (bool): Always ``True`` (individual failures are
+              captured in ``results``); ``False`` only when a required
+              dependency is unavailable.
+            - ``message`` (str): Human-readable summary.
+            - ``images_generated`` (int)
+            - ``images_failed`` (int)
+            - ``results`` (list[dict]): Per-article status with
+              ``article_id``, ``status`` (``"success"`` / ``"failed"`` /
+              ``"skipped"``), and either ``art_id`` + ``title`` on success or
+              an ``error`` string on failure.
+
+        Raises:
+            ValueError: If the ``artist`` enum value has no corresponding
+                implementation class.
+        """
         db = self._database
         image_svc = self._image_service
         if not db or not image_svc:

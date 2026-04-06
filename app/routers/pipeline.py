@@ -146,6 +146,14 @@ async def run_data_pipeline(
         log_step_outcome("transcript_fetch", aggregated["transcript_fetch"])
         return aggregated
 
+    if not aggregated["transcript_fetch"].get("success"):
+        aggregated["success"] = False
+        logger.error(
+            "Pipeline stopping: no transcripts fetched this run: %s",
+            aggregated["transcript_fetch"].get("message", "transcripts_fetched=0"),
+        )
+        return aggregated
+
     try:
         # Write articles for all transcripts that don't have one (1:1). WordPress skip is only when syncing.
         aggregated["article_write"] = await pipeline.run_bulk_write_articles(

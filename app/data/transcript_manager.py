@@ -78,6 +78,7 @@ class TranscriptManager:
     def get_transcript(
         self,
         youtube_id: str,
+        allow_whisper_fallback: bool = True,
     ) -> Dict[str, Any] | JSONResponse:
         """
         Fetch YouTube video transcript using youtube-transcript-api library (with cookies/proxy support).
@@ -85,6 +86,8 @@ class TranscriptManager:
 
         Args:
             youtube_id (str): YouTube video ID (e.g., "VjaU4DAxP6s")
+            allow_whisper_fallback (bool): When False, skip the internal Whisper fallback if
+                the YouTube Transcript API fails and raise immediately instead.
 
         Returns:
             Dict containing transcript data with source information, or error response
@@ -101,7 +104,7 @@ class TranscriptManager:
             )
 
             # Fetch rich data object with transcript and video metadata
-            rich_data = self._fetch_from_youtube(youtube_id)
+            rich_data = self._fetch_from_youtube(youtube_id, allow_whisper_fallback=allow_whisper_fallback)
             transcript = rich_data["transcript"]  # Extract transcript string
             video_metadata = rich_data["video_metadata"]  # Extract metadata
             source = rich_data.get("source", "youtube_transcript_api")  # Extract source
@@ -376,13 +379,15 @@ class TranscriptManager:
     # YOUTUBE API METHODS
     # =============================================================================
 
-    def _fetch_from_youtube(self, youtube_id: str) -> Dict[str, Any]:
+    def _fetch_from_youtube(self, youtube_id: str, allow_whisper_fallback: bool = True) -> Dict[str, Any]:
         """
         Fetch transcript and video metadata from YouTube APIs.
 
         Returns a rich data object containing both transcript and video metadata.
         First attempts to get transcript via YouTube Transcript API.
-        If that fails, downloads the video and uses OpenAI Whisper API.
+        If that fails and allow_whisper_fallback is True, downloads the video and
+        uses OpenAI Whisper API. If allow_whisper_fallback is False, raises immediately
+        instead of calling Whisper.
 
         Returns:
             Dict containing transcript, video metadata (title, duration, date, etc.)
@@ -494,10 +499,15 @@ class TranscriptManager:
             VideoUnavailable,
             CouldNotRetrieveTranscript,
         ) as e:
-            # These are legitimate "no transcript available" cases - fall back to Whisper
             logger.warning(
                 f"YouTube Transcript API failed for video {youtube_id}: {str(e)}"
             )
+            if not allow_whisper_fallback:
+                logger.info(
+                    f"Whisper fallback disabled for video {youtube_id}; raising without retry"
+                )
+                raise
+
             logger.info(
                 f"Attempting fallback to OpenAI Whisper for video: {youtube_id}"
             )
