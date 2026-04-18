@@ -2,6 +2,8 @@
 #   Dev, AI only:   docker compose --profile dev up -d mirror-ai-dev
 #   Dev, full stack: docker compose --profile dev up -d
 #   Prod (AI only): docker compose --profile prod up -d
+#   Prod includes Caddy (HTTPS) for Typesense on TYPESENSE_SEARCH_HOST; set it in .env / .env.prod.
+#   Typesense API is bound to 127.0.0.1:8108 on the host so browsers use HTTPS via Caddy, not raw 8108 from the internet.
 services:
   db:
     profiles: [dev]
@@ -149,13 +151,37 @@ services:
     networks:
       - fr-mirror-bridge
     ports:
-      - "8108:8108"
+      # Loopback only: other containers still reach typesense:8108 on fr-mirror-bridge; use Caddy (prod) for WAN HTTPS.
+      - "127.0.0.1:8108:8108"
     volumes:
       - ./typesense-data:/data
     command: '--data-dir /data --api-key=${TYPESENSE_API_KEY} --enable-cors'
+
+  caddy:
+    profiles: [prod]
+    image: caddy:2-alpine
+    container_name: fr-mirror-caddy
+    restart: unless-stopped
+    depends_on:
+      - typesense
+    networks:
+      - fr-mirror-bridge
+    ports:
+      - "80:80"
+      - "443:443"
+    env_file:
+      - .env
+      - .env.prod
+    volumes:
+      - ./caddy/Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - caddy_config:/config
+
 volumes:
   db_data: {}
-  
+  caddy_data: {}
+  caddy_config: {}
+
 networks:
   fr-mirror-bridge:
     driver: bridge
