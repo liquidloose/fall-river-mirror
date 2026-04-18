@@ -81,6 +81,8 @@ services:
 
   mirror-ai-dev:
     profiles: [dev]
+    depends_on:
+      - typesense
     build:
       context: .
       dockerfile: Dockerfile.ai
@@ -111,6 +113,8 @@ services:
 
   mirror-ai-prod:
     profiles: [prod]
+    depends_on:
+      - typesense
     build:
       context: .
       dockerfile: Dockerfile.ai
@@ -138,7 +142,17 @@ services:
         git config --global user.name ${GIT_USER_NAME} && 
         uvicorn app.main:app --host 0.0.0.0 --port 80 --reload
       "
-
+  typesense:
+    profiles: [dev, prod]
+    image: typesense/typesense:30.2
+    restart: on-failure
+    networks:
+      - fr-mirror-bridge
+    ports:
+      - "8108:8108"
+    volumes:
+      - ./typesense-data:/data
+    command: '--data-dir /data --api-key=${TYPESENSE_API_KEY} --enable-cors'
 volumes:
   db_data: {}
   

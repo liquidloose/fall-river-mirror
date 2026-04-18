@@ -45,6 +45,9 @@ asdf
 __pycache__/
 /vendor/*
 
+# Typesense bind-mounted data (docker-compose)
+typesense-data/
+
 /app/data/fr-mirror.db
 app.log
 
