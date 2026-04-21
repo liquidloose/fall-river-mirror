@@ -152,7 +152,7 @@ services:
       - fr-mirror-bridge
     ports:
       # Loopback only: other containers still reach typesense:8108 on fr-mirror-bridge; use Caddy (prod) for WAN HTTPS.
-      - "127.0.0.1:8108:8108"
+      - "8108:8108"
     volumes:
       - ./typesense-data:/data
     command: '--data-dir /data --api-key=${TYPESENSE_API_KEY} --enable-cors'
