@@ -90,8 +90,9 @@ class WhisperProcessor:
                         "preferredquality": "96",
                     }
                 ],
-                # Required for YouTube - enables JS challenge solving with deno
-                "extractor_args": {"youtube": {"remote_components": ["ejs:github"]}},
+                # Required for YouTube challenge solving; matches working CLI:
+                # yt-dlp --remote-components ejs:github ...
+                "remote_components": ["ejs:github"],
             }
 
             # Add proxy if configured (with rotating session ID)

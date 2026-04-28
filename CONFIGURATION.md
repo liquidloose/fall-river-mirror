@@ -55,6 +55,27 @@ The app calls WordPress at `WORDPRESS_BASE_URL` + `/wp-json/fr-mirror/v2/...` (c
 Transcript checks and transcript API use `WEBSHARE_PROXY_USERNAME` and `WEBSHARE_PROXY_PASSWORD` only.  
 For Whisper fallback (yt-dlp), you can optionally set `WEBSHARE_PROXY_HOST` and `WEBSHARE_PROXY_PORT` (one proxy IP from your Webshare list) so audio downloads go through the proxy.
 
+#### yt-dlp / YouTube audio download support
+```bash
+# Optional: Netscape-format cookies file used by yt-dlp for bot-check bypass
+YOUTUBE_COOKIES_PATH=/absolute/path/to/youtube_cookies.txt
+```
+
+If YouTube "download audio" jobs stay queued or fail, rebuild the AI container for your active Docker profile so the newest `yt-dlp` from `requirements.txt` is installed:
+
+```bash
+# Dev profile
+docker compose --profile dev build --no-cache mirror-ai-dev
+docker compose --profile dev up -d mirror-ai-dev
+docker compose --profile dev exec mirror-ai-dev python -m yt_dlp --version
+docker compose --profile=dev up
+
+# Prod profile
+docker compose --profile prod build --no-cache mirror-ai-prod
+docker compose --profile prod up -d mirror-ai-prod
+docker compose --profile prod exec mirror-ai-prod python -m yt_dlp --version
+```
+
 ## Setting Up Your .env File
 
 1. Copy the example below to a new file named `.env` in the project root:

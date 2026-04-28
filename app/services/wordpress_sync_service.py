@@ -585,7 +585,7 @@ class WordPressSyncService:
             "meeting_date": meeting_date or "",
             "view_count": article.get("view_count") or 0,
             "featured_image": featured_image or "",
-            "status": "publish",
+            "status": "draft",
         }
         wordpress_url = self._base_url + self._api_path_create
         try:

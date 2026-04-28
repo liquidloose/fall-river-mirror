@@ -85,6 +85,29 @@ Now you are ready to create the environment! The sites will be available at loca
 - **Dev (full stack):** `docker compose up` — WordPress, MySQL, and mirror-ai; uses `.env` (set `WORDPRESS_BASE_URL` to your local WordPress, e.g. `http://wordpress:80` or `http://localhost:9004`).
 - **Production (mirror-ai only):** `docker compose -f docker-compose.prod.yml up` — uses `.env` plus `.env.prod` (override `WORDPRESS_BASE_URL=https://fallrivermirror.com`). See [docs/plan-dev-production-mode.md](docs/plan-dev-production-mode.md) for details.
 
+### Refresh Python dependencies in profile-based Docker setups
+
+If YouTube downloads start failing while transcript lookups still work, `yt-dlp` may be out of date in the running container. Rebuild the AI image for the active profile so dependencies from `requirements.txt` are reinstalled.
+
+#### Dev profile (`mirror-ai-dev`)
+```bash
+docker compose --profile dev build --no-cache mirror-ai-dev
+docker compose --profile dev up -d mirror-ai-dev
+docker compose --profile dev exec mirror-ai-dev python -m yt_dlp --version
+```
+
+#### Prod profile (`mirror-ai-prod`)
+```bash
+docker compose --profile prod build --no-cache mirror-ai-prod
+docker compose --profile prod up -d mirror-ai-prod
+docker compose --profile prod exec mirror-ai-prod python -m yt_dlp --version
+```
+
+Notes:
+- Use `--no-cache` when you suspect stale dependency layers.
+- If your queue worker is a different service, replace `mirror-ai-dev` / `mirror-ai-prod` with that service name.
+- `yt-dlp` is installed through `requirements.txt` during `Dockerfile.ai` image build.
+
 
 ## API Endpoints
 
