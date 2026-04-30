@@ -88,6 +88,7 @@ async def run_data_pipeline(
             "articles_failed",
             "processed",
             "skipped",
+            "skipped_existing",
             "images_generated",
             "images_failed",
             "synced",
@@ -197,6 +198,7 @@ async def run_data_pipeline(
                 if r.get("status") == "success" and "article_id" in r
             ]
             synced = 0
+            skipped_existing = 0
             failed = 0
             errors = []
             try:
@@ -205,7 +207,9 @@ async def run_data_pipeline(
                 for aid in article_ids:
                     try:
                         result = wp_svc.sync_one_article(aid)
-                        if result.get("success"):
+                        if result.get("success") and result.get("skipped"):
+                            skipped_existing += 1
+                        elif result.get("success"):
                             synced += 1
                         else:
                             failed += 1
@@ -216,11 +220,22 @@ async def run_data_pipeline(
                         failed += 1
                         errors.append({"article_id": aid, "error": str(e)})
                         logger.error("Pipeline WordPress sync raised for article %s: %s", aid, e, exc_info=True)
-                aggregated["wordpress_sync"] = {"synced": synced, "failed": failed, "errors": errors}
+                aggregated["wordpress_sync"] = {
+                    "synced": synced,
+                    "skipped_existing": skipped_existing,
+                    "failed": failed,
+                    "errors": errors,
+                }
                 log_step_outcome("wordpress_sync", aggregated["wordpress_sync"])
             except Exception as e:
                 aggregated["success"] = False
-                aggregated["wordpress_sync"] = {"error": str(e), "synced": synced, "failed": failed, "errors": errors}
+                aggregated["wordpress_sync"] = {
+                    "error": str(e),
+                    "synced": synced,
+                    "skipped_existing": skipped_existing,
+                    "failed": failed,
+                    "errors": errors,
+                }
                 logger.error("Pipeline WordPress sync failed: %s", e, exc_info=True)
                 log_step_outcome("wordpress_sync", aggregated["wordpress_sync"])
     else:

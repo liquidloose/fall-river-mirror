@@ -343,18 +343,24 @@ class PipelineService:
             time.sleep(RATE_LIMIT_MS / 1000.0)
 
         if transcripts_fetched == 0:
-            message = (
-                "No videos in queue without a transcript"
-                if attempts == 0
-                else f"All {attempts} transcript fetch attempt(s) failed; no transcripts fetched this run"
-            )
-            return {
+            payload = {
                 "success": False,
-                "message": message,
+                "message": (
+                    "No videos in queue without a transcript"
+                    if attempts == 0
+                    else f"All {attempts} transcript fetch attempt(s) failed; no transcripts fetched this run"
+                ),
                 "transcripts_fetched": 0,
                 "transcripts_failed": transcripts_failed,
                 "results": results,
             }
+            if not include_whisper_items:
+                payload["error"] = (
+                    "Pipeline halted: no caption-available videos were eligible and Whisper fallback is disabled "
+                    "(queue_mode=Skip Whisper)."
+                )
+                payload["error_code"] = "NO_ELIGIBLE_TRANSCRIPTS_WITH_WHISPER_DISABLED"
+            return payload
         message = (
             f"Processed {attempts} attempt(s); fetched {transcripts_fetched} (requested up to {amount})"
         )

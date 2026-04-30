@@ -1,7 +1,12 @@
 FROM python:3.12-bookworm
 
-# Install FFmpeg, gosu (for dropping root in entrypoint), and other deps
-RUN apt-get update && apt-get install -y ffmpeg sqlite3 git xvfb curl unzip gosu && rm -rf /var/lib/apt/lists/*
+ENV PYTHONDONTWRITEBYTECODE=1 \
+    PYTHONUNBUFFERED=1
+
+# Install system packages with minimal footprint.
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends ffmpeg sqlite3 git xvfb curl unzip gosu \
+    && rm -rf /var/lib/apt/lists/*
 
 # Install Deno (required for yt-dlp YouTube extraction - solves JS challenges)
 # Install system-wide into /usr/local/bin so all users (including app:1000) can access it.
@@ -12,13 +17,13 @@ WORKDIR /code
 # Copy requirements first for better caching
 COPY ./requirements.txt /code/requirements.txt
 
-# Install Python packages
-RUN pip install --no-cache-dir --upgrade pip
-RUN pip install --no-cache-dir -r /code/requirements.txt
+# Install Python packages in one layer.
+RUN pip install --no-cache-dir --upgrade pip \
+    && pip install --no-cache-dir -r /code/requirements.txt
 
-# Install Playwright system dependencies and browsers (as root; browsers go to /root/.cache/ms-playwright)
-RUN playwright install-deps
-RUN playwright install chromium
+# Install Playwright system dependencies and Chromium in one layer.
+RUN playwright install-deps \
+    && playwright install chromium
 
 # Create app user with UID/GID 1000 to match host (same pattern as WordPress Dockerfile)
 RUN groupadd -g 1000 app && useradd -m -u 1000 -g 1000 app

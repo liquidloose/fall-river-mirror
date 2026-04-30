@@ -1,0 +1,11 @@
+.git
+.cursor
+__pycache__
+*.pyc
+*.log
+app.log
+app/data/*.db
+app/data/*.sqlite*
+typesense-data
+WordPress
+youtube_cookies.txt

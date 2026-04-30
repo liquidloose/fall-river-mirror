@@ -1,145 +1,210 @@
 # Configuration Guide
 
-## Environment Variables
+Environment variables are loaded from a **`.env`** file in the project root. The tracked **`.env.sample`** is the reference template—copy it and fill in real values.
 
-This application uses environment variables for configuration. Create a `.env` file in the project root with the following variables:
+For **`fr-mirror-ai`** and **`caddy`**, Compose loads **`.env`** then **`.env.prod`** (when present), so production-only overrides can live in `.env.prod` without editing `.env`.
 
-### Required Variables
+> **Note:** `.env.sample` has historically repeated some keys (e.g. `WEBSHARE_PROXY_*`, `DEFAULT_YOUTUBE_CHANNEL_URL`, `XAI_API_KEY`). In your real `.env`, define **each variable only once**.
 
-#### YouTube API Configuration
+---
+
+## Docker Compose (ports and database)
+
+Used by `docker-compose.yml` for the dev WordPress stack, phpMyAdmin, and API port mapping.
+
 ```bash
-# Get your API key at: https://console.cloud.google.com/apis/credentials
+WEB_PORT=9004
+PHP_MYADMIN_PORT=9094
+API_PORT=3004
+
+MYSQL_ROOT_PASSWORD=your_mysql_root_password
+DB_NAME=your_database_name
+DB_USER=your_database_user
+DB_PASSWORD=your_database_password
+```
+
+The compose file defines the Docker network as **`fr-mirror-bridge`**; a `network=...` line in older samples is not used by this compose file.
+
+---
+
+## WordPress and JWT
+
+**WordPress container (`JWT_AUTH_SECRET_KEY`)** — signing key for the JWT Auth plugin (must match `wp-config.php` / plugin expectations).
+
+```bash
+JWT_AUTH_SECRET_KEY=your_jwt_secret_key_here
+```
+
+**FastAPI → WordPress REST (`wordpress_sync_service`)** — base URL and JWT used when the API calls WordPress.
+
+```bash
+WORDPRESS_BASE_URL=https://yoursite.com
+WORDPRESS_JWT_TOKEN=your_wordpress_jwt_token_here
+WORDPRESS_JWT_USER=your_wordpress_jwt_user
+WORDPRESS_JWT_PASSWORD=your_wordpress_jwt_password
+```
+
+Optional path overrides (defaults exist in code): `WORDPRESS_API_PATH_CREATE_ARTICLE`, `WORDPRESS_API_PATH_UPDATE_ARTICLE`, `WORDPRESS_API_PATH_ARTICLE_YOUTUBE_IDS`.
+
+For local dev with the compose WordPress service, `WORDPRESS_BASE_URL` is often `http://wordpress:80` or `http://localhost:${WEB_PORT}` from the host.
+
+**GCP offload (WordPress)** — path to the service account JSON referenced from `wp-config.php`:
+
+```bash
+GCP_KEY_FILE_PATH=/code/your-gcp-key-file.json
+```
+
+---
+
+## Git identity (AI container startup)
+
+The `fr-mirror-ai` service runs `git config` using:
+
+```bash
+GIT_USER_EMAIL=you@example.com
+GIT_USER_NAME=your_github_username
+```
+
+---
+
+## AI application keys
+
+```bash
+XAI_API_KEY=your_xai_api_key_here
+OPENAI_API_KEY=your_openai_api_key_here
 YOUTUBE_API_KEY=your_youtube_api_key_here
+```
 
-# OAuth 2.0 credentials for caption access (required for transcript fetching)
-# Download from Google Cloud Console -> APIs & Services -> Credentials -> Create OAuth 2.0 Client ID
-YOUTUBE_OAUTH_CREDENTIALS_PATH=/path/to/credentials.json
+**OpenAI** is used for Whisper transcription fallback and for image generation (`OPENAI_API_KEY`); there is no separate `DALLE_API_KEY` in this codebase.
 
-# OAuth token storage path (tokens are stored here after first authorization)
+---
+
+## FastAPI database
+
+Passed explicitly into the AI container by Compose:
+
+```bash
+DATABASE_URL=sqlite:///fr-mirror.db
+```
+
+Tests may override via `pytest.ini`.
+
+---
+
+## Typesense and public search host
+
+```bash
+TYPESENSE_API_KEY=your_typesense_api_key_here
+# Hostname for Caddy HTTPS in front of Typesense (no scheme, no port). Used when the `caddy` service runs.
+TYPESENSE_SEARCH_HOST=your.public.hostname.example
+```
+
+Inside Docker, apps reach Typesense at `http://typesense:8108`.
+
+---
+
+## YouTube: channel, transcripts, cookies, OAuth
+
+```bash
+DEFAULT_YOUTUBE_CHANNEL_URL=https://www.youtube.com/@YourChannel/videos
+YOUTUBE_COOKIES_PATH=/code/youtube_cookies.txt
+```
+
+**OAuth paths** (caption/OAuth flows — see `app/data/youtube_oauth.py`):
+
+```bash
+YOUTUBE_OAUTH_CREDENTIALS_PATH=/code/client_secret.json
 YOUTUBE_OAUTH_TOKEN_PATH=youtube_token.json
 ```
 
-#### Default YouTube Channel
+---
+
+## Webshare proxy
+
+Present in `.env.sample` for egress through Webshare when Google/YouTube blocks datacenter IPs.
+
 ```bash
-# Default channel for automatic transcript queue building
-# Used by /transcript/fetch/{amount} endpoint when channel_url not explicitly provided
-# Example: https://www.youtube.com/@FallRiverCityCouncil
-DEFAULT_YOUTUBE_CHANNEL_URL=https://www.youtube.com/@YourChannelHandle
+WEBSHARE_PROXY_USERNAME=your_proxy_username
+WEBSHARE_PROXY_PASSWORD=your_proxy_password
+WEBSHARE_PROXY_HOST=your_proxy_host
+# Optional if not using default port:
+# WEBSHARE_PROXY_PORT=80
 ```
 
-### Optional Variables
+**Transcript fetching** (`youtube-transcript-api` in `transcript_manager` / `video_queue_manager`): uses **`WEBSHARE_PROXY_USERNAME`** and **`WEBSHARE_PROXY_PASSWORD`** when both are set.
 
-#### xAI/Grok API (for article generation)
+**Whisper fallback (`yt-dlp`)**: uses **`YOUTUBE_COOKIES_PATH`** when the file exists. **`WEBSHARE_PROXY_HOST` / `WEBSHARE_PROXY_PORT` appear in `.env.sample`; `WhisperProcessor._get_proxy_url()` does not use them yet**, so yt-dlp still uses cookies plus default egress unless you add proxy URL wiring there.
+
+---
+
+## Optional FastAPI toggles (not in `.env.sample`)
+
 ```bash
-XAI_API_KEY=your_xai_api_key_here
+DOCS_SECRET=
+QUEUE_BUILD_RATE_LIMIT=5
+QUEUE_BUILD_WINDOW_SECONDS=60
 ```
 
-#### OpenAI API (for Whisper transcription fallback)
+---
+
+## yt-dlp version / rebuild
+
+If YouTube audio downloads fail or behave oddly, rebuild the AI image so `requirements.txt` pins a current `yt-dlp`:
+
 ```bash
-OPENAI_API_KEY=your_openai_api_key_here
+docker compose --profile dev build --no-cache fr-mirror-ai
+docker compose --profile dev up -d fr-mirror-ai
+docker compose --profile dev exec fr-mirror-ai python -m yt_dlp --version
 ```
 
-#### DALL-E API (for image generation)
+(`README.md` may mention older service names; the compose service for the FastAPI app is **`fr-mirror-ai`**.)
+
+---
+
+## Minimal first-time `.env` checklist
+
+1. Copy `.env.sample` → `.env` and remove duplicate keys.
+2. Set `YOUTUBE_API_KEY`, `DEFAULT_YOUTUBE_CHANNEL_URL`, and any keys you need for Grok (`XAI_API_KEY`), Whisper fallback (`OPENAI_API_KEY`), and WordPress sync (`WORDPRESS_BASE_URL`, `WORDPRESS_JWT_*`).
+3. For Docker AI + Typesense: set `DATABASE_URL`, `TYPESENSE_API_KEY`, and (prod) `TYPESENSE_SEARCH_HOST`.
+
+---
+
+## How `DEFAULT_YOUTUBE_CHANNEL_URL` works
+
+Bulk transcript fetch can rely on the default channel:
+
 ```bash
-DALLE_API_KEY=your_dalle_api_key_here
+curl -X POST "http://localhost:${API_PORT}/transcript/fetch/25"
 ```
 
-#### WordPress sync (create-article, update-article, repair featured image)
-```bash
-WORDPRESS_BASE_URL=https://yoursite.com
-WORDPRESS_JWT_TOKEN=your_jwt_here
-```
-The app calls WordPress at `WORDPRESS_BASE_URL` + `/wp-json/fr-mirror/v2/...` (create-article, update-article, article-youtube-ids). **The theme's `/includes` that register these REST routes are not in this repo** (submodule or separate deploy). If that code is missing, WordPress returns **404** and we return **404** to the client—no success. Success from our side only when WordPress actually returns 2xx.
-
-#### Webshare proxy (cloud/VPS – YouTube blocks datacenter IPs)
-Transcript checks and transcript API use `WEBSHARE_PROXY_USERNAME` and `WEBSHARE_PROXY_PASSWORD` only.  
-For Whisper fallback (yt-dlp), you can optionally set `WEBSHARE_PROXY_HOST` and `WEBSHARE_PROXY_PORT` (one proxy IP from your Webshare list) so audio downloads go through the proxy.
-
-#### yt-dlp / YouTube audio download support
-```bash
-# Optional: Netscape-format cookies file used by yt-dlp for bot-check bypass
-YOUTUBE_COOKIES_PATH=/absolute/path/to/youtube_cookies.txt
-```
-
-If YouTube "download audio" jobs stay queued or fail, rebuild the AI container for your active Docker profile so the newest `yt-dlp` from `requirements.txt` is installed:
+Override per request:
 
 ```bash
-# Dev profile
-docker compose --profile dev build --no-cache mirror-ai-dev
-docker compose --profile dev up -d mirror-ai-dev
-docker compose --profile dev exec mirror-ai-dev python -m yt_dlp --version
-docker compose --profile=dev up
-
-# Prod profile
-docker compose --profile prod build --no-cache mirror-ai-prod
-docker compose --profile prod up -d mirror-ai-prod
-docker compose --profile prod exec mirror-ai-prod python -m yt_dlp --version
-```
-
-## Setting Up Your .env File
-
-1. Copy the example below to a new file named `.env` in the project root:
-   ```bash
-   YOUTUBE_API_KEY=your_youtube_api_key_here
-   DEFAULT_YOUTUBE_CHANNEL_URL=https://www.youtube.com/@FallRiverCityCouncil
-   XAI_API_KEY=your_xai_api_key_here
-   OPENAI_API_KEY=your_openai_api_key_here
-   ```
-
-2. Replace the placeholder values with your actual API keys
-
-3. For Fall River local news, set:
-   ```bash
-   DEFAULT_YOUTUBE_CHANNEL_URL=https://www.youtube.com/@FallRiverCityCouncil
-   ```
-
-## How DEFAULT_YOUTUBE_CHANNEL_URL Works
-
-When you call the bulk transcript fetch endpoint:
-
-```bash
-# Simple call - uses DEFAULT_YOUTUBE_CHANNEL_URL from .env
-curl -X POST "http://localhost:8001/transcript/fetch/25"
-```
-
-The endpoint will:
-1. Check if queue has at least 25 videos
-2. If not, automatically build queue from `DEFAULT_YOUTUBE_CHANNEL_URL`
-3. Fetch up to 25 transcripts
-
-You can override the default channel for a specific request:
-
-```bash
-# Override with a different channel
-curl -X POST "http://localhost:8001/transcript/fetch/25" \
+curl -X POST "http://localhost:${API_PORT}/transcript/fetch/25" \
   -H "Content-Type: application/json" \
   -d '{"channel_url": "https://www.youtube.com/@DifferentChannel"}'
 ```
 
+---
+
 ## Troubleshooting: "Could not find channel ID"
 
-If the pipeline or queue build fails with `Could not find channel ID for: https://www.youtube.com/@...`:
+1. **Logs** — Check `YouTube channels API response: status=..., items_count=..., error=...`.
+2. **Channel ID URL** — Use `https://www.youtube.com/channel/UC...` instead of a `@handle` if lookup fails.
+3. **Environment** — Ensure `YOUTUBE_API_KEY` is set where the app runs (including `.env.prod` on servers).
 
-1. **Check logs** – The app logs the YouTube API response: `YouTube channels API response: status=..., items_count=..., error=...`. If `error` is set, that’s the reason (e.g. quota, forbidden). If `items_count=0`, the API returned no channel for that handle.
-2. **Use the channel ID URL** – To avoid handle lookup, set `DEFAULT_YOUTUBE_CHANNEL_URL` to the direct channel URL: `https://www.youtube.com/channel/UCxxxxxxxxxxxxxxxxxx` (get the ID from the channel page or from the logs once lookup works).
-3. **Prod env** – Ensure `YOUTUBE_API_KEY` is set in the environment used by the running app (e.g. in `.env.prod` or the prod compose env), and that YouTube Data API v3 is enabled and has quota in Google Cloud.
+---
 
-## Getting API Keys
+## Getting API keys
 
 ### YouTube Data API v3
-1. Go to [Google Cloud Console](https://console.cloud.google.com/apis/credentials)
-2. Create a new project or select existing
-3. Enable "YouTube Data API v3"
-4. Create credentials → API Key
-5. Copy the key to your `.env` file
 
-### xAI/Grok API
-1. Visit [xAI Console](https://console.x.ai/)
-2. Create an API key
-3. Copy to `.env` file
+1. [Google Cloud Console](https://console.cloud.google.com/apis/credentials) → enable **YouTube Data API v3** → create an API key.
 
-### OpenAI API (Whisper & DALL-E)
-1. Visit [OpenAI Platform](https://platform.openai.com/api-keys)
-2. Create an API key
-3. Copy to `.env` file
+### xAI / Grok
 
+1. [xAI Console](https://console.x.ai/) → create an API key.
+
+### OpenAI (Whisper + images)
+
+1. [OpenAI Platform](https://platform.openai.com/api-keys) → create an API key.

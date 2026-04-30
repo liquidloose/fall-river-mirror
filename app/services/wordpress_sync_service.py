@@ -573,7 +573,13 @@ class WordPressSyncService:
         if existing_on_wp:
             # Already on WordPress: skip. We don't create or update; content is already there.
             logger.info("Skipping article %s (youtube_id=%s already on WordPress)", article_id, youtube_id)
-            return {"success": True, "article_id": article_id, "skipped": True, "reason": "already_on_wordpress"}
+            return {
+                "success": True,
+                "article_id": article_id,
+                "created": False,
+                "skipped": True,
+                "reason": "already_on_wordpress",
+            }
         # New on WordPress: create post
         payload = {
             "title": article.get("title") or "",
@@ -621,6 +627,8 @@ class WordPressSyncService:
             return {
                 "success": True,
                 "article_id": article_id,
+                "created": True,
+                "skipped": False,
                 "wordpress_response": wp_response,
             }
         except requests.exceptions.RequestException as e:
