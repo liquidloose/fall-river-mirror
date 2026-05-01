@@ -79,6 +79,15 @@ class XAITextQuery:
 
             # Generate response from the AI model
             response = chat.sample()
+            body = (response.content or "").strip()
+            if not body:
+                return JSONResponse(
+                    status_code=500,
+                    content={
+                        "error": "xAI returned empty article body (main completion had no text). "
+                        "Retry the request; if it persists, check model limits or transcript size."
+                    },
+                )
 
             # Generate a catchy headline based on the article content
             headline_chat = client.chat.create(model="grok-4")
@@ -87,7 +96,7 @@ class XAITextQuery:
                     "You are a headline writer. Create a single catchy, attention-grabbing headline (max 10 words) for the following article. Do NOT include 'Fall River' in the headline - the publication is already about Fall River so it's redundant. Return ONLY the headline text, no quotes or extra text."
                 )
             )
-            headline_chat.append(user(f"Article content:\n\n{response.content}"))
+            headline_chat.append(user(f"Article content:\n\n{body}"))
             headline = headline_chat.sample().content.strip()
 
             # Return the response content as a dictionary with all context information
@@ -98,8 +107,8 @@ class XAITextQuery:
                 "committee": committee,
                 "context": context,
                 "prompt": message,
-                "response": response.content,
-                "content": response.content,  # Alias for compatibility
+                "response": body,
+                "content": body,  # Alias for compatibility
             }
 
             return result

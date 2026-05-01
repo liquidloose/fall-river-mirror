@@ -4,6 +4,8 @@ import logging
 import shutil
 import subprocess
 from typing import Optional
+from urllib.parse import quote, urlparse, urlunparse
+
 import yt_dlp
 from openai import OpenAI
 
@@ -37,11 +39,6 @@ class WhisperProcessor:
         if deno_path not in os.environ.get("PATH", ""):
             os.environ["PATH"] = f"{deno_path}:{os.environ.get('PATH', '')}"
 
-        # Proxy disabled for Whisper: yt-dlp uses cookies + direct IP; proxy often causes
-        # "This video is not available" from YouTube. Transcript fetching can still use
-        # Webshare via youtube-transcript-api elsewhere.
-        self.proxy_enabled = False
-
         # Cookie file for yt-dlp (Netscape format). Required when YouTube returns "Sign in to confirm you're not a bot".
         cookie_env = os.getenv("YOUTUBE_COOKIES_PATH")
         self.cookiefile = None
@@ -53,9 +50,64 @@ class WhisperProcessor:
             else:
                 logger.warning("YOUTUBE_COOKIES_PATH set but file not found: %s", cookie_path)
 
+    @staticmethod
+    def _proxy_url_from_residential_env() -> Optional[str]:
+        """
+        Build yt-dlp proxy URL from WEBSHARE_RESIDENTIAL_PROXY_URL plus separate credentials.
+
+        ``WEBSHARE_RESIDENTIAL_PROXY_URL`` should be ``http://host:port`` (no userinfo). Credentials
+        come from WEBSHARE_RESIDENTIAL_PROXY_USERNAME / WEBSHARE_RESIDENTIAL_PROXY_PASSWORD.
+        If the URL already contains userinfo (``user:pass@host``), it is returned unchanged.
+        """
+        base = os.getenv("WEBSHARE_RESIDENTIAL_PROXY_URL", "").strip()
+        user = os.getenv("WEBSHARE_RESIDENTIAL_PROXY_USERNAME", "").strip()
+        password = os.getenv("WEBSHARE_RESIDENTIAL_PROXY_PASSWORD", "").strip()
+        if not base:
+            return None
+
+        if "://" not in base:
+            base = f"http://{base}"
+
+        parsed = urlparse(base)
+        if not parsed.hostname:
+            logger.warning("WEBSHARE_RESIDENTIAL_PROXY_URL has no host; yt-dlp proxy skipped.")
+            return None
+
+        if parsed.username is not None:
+            logger.info("yt-dlp will use WEBSHARE_RESIDENTIAL_PROXY_URL (auth embedded in URL)")
+            return base
+
+        if not user or not password:
+            logger.warning(
+                "WEBSHARE_RESIDENTIAL_PROXY_URL is set but "
+                "WEBSHARE_RESIDENTIAL_PROXY_USERNAME or WEBSHARE_RESIDENTIAL_PROXY_PASSWORD is missing; "
+                "yt-dlp proxy skipped."
+            )
+            return None
+
+        scheme = parsed.scheme or "http"
+        host = parsed.hostname
+        port = parsed.port
+        safe_user = quote(user, safe="")
+        safe_pass = quote(password, safe="")
+        if port:
+            netloc = f"{safe_user}:{safe_pass}@{host}:{port}"
+        else:
+            netloc = f"{safe_user}:{safe_pass}@{host}"
+
+        return urlunparse((scheme, netloc, "", "", "", ""))
+
     def _get_proxy_url(self) -> Optional[str]:
-        """Proxy disabled for Whisper; returns None so yt-dlp uses direct connection + cookies."""
-        return None
+        """
+        Proxy URL for yt-dlp (same egress for the whole download).
+
+        Uses ``WEBSHARE_RESIDENTIAL_PROXY_URL`` with ``WEBSHARE_RESIDENTIAL_PROXY_USERNAME`` /
+        ``WEBSHARE_RESIDENTIAL_PROXY_PASSWORD`` (see ``_proxy_url_from_residential_env``). If the
+        residential URL already embeds ``user:pass@``, username/password env vars are optional.
+
+        Otherwise direct egress (still uses cookies when configured).
+        """
+        return self._proxy_url_from_residential_env()
 
     def transcribe_youtube_video(self, video_id: str) -> str:
         """
@@ -95,7 +147,7 @@ class WhisperProcessor:
                 "remote_components": ["ejs:github"],
             }
 
-            # Add proxy if configured (with rotating session ID)
+            # Add proxy if configured (sticky for this YoutubeDL instance / whole download)
             proxy_url = self._get_proxy_url()
             if proxy_url:
                 ydl_opts["proxy"] = proxy_url

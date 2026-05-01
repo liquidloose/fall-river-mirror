@@ -41,6 +41,7 @@ from app import TranscriptManager
 from app.content_department.ai_artists.fra1 import FRA1
 from app.content_department.ai_artists.spectra_veritas import SpectraVeritas
 from app.content_department.ai_journalists.aurelius_stone import AureliusStone
+from app.content_department.ai_journalists.base_journalist import ArticleGenerationError
 from app.content_department.ai_journalists.fr_j1 import FRJ1
 from app.data.create_database import Database
 from app.data.enum_classes import ArticleType, Artist, ImageModel, Journalist, Tone
@@ -561,6 +562,19 @@ class PipelineService:
                     "status": "success",
                     "title": article_result.get("title", "Untitled Article"),
                 })
+            except ArticleGenerationError as e:
+                articles_failed += 1
+                results.append({
+                    "youtube_id": youtube_id,
+                    "transcript_id": transcript_id,
+                    "status": "failed",
+                    "error": str(e),
+                })
+                logger.warning(
+                    "Pipeline article write failed (empty or rejected xAI body) youtube_id=%s: %s",
+                    youtube_id,
+                    e,
+                )
             except Exception as e:
                 articles_failed += 1
                 results.append({"youtube_id": youtube_id, "status": "failed", "error": str(e)})

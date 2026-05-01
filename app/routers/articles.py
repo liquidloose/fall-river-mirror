@@ -16,6 +16,7 @@ from app.data.enum_classes import (
     Journalist,
 )
 from app.content_department.ai_journalists.aurelius_stone import AureliusStone
+from app.content_department.ai_journalists.base_journalist import ArticleGenerationError
 from app.content_department.ai_journalists.fr_j1 import FRJ1
 
 router = APIRouter(tags=["articles"])
@@ -367,6 +368,12 @@ def generate_article_from_strings(
             "transcript_id": int(transcript_id),
             "transcript_content_length": len(transcript_content),
         }
+    except ArticleGenerationError as e:
+        logger.warning("Article generation rejected: %s", e)
+        raise HTTPException(
+            status_code=status.HTTP_502_BAD_GATEWAY,
+            detail=str(e),
+        )
     except HTTPException:
         raise
     except Exception as e:
@@ -413,6 +420,12 @@ def generate_article(
             "transcript_id": transcript_id,
             "transcript_content_length": len(transcript_content),
         }
+    except ArticleGenerationError as e:
+        logger.warning("Article generation rejected: %s", e)
+        raise HTTPException(
+            status_code=status.HTTP_502_BAD_GATEWAY,
+            detail=str(e),
+        )
     except HTTPException:
         raise
     except Exception as e:

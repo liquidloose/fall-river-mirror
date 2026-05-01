@@ -11,6 +11,10 @@ from ..creation_tools.xai_text_query import XAITextQuery
 logger = logging.getLogger(__name__)
 
 
+class ArticleGenerationError(RuntimeError):
+    """Raised when xAI returns no usable article body or an explicit API error (see generate_article)."""
+
+
 class BaseJournalist(BaseCreator):
     """
     Base class for AI journalists.
@@ -125,7 +129,11 @@ class BaseJournalist(BaseCreator):
 
     def _format_response(self, response: Dict[str, Any]) -> Dict[str, Any]:
         """Format the API response into WCAG-compliant article HTML."""
-        article_text = response.get("response", "No article content generated")
+        article_text = response.get("response", "")
+        if not (article_text or "").strip():
+            raise ArticleGenerationError(
+                "Article body is empty after xAI response formatting"
+            )
         title = response.get("title", "Untitled Article")
 
         # Wrap in semantic <article> tag for accessibility
@@ -164,18 +172,16 @@ class BaseJournalist(BaseCreator):
                     )
                 except Exception:
                     err = response.body.decode(errors="replace")[:500]
-                return {
-                    "title": "Error",
-                    "content": f"Error generating article: {err}",
-                }
+                raise ArticleGenerationError(err) from None
 
             return self._format_response(response)
 
+        except ArticleGenerationError:
+            raise
         except Exception as e:
-            return {
-                "title": "Error",
-                "content": f"Failed to generate article: {str(e)}",
-            }
+            raise ArticleGenerationError(
+                f"Failed to generate article: {str(e)}"
+            ) from e
 
     def generate_bullet_points(self, article_content: str) -> Dict[str, Any]:
         """

@@ -133,7 +133,7 @@ WEBSHARE_PROXY_HOST=your_proxy_host
 
 **Transcript fetching** (`youtube-transcript-api` in `transcript_manager` / `video_queue_manager`): uses **`WEBSHARE_PROXY_USERNAME`** and **`WEBSHARE_PROXY_PASSWORD`** when both are set.
 
-**Whisper fallback (`yt-dlp`)**: uses **`YOUTUBE_COOKIES_PATH`** when the file exists. **`WEBSHARE_PROXY_HOST` / `WEBSHARE_PROXY_PORT` appear in `.env.sample`; `WhisperProcessor._get_proxy_url()` does not use them yet**, so yt-dlp still uses cookies plus default egress unless you add proxy URL wiring there.
+**Whisper fallback (`yt-dlp`)** in `WhisperProcessor`: uses **`YOUTUBE_COOKIES_PATH`** when the file exists. Proxy: **`WEBSHARE_RESIDENTIAL_PROXY_URL`** with **`WEBSHARE_RESIDENTIAL_PROXY_USERNAME`** / **`WEBSHARE_RESIDENTIAL_PROXY_PASSWORD`** (assembled with URL-encoded credentials when auth is not already in the URL). Same URL is used for the whole download. Transcript **`WEBSHARE_PROXY_*`** vars are unrelated to yt-dlp.
 
 ---
 
