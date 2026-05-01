@@ -1,0 +1,54 @@
+---
+description: Rules for implementing Figma designs in this WordPress theme workspace.
+globs: ["WordPress/wp-content/themes/fall-river-mirror-theme/**/*.php", "WordPress/wp-content/themes/fall-river-mirror-theme/**/*.css", "WordPress/wp-content/themes/fall-river-mirror-theme/**/*.js"]
+alwaysApply: false
+---
+
+# Figma MCP Integration Rules
+
+These rules define how to translate Figma inputs into code for this project and must be followed for every Figma-driven change.
+
+## Required Flow (do not skip)
+
+1. Run `get_design_context` first for the target node(s).
+2. If context is too large or truncated, run `get_metadata`, then re-fetch only needed nodes with `get_design_context`.
+3. Run `get_screenshot` for a visual reference of the exact variant.
+4. Start implementation only after both structure (`get_design_context`) and visual reference (`get_screenshot`) are available.
+5. Translate output into this project's WordPress theme conventions (PHP templates, block CSS, and minimal theme JS).
+6. Validate for visual parity and expected behavior before marking complete.
+
+## Project Structure Rules
+
+- IMPORTANT: Keep theme logic in `WordPress/wp-content/themes/fall-river-mirror-theme/`.
+- PHP template and behavior code belongs in `includes/` or `patterns/` based on purpose.
+- Shared theme initialization and registration changes belong in `functions.php` or the relevant include file.
+- CSS for editor/front-end blocks should prefer existing files under `assets/css/blocks/` when extending existing block styles.
+- Preserve existing naming style used by this repo (`core-*.css`, `*-style.min.css`, and include filenames).
+
+## Styling Rules
+
+- IMPORTANT: Reuse existing CSS conventions from `style.css` and `assets/css/blocks/` before creating new files.
+- Do not introduce Tailwind, CSS-in-JS, or new frontend frameworks for Figma-driven tasks in this theme.
+- Avoid hardcoded one-off values when an existing class/pattern can be extended.
+- Match spacing, typography, and color decisions to the nearest existing theme styles.
+- Keep selectors specific enough for Gutenberg block contexts without over-nesting.
+
+## Component and Template Rules
+
+- IMPORTANT: Prefer extending existing block patterns and PHP includes over creating parallel template systems.
+- If a new UI section is needed from Figma, implement it as a WordPress pattern or include that fits current structure.
+- Use clear PHP function names and keep rendering logic close to existing feature files (for example article, search, or CPT related includes).
+- Maintain compatibility with current block editor behavior and existing custom post type integrations.
+
+## Asset Handling
+
+- IMPORTANT: If Figma MCP returns localhost image/SVG sources, use them directly during implementation and then place finalized assets under theme-appropriate asset locations.
+- Do not install icon packages to replicate Figma icons.
+- Do not use placeholder assets when Figma assets are available.
+
+## Quality and Validation
+
+- Ensure markup remains accessible (semantic structure, alt text, and keyboard-safe interactions where relevant).
+- Verify PHP changes do not break existing templates or hooks.
+- Keep JS additions minimal and scoped to behavior that cannot be solved in CSS/PHP.
+- Compare final implementation against Figma screenshot before completion.

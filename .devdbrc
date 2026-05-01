@@ -1,0 +1,10 @@
+[
+  {
+    "type": "sqlite",
+    "path": "/home/ron/development/fall-river-mirror/app/frmirror.db"
+  },
+  {
+    "type": "sqlite",
+    "path": "/home/ron/development/fall-river-mirror/app/data/fr-mirror.db"
+  }
+]
