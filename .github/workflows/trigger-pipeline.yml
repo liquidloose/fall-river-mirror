@@ -4,8 +4,8 @@ name: Trigger pipeline
 
 on:
   schedule:
-    # Every 15 minutes (UTC)
-    - cron: "*/15 * * * *"
+    # Every 30 minutes (UTC)
+    - cron: "*/30 * * * *"
   workflow_dispatch:  # Run manually from Actions tab
 
 jobs:
@@ -15,7 +15,7 @@ jobs:
       - name: POST /pipeline/run
         run: |
           code=$(curl -sSf -o /tmp/pipeline-response.json -w "%{http_code}" -X POST \
-            "${{ secrets.PIPELINE_API_URL }}/pipeline/run?amount=2&queue_mode=Use%20Whisper&auto_build=true&journalist=FRJ1&tone=professional&article_type=news&model=gpt-image-1&sync_to_wordpress=true")
+            "${{ secrets.PIPELINE_API_URL }}/pipeline/run?amount=1&queue_mode=Use%20Whisper&auto_build=true&journalist=FRJ1&tone=professional&article_type=news&model=gpt-image-1&sync_to_wordpress=true")
           echo "HTTP $code"
           if [ "$code" -ge 400 ]; then
             cat /tmp/pipeline-response.json || true
