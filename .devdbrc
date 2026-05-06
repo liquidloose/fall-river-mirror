@@ -6,5 +6,9 @@
   {
     "type": "sqlite",
     "path": "/home/ron/development/fall-river-mirror/app/data/fr-mirror.db"
+  },
+  {
+    "type": "sqlite",
+    "path": "/home/ron/development/rivedge-wordpress/06-research-mirror/app/data/fr-mirror.db"
   }
 ]

@@ -1,5 +1,5 @@
 # Hostname from env (set TYPESENSE_SEARCH_HOST in .env / .env.prod). Used only when the `caddy` service runs (--profile prod).
 {$TYPESENSE_SEARCH_HOST} {
 	encode zstd gzip
-	reverse_proxy typesense:8108
+	reverse_proxy typesense:8106
 }

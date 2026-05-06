@@ -5,11 +5,36 @@
 #   Prod includes Caddy (HTTPS) for Typesense on TYPESENSE_SEARCH_HOST; set it in .env / .env.prod.
 #   Typesense API is bound to 127.0.0.1:8108 on the host so browsers use HTTPS via Caddy, not raw 8108 from the internet.
 services:
+
+  tailscale:
+    profiles: [dev]
+    # v1.78.1 panics on Docker when TS_SERVE_CONFIG is set (nil kubeClient); fixed in v1.78.3. See tailscale/tailscale#14354.
+    image: ghcr.io/tailscale/tailscale:v1.78.3
+    hostname: ${TAILSCALE_MAGICDNS_HOSTNAME}
+    extra_hosts:
+      - "api.wordpress.org:198.143.164.251"
+      - "downloads.wordpress.org:198.143.164.250"
+    ports:
+      - "${WEB_PORT}:80"
+    environment:
+      TS_AUTHKEY: ${TS_AUTHKEY}
+      TS_STATE_DIR: /var/lib/tailscale
+      TS_SERVE_CONFIG: /config/serve.json
+      # Default is userspace networking; Serve → 127.0.0.1:80 is more reliable with kernel tun (we already mount /dev/net/tun).
+      TS_USERSPACE: "false"
+      TS_EXTRA_ARGS: ${TS_EXTRA_ARGS:-}
+    volumes:
+      - tailscale_state:/var/lib/tailscale
+      - ./tailscale/serve:/config
+    devices:
+      - /dev/net/tun:/dev/net/tun
+    cap_add:
+      - NET_ADMIN
+      - SYS_MODULE
+    restart: unless-stopped
   db:
     profiles: [dev]
     image: mysql:8.4
-    networks:
-      - fr-mirror-bridge
     volumes:
       - db_data:/var/lib/mysql
     environment:
@@ -20,17 +45,12 @@ services:
 
   wordpress:
     profiles: [dev]
+    network_mode: "service:tailscale"
     depends_on:
+      - tailscale
       - db
     user: 1000:1000
     image: fr-mirror:latest
-    networks:
-      - fr-mirror-bridge
-    ports:
-      - "${WEB_PORT}:80"
-    extra_hosts:
-      - "api.wordpress.org:198.143.164.251"
-      - "downloads.wordpress.org:198.143.164.250"
     env_file:
       - .env
     environment:
@@ -51,10 +71,17 @@ services:
         target: "/var/www/html/wp-config.php"
 
   my-wpcli:
-    profiles: [dev]
     image: wordpress:cli
-    networks:
-      - fr-mirror-bridge
+    # Dev only (depends on wordpress). Use: `docker compose --profile dev run --rm my-wpcli wp …`
+    profiles: [dev]
+    # Match wordpress:cli defaults so wp can read core + write plugins (uid 1000 often breaks wp core is-installed / installs on bind-mounted wp-content).
+    extra_hosts:
+      # Same static hosts as tailscale service so wp plugin install can reach wordpress.org if DNS is flaky.
+      - "api.wordpress.org:198.143.164.251"
+      - "downloads.wordpress.org:198.143.164.250"
+    depends_on:
+      - wordpress
+      - db
     volumes_from:
       - wordpress
     links:
@@ -64,7 +91,16 @@ services:
       WORDPRESS_DB_NAME: ${DB_NAME}
       WORDPRESS_DB_USER: ${DB_USER}
       WORDPRESS_DB_PASSWORD: ${DB_PASSWORD}
-    entrypoint: /bin/sh
+    volumes:
+      - type: bind
+        source: "./scripts/wpcli-entrypoint.sh"
+        target: "/bin/wpcli-entrypoint.sh"
+        read_only: true
+      - type: bind
+        source: "./scripts/wp-plugins.txt"
+        target: "/bin/wp-plugins.txt"
+        read_only: true
+    entrypoint: ["/bin/sh", "/bin/wpcli-entrypoint.sh"]
     tty: true
 
   phpmyadmin:
@@ -90,13 +126,12 @@ services:
       dockerfile: Dockerfile.ai
     image: fr-mirror-ai
     user: 1000:1000
-    container_name: fr-mirror-ai
     restart: unless-stopped
     networks:
       - fr-mirror-bridge
     ports:
       - "${API_PORT}:80"  # FastAPI application
-      - "8080:8080"  # OAuth redirect callback port
+      - "8086:8080"  # OAuth redirect callback port
     volumes:
       - .:/code
       - ~/.ssh:/home/app/.ssh:ro
@@ -121,8 +156,9 @@ services:
     networks:
       - fr-mirror-bridge
     ports:
+      # Host port defaults to 8108 if TYPESENSE_HOST_PORT is unset or empty.
       # Loopback only: other containers still reach typesense:8108 on fr-mirror-bridge; use Caddy (prod) for WAN HTTPS.
-      - "8108:8108"
+      - "${TYPESENSE_HOST_PORT:-8108}:8108"
     volumes:
       - ./typesense-data:/data
     command:
@@ -142,8 +178,8 @@ services:
     networks:
       - fr-mirror-bridge
     ports:
-      - "80:80"
-      - "443:443"
+      - "${CADDY_HTTP_PORT}:80"
+      - "${CADDY_HTTPS_PORT}:443"
     env_file:
       - .env
       - .env.prod
@@ -154,6 +190,7 @@ services:
 
 volumes:
   db_data: {}
+  tailscale_state: {}
   caddy_data: {}
   caddy_config: {}
 
