@@ -19,6 +19,7 @@ services:
     environment:
       TS_AUTHKEY: ${TS_AUTHKEY}
       TS_STATE_DIR: /var/lib/tailscale
+      # Tailscale reads JSON literally (no env substitution). Keys must match MagicDNS: edit tailscale/serve/serve.json if host/suffix differs from .env.
       TS_SERVE_CONFIG: /config/serve.json
       # Default is userspace networking; Serve → 127.0.0.1:80 is more reliable with kernel tun (we already mount /dev/net/tun).
       TS_USERSPACE: "false"
@@ -35,6 +36,8 @@ services:
   db:
     profiles: [dev]
     image: mysql:8.4
+    # No custom networks: stays on the compose default network with tailscale + wordpress (network_mode: service:tailscale).
+    # Do not put phpMyAdmin only on fr-mirror-bridge while db stays here — they would not share DNS for hostname `db`.
     volumes:
       - db_data:/var/lib/mysql
     environment:
@@ -106,8 +109,7 @@ services:
   phpmyadmin:
     profiles: [dev]
     image: phpmyadmin/phpmyadmin
-    networks:
-      - fr-mirror-bridge
+    # Same default network as `db` so PMA_HOST=db resolves (see db service comment).
     ports:
       - "${PHP_MYADMIN_PORT}:80"  # You can change the first number (8080) to any port you prefer for accessing phpMyAdmin
     environment:
