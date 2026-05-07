@@ -269,6 +269,115 @@ class WordPressSyncService:
             )
             return []
 
+    def get_articles_sorted_by_meeting_date(
+        self,
+        order: str = "desc",
+        limit: Optional[int] = None,
+    ) -> List[Dict[str, Any]]:
+        """
+        Fetch article posts from wp/v2/article ordered server-side by the
+        ``_article_meeting_date`` custom field, including the full article body
+        and bullet points so callers don't need a local SQLite row.
+
+        Uses the theme's REST sort hook: passing ``__frmCustomFieldFilter=_article_meeting_date``
+        triggers ``rest_article_query`` (in functions.php) to set
+        ``meta_key=_article_meeting_date, orderby=meta_value``. Articles missing
+        ``_article_meeting_date`` are still returned by WP and sort to the end
+        on DESC / start on ASC (the theme does not add an EXISTS clause on the REST path).
+
+        Args:
+            order: "asc" (oldest first) or "desc" (newest first). Anything else falls back to "desc".
+            limit: Max number of items to return. None = all.
+
+        Returns:
+            List of dicts:
+            ``{post_id, youtube_id, title, meeting_date, content, bullet_points}``,
+            in meeting-date order. ``content`` prefers ``_article_content`` meta and
+            falls back to the post's raw body; ``bullet_points`` comes from
+            ``_article_bullet_points`` meta. Returns ``[]`` on error.
+        """
+        base = (self._base_url or "").rstrip("/")
+        order_norm = "asc" if (order or "").lower() == "asc" else "desc"
+        per_page = 100
+        out: List[Dict[str, Any]] = []
+        page = 1
+        try:
+            while True:
+                if limit is not None and len(out) >= limit:
+                    break
+                url = (
+                    f"{base}/wp-json/wp/v2/article"
+                    f"?per_page={per_page}"
+                    f"&context=edit"
+                    f"&page={page}"
+                    f"&__frmCustomFieldFilter=_article_meeting_date"
+                    f"&order={order_norm}"
+                )
+                r = self._request_with_jwt_retry(
+                    lambda: requests.get(url, headers=self._headers(), timeout=15)
+                )
+                if r.status_code in (401, 403):
+                    logger.warning(
+                        "WordPress returned %s for wp/v2/article (meeting-date sort): %s",
+                        r.status_code,
+                        url,
+                    )
+                r.raise_for_status()
+                data = r.json()
+                if not isinstance(data, list) or not data:
+                    break
+                for item in data:
+                    meta = item.get("meta") or {}
+                    yid = meta.get("_article_youtube_id") or ""
+                    yid = (yid if isinstance(yid, str) else str(yid)).strip()
+                    title_obj = item.get("title") or {}
+                    title = title_obj.get("rendered") or title_obj.get("raw") or ""
+                    title = title if isinstance(title, str) else str(title)
+                    md = meta.get("_article_meeting_date") or ""
+                    md = (md if isinstance(md, str) else str(md)).strip()
+                    content = (
+                        meta.get("_article_content")
+                        or (item.get("content") or {}).get("raw")
+                        or (item.get("content") or {}).get("rendered")
+                        or ""
+                    )
+                    content = content if isinstance(content, str) else str(content)
+                    bullet_points = meta.get("_article_bullet_points") or ""
+                    bullet_points = (
+                        bullet_points if isinstance(bullet_points, str) else str(bullet_points)
+                    )
+                    out.append({
+                        "post_id": item.get("id"),
+                        "youtube_id": yid,
+                        "title": title,
+                        "meeting_date": md,
+                        "content": content,
+                        "bullet_points": bullet_points,
+                    })
+                    if limit is not None and len(out) >= limit:
+                        break
+                if limit is not None and len(out) >= limit:
+                    break
+                total_header = r.headers.get("X-WP-Total")
+                total = (
+                    int(total_header)
+                    if total_header is not None and str(total_header).isdigit()
+                    else len(data)
+                )
+                if len(data) < per_page or len(out) >= total:
+                    break
+                page += 1
+            return out
+        except Exception as e:
+            resp = getattr(e, "response", None)
+            logger.warning(
+                "get_articles_sorted_by_meeting_date failed: %s | response: status=%s body=%s",
+                repr(e),
+                resp.status_code if resp is not None else None,
+                (resp.text if resp is not None and resp.text else None),
+            )
+            return []
+
     def repair_missing_featured_images(
         self,
         iteration_limit: Optional[int] = None,

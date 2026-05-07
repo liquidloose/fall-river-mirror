@@ -176,45 +176,123 @@ def fact_check_article(
 @router.post("/fact-check-batch")
 def fact_check_batch(
     limit: Optional[int] = None,
-    scope: Literal["article", "bullet_points"] = "article",
+    scope: Literal["article", "bullet_points", "both"] = "both",
+    order: Literal["asc", "desc"] = "desc",
     deps: AppDependencies = Depends(AppDependencies),
 ) -> Dict[str, Any]:
-    """Run fact-check on multiple articles. Switch: scope=article (default) fact-checks title + content; scope=bullet_points fact-checks bullet points only. Optional limit caps how many to process. Skips articles without transcript_id."""
+    """
+    Run fact-check on multiple articles, ordered by the WordPress ``_article_meeting_date`` custom field.
+
+    Article data (title, content, bullet points) comes entirely from WordPress
+    (``wp/v2/article`` with the theme's ``__frmCustomFieldFilter=_article_meeting_date``
+    sort hook). The transcript is looked up from the local SQLite by ``youtube_id``,
+    since transcripts are not stored on WordPress.
+
+    - scope=both (default): fact-check title + content AND bullet points (one report per scope).
+    - scope=article: fact-check title + content only.
+    - scope=bullet_points: fact-check bullet points only.
+    - order=desc (default): newest meeting first. order=asc: oldest meeting first.
+    - limit: cap on how many articles to process. Applied to the WP-ordered listing.
+
+    Each entry in ``reports`` and ``failed`` includes a ``scope`` field identifying which
+    fact-check produced it ("article" or "bullet_points"); when scope=both, each article
+    can produce up to two entries. Pre-flight failures (no transcript for the youtube_id)
+    emit a single entry with the requested ``scope`` value.
+
+    Articles with an empty ``_article_meeting_date`` are still returned by WordPress and
+    sort to the end on DESC / start on ASC.
+    """
     db = deps.database
     if not db:
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="Database not available",
         )
-    all_articles = db.get_all_articles()
-    eligible = [a for a in all_articles if a.get("transcript_id")]
-    if limit is not None and limit > 0:
-        articles = eligible[:limit]
-    else:
-        articles = eligible
+    svc = deps.wordpress_sync_service
+    if not svc:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="WordPress sync service not available",
+        )
+    sub_scopes: List[Literal["article", "bullet_points"]] = (
+        ["article", "bullet_points"] if scope == "both" else [scope]
+    )
+    wp_articles = svc.get_articles_sorted_by_meeting_date(order=order, limit=limit)
     processed = 0
     failed: List[Dict[str, Any]] = []
     reports: List[Dict[str, Any]] = []
     agent = FactCheckAgent(db)
-    logger.info("Fact-check batch started: processing %s articles (limit=%s, scope=%s)", len(articles), limit, scope)
-    for article in articles:
-        article_id = article.get("id")
-        if not article_id:
+    logger.info(
+        "Fact-check batch started: %s articles from WordPress (limit=%s, scope=%s, sub_scopes=%s, order=%s)",
+        len(wp_articles), limit, scope, sub_scopes, order,
+    )
+    for wp_item in wp_articles:
+        youtube_id = (wp_item.get("youtube_id") or "").strip()
+        title = wp_item.get("title") or ""
+        meeting_date = wp_item.get("meeting_date") or ""
+        content = wp_item.get("content") or ""
+        bullet_points = wp_item.get("bullet_points") or ""
+        if not youtube_id:
             continue
-        try:
-            result = agent.fact_check(article_id, scope=scope)
-            processed += 1
-            if not result.get("success"):
-                failed.append({"youtube_id": article.get("youtube_id"), "title": article.get("title"), "error": result.get("message", "Unknown error")})
-            else:
-                reports.append({"youtube_id": article.get("youtube_id"), "title": article.get("title"), "report": result.get("report")})
-        except Exception as e:
-            logger.exception("Fact-check batch failed for article_id=%s: %s", article_id, e)
-            failed.append({"youtube_id": article.get("youtube_id"), "title": article.get("title"), "error": str(e)})
+        transcript_row = db.get_transcript_by_youtube_id(youtube_id)
+        transcript_content = ""
+        if transcript_row and len(transcript_row) > 3:
+            transcript_content = (transcript_row[3] or "").strip()
+        if not transcript_content:
+            failed.append({
+                "youtube_id": youtube_id,
+                "title": title,
+                "meeting_date": meeting_date,
+                "scope": scope,
+                "error": "No transcript for youtube_id",
+            })
+            continue
+        log_label = f"youtube_id={youtube_id}"
+        for sub_scope in sub_scopes:
+            try:
+                result = agent.fact_check_with_data(
+                    title=title,
+                    content=content,
+                    bullet_points=bullet_points,
+                    transcript_content=transcript_content,
+                    scope=sub_scope,
+                    log_label=log_label,
+                )
+                processed += 1
+                if not result.get("success"):
+                    failed.append({
+                        "youtube_id": youtube_id,
+                        "title": title,
+                        "meeting_date": meeting_date,
+                        "scope": sub_scope,
+                        "error": result.get("message", "Unknown error"),
+                    })
+                else:
+                    reports.append({
+                        "youtube_id": youtube_id,
+                        "title": title,
+                        "meeting_date": meeting_date,
+                        "scope": sub_scope,
+                        "report": result.get("report"),
+                    })
+            except Exception as e:
+                logger.exception(
+                    "Fact-check batch failed for youtube_id=%s scope=%s: %s",
+                    youtube_id, sub_scope, e,
+                )
+                failed.append({
+                    "youtube_id": youtube_id,
+                    "title": title,
+                    "meeting_date": meeting_date,
+                    "scope": sub_scope,
+                    "error": str(e),
+                })
     logger.info("Fact-check batch completed: processed=%s, failed=%s", processed, len(failed))
     return {
         "success": True,
-        "total_eligible": len(eligible),
+        "scope": scope,
+        "order": order,
+        "total_from_wordpress": len(wp_articles),
         "processed": processed,
         "reports": reports,
         "failed_count": len(failed),

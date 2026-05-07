@@ -133,7 +133,7 @@ services:
       - fr-mirror-bridge
     ports:
       - "${API_PORT}:80"  # FastAPI application
-      - "8086:8080"  # OAuth redirect callback port
+      - "${FR_MIRROR_PORT}:8080"  # OAuth redirect callback port
     volumes:
       - .:/code
       - ~/.ssh:/home/app/.ssh:ro
