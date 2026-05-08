@@ -5,7 +5,7 @@
     }
   },
   "Web": {
-    "research-mirror.ferret-boa.ts.net:443": {
+    "fr-mirror.ferret-boa.ts.net:443": {
       "Handlers": {
         "/": {
           "Proxy": "http://127.0.0.1:80"
@@ -14,6 +14,6 @@
     }
   },
   "AllowFunnel": {
-    "research-mirror.ferret-boa.ts.net:443": false
+    "fr-mirror.ferret-boa.ts.net:443": false
   }
 }
