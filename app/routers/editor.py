@@ -136,10 +136,31 @@ def spell_check_batch(
 @router.post("/article/by-youtube/{youtube_id}/fact-check")
 def fact_check_article(
     youtube_id: str,
-    scope: Literal["article", "bullet_points"] = "article",
+    scope: Literal["article", "bullet_points", "both"] = "both",
     deps: AppDependencies = Depends(AppDependencies),
 ) -> Dict[str, Any]:
-    """Fact-check against transcript (look up by YouTube ID). Switch: scope=article (default) fact-checks title + content; scope=bullet_points fact-checks bullet points only."""
+    """
+    Fact-check a single article by YouTube ID.
+
+    Mirrors the WordPress-driven flow used by ``/fact-check-batch``:
+    article title / content / bullet points come from WordPress (``wp/v2/article``)
+    and the transcript is looked up from local SQLite by ``youtube_id``.
+
+    - scope=both (default): one report per scope (title + content AND bullet points).
+    - scope=article: title + content only.
+    - scope=bullet_points: bullet points only.
+
+    Returns a single-article version of the batch endpoint's shape:
+    ``{reports: [...], failed: [...]}`` where each entry carries its own ``scope``.
+    Returns 404 if the youtube_id is not present on WordPress, or if no transcript
+    exists locally for it.
+    """
+    youtube_id = (youtube_id or "").strip()
+    if not youtube_id:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="youtube_id is required",
+        )
     logger.info("Fact-check requested for youtube_id=%s, scope=%s", youtube_id, scope)
     db = deps.database
     if not db:
@@ -147,29 +168,87 @@ def fact_check_article(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="Database not available",
         )
-    article = db.get_article_by_youtube_id(youtube_id)
-    if not article:
+    svc = deps.wordpress_sync_service
+    if not svc:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="WordPress sync service not available",
+        )
+    wp_articles = svc.get_articles_sorted_by_meeting_date()
+    wp_item = next(
+        (
+            a for a in wp_articles
+            if (a.get("youtube_id") or "").strip() == youtube_id
+        ),
+        None,
+    )
+    if not wp_item:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail=f"No article found for YouTube ID {youtube_id}",
+            detail=f"No article on WordPress for YouTube ID {youtube_id}",
         )
-    article_id = article["id"]
+    title = wp_item.get("title") or ""
+    meeting_date = wp_item.get("meeting_date") or ""
+    content = wp_item.get("content") or ""
+    bullet_points = wp_item.get("bullet_points") or ""
+    transcript_row = db.get_transcript_by_youtube_id(youtube_id)
+    transcript_content = ""
+    if transcript_row and len(transcript_row) > 3:
+        transcript_content = (transcript_row[3] or "").strip()
+    if not transcript_content:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"No transcript for YouTube ID {youtube_id}",
+        )
+    sub_scopes: List[Literal["article", "bullet_points"]] = (
+        ["article", "bullet_points"] if scope == "both" else [scope]
+    )
     agent = FactCheckAgent(db)
-    result = agent.fact_check(article_id, scope=scope)
-    if not result["success"]:
-        msg = result.get("message", "")
-        if msg in ("Article has no linked transcript", "Transcript not found"):
-            raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND,
-                detail=msg,
+    log_label = f"youtube_id={youtube_id}"
+    reports: List[Dict[str, Any]] = []
+    failed: List[Dict[str, Any]] = []
+    for sub_scope in sub_scopes:
+        try:
+            result = agent.fact_check_with_data(
+                title=title,
+                content=content,
+                bullet_points=bullet_points,
+                transcript_content=transcript_content,
+                scope=sub_scope,
+                log_label=log_label,
             )
-    logger.info("Fact-check completed for youtube_id=%s (article_id=%s): %s", youtube_id, article_id, result.get("message", "ok"))
+            if not result.get("success"):
+                failed.append({
+                    "scope": sub_scope,
+                    "error": result.get("message", "Unknown error"),
+                })
+            else:
+                reports.append({
+                    "scope": sub_scope,
+                    "report": result.get("report"),
+                })
+        except Exception as e:
+            logger.exception(
+                "Fact-check failed for youtube_id=%s scope=%s: %s",
+                youtube_id, sub_scope, e,
+            )
+            failed.append({
+                "scope": sub_scope,
+                "error": str(e),
+            })
+    logger.info(
+        "Fact-check completed for youtube_id=%s: scope=%s, reports=%s, failed=%s",
+        youtube_id, scope, len(reports), len(failed),
+    )
     return {
-        "success": result["success"],
-        "message": result.get("message"),
-        "youtube_id": article.get("youtube_id"),
-        "title": article.get("title"),
-        "report": result.get("report"),
+        "success": len(failed) == 0,
+        "youtube_id": youtube_id,
+        "title": title,
+        "meeting_date": meeting_date,
+        "scope": scope,
+        "reports": reports,
+        "failed_count": len(failed),
+        "failed": failed,
     }
 
 

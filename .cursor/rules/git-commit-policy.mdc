@@ -1,0 +1,43 @@
+---
+description: Git commit policy — before creating any git commit, display the complete commit message verbatim in the chat so the user can review it before it lands.
+alwaysApply: true
+---
+
+# Git commit policy
+
+Before creating any git commit, I MUST display the **complete** commit message I'm about to use in the chat as a fenced code block — full subject line and full body, verbatim. The user must be able to read the exact text that will land in `git log` without expanding tool-call arguments, opening a diff viewer, or running `git log` themselves.
+
+## When this applies
+
+- Every `git commit` I create, regardless of the tool used (the `Shell` tool running `git commit`, the GitLens MCP's `git_add_or_commit`, or any other mechanism).
+- Both new commits and amends.
+- Commits whose message I drafted myself, AND commits where the user provided the message — I quote it back so they can confirm it's the version they meant.
+
+## Format
+
+Immediately before the commit tool call, output the full message inside a fenced code block (no language tag), preceded by a one-line lead-in such as "Committing now with this message:":
+
+````
+Committing now with this message:
+
+```
+<subject line>
+
+<optional body paragraph 1>
+
+<optional body paragraph 2>
+```
+````
+
+Then issue the commit tool call. Do not split the message across multiple code blocks; preserve blank lines exactly as they will appear in `git log`.
+
+## Why
+
+Commit messages passed as MCP tool arguments or HEREDOC bodies are not visible to the user mid-stream — they're buried inside tool-call payloads. Surfacing the message in chat before the commit lands gives the user a chance to interrupt, correct, or approve the wording before it becomes part of the permanent git history.
+
+## Anti-patterns
+
+- Calling the commit tool without first showing the message in chat.
+- Showing only the subject line and assuming the body is "obvious."
+- Paraphrasing the message ("I'll commit with a message about X") instead of quoting it verbatim.
+- Showing the message *after* the commit lands — by then it's too late for the user to redirect.
