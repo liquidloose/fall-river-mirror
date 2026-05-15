@@ -6,7 +6,10 @@ from typing import Any, Dict, List, Optional
 from fastapi import APIRouter, Depends, HTTPException, status
 
 from app.dependencies import AppDependencies
-from app.content_department.ai_editors import EditorAgent
+from app.content_department.ai_editors import EditorAgent, FactCheckerAgent
+from app.content_department.ai_editors.fact_checker_agent import (
+    ARTICLE_NOT_FOUND_FOR_YOUTUBE_ID_MESSAGE,
+)
 
 router = APIRouter(prefix="/editor", tags=["editor"])
 logger = logging.getLogger(__name__)
@@ -53,6 +56,40 @@ def spell_check_article(
     logger.info(
         "Spell-check completed for article_id=%s: %s",
         article_id,
+        result.get("message", "ok"),
+    )
+    return result
+
+
+@router.post("/article/by-youtube/{youtube_id}/fact-check")
+def fact_check_article_by_youtube(
+    youtube_id: str,
+    deps: AppDependencies = Depends(AppDependencies),
+) -> Dict[str, Any]:
+    """Return a JSON fact-check report for manual WordPress editing (read-only; no DB or WP updates)."""
+    logger.info("Fact-check requested for youtube_id=%s", youtube_id)
+    db = deps.database
+    if not db:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Database not available",
+        )
+    agent = FactCheckerAgent(db)
+    result = agent.fact_check_by_youtube_id(youtube_id)
+    if not result["success"] and result.get("message") == ARTICLE_NOT_FOUND_FOR_YOUTUBE_ID_MESSAGE:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"No article found for YouTube id {result.get('youtube_id', youtube_id)!r}",
+        )
+    if not result["success"] and result.get("message") == "YouTube id is required":
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="YouTube id is required",
+        )
+    logger.info(
+        "Fact-check finished for youtube_id=%s: success=%s message=%s",
+        youtube_id,
+        result.get("success"),
         result.get("message", "ok"),
     )
     return result
