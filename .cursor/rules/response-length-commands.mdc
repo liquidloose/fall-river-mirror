@@ -33,8 +33,8 @@ If the user is asking *about* a command rather than invoking it ("what does /tld
 
 ## Example
 
-User: `/tldr how does the batch fact-checker work?`
+User: `/tldr how does the spell-check batch endpoint work?`
 
-Good (3 sentences, no headers, no lists): "The endpoint pulls articles from WordPress sorted by `_article_meeting_date`, then for each one looks up the transcript in SQLite by `youtube_id` and runs an xAI fact-check against article body and bullet points. Each article produces up to two report entries (one per scope). Failures are returned per-item rather than aborting the batch."
+Good (3 sentences, no headers, no lists): "The handler loads articles from the local database, keeps only rows not yet spell-checked, and runs the editor agent on each. When corrections are saved it can push updated title and content to WordPress. Results aggregate counts for processed, corrected, unchanged, and failed items."
 
 Bad (uses headers and bullets despite `/tldr`): "## Overview\n- Pulls articles from WordPress\n- Looks up transcript in SQLite..."
