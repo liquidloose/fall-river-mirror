@@ -1,8 +1,10 @@
 import logging
 from typing import Dict, Any
+
 from fastapi.responses import JSONResponse
-from .xai_text_query import XAITextQuery
-from app.data.enum_classes import ArticleType, Tone
+
+from .llm_text_query import LLMTextQuery
+from app.data.enum_classes import ArticleType, TextLLMProvider, Tone
 from .context_manager import ContextManager
 
 logger = logging.getLogger(__name__)
@@ -13,7 +15,17 @@ class ArticleGenerator:
 
     def __init__(self, context_manager: ContextManager = None):
         self.context_manager = context_manager or ContextManager()
-        self.xai_processor = XAITextQuery()
+        self.llm_processor = LLMTextQuery(provider=TextLLMProvider.XAI)
+
+    def _complete_headline(self, article_body: str) -> str | JSONResponse:
+        """Second completion: title only; system instructions loaded from journalists context Markdown."""
+        system = self.context_manager.read_context_file(
+            "headline", "headline.md", role="journalists"
+        )
+        return self.llm_processor.get_raw_response(
+            system,
+            f"Article content:\n\n{article_body}",
+        )
 
     def write_article(
         self,
@@ -21,8 +33,7 @@ class ArticleGenerator:
         prompt: str,
         article_type: ArticleType,
         tone: Tone,
-        committee: str,
-        x,
+        committee: str | None = None,
     ) -> Dict[str, Any] | JSONResponse:
         """
         Generate article content based on context and parameters.
@@ -32,10 +43,11 @@ class ArticleGenerator:
             prompt (str): The user's specific writing prompt
             article_type (ArticleType): Type of article to generate
             tone (Tone): Writing tone to use
-            committee (Committee): Committee type for the article
+            committee (str | None): Committee label for metadata; optional for API callers that omit it.
 
         Returns:
-            Dict[str, Any] | JSONResponse: Generated article content or error response
+            Dict with ``title``, ``response``/``content`` (HTML body), ``article_type``, ``tone``,
+            optional ``committee``, plus ``context``/``prompt`` echoes; or a ``JSONResponse`` on failure.
         """
         try:
             # Build context based on article type
@@ -53,14 +65,37 @@ class ArticleGenerator:
             full_prompt = f"This is the type of article: {article_type.value} This is the tone: {tone.value} This is the context: {context}. This is the user's prompt: {prompt}"
             logger.info(f"Full prompt: {full_prompt}")
 
-            # Generate response using the XAI processor
-            response = self.xai_processor.get_response(
-                final_context,
-                full_prompt,
-                committee.value,
-                article_type.value,
-                tone.value,
-            )
+            # Body, then headline-only follow-up (see _complete_headline).
+            body_out = self.llm_processor.get_raw_response(final_context, full_prompt)
+            if isinstance(body_out, JSONResponse):
+                return body_out
+            body = (body_out or "").strip()
+            if not body:
+                return JSONResponse(
+                    status_code=500,
+                    content={
+                        "error": (
+                            "LLM returned empty article body (main completion had no text). "
+                            "Retry the request; if it persists, check model limits or transcript size."
+                        ),
+                    },
+                )
+            headline_out = self._complete_headline(body)
+            if isinstance(headline_out, JSONResponse):
+                return headline_out
+            title = (headline_out or "").strip()
+
+            committee_out = committee if committee is not None else ""
+            response = {
+                "title": title,
+                "article_type": article_type.value,
+                "tone": tone.value,
+                "committee": committee_out,
+                "context": final_context,
+                "prompt": full_prompt,
+                "response": body,
+                "content": body,
+            }
             logger.debug(f"Response generated successfully")
             return response
 

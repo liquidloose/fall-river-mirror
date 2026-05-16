@@ -609,10 +609,9 @@ app/
 │   │   ├── article_generator.py
 │   │   ├── context_manager.py
 │   │   ├── whisper_processor.py
-│   │   ├── xai_text_query.py
+│   │   ├── llm_text_query.py
 │   │   ├── xai_image_query.py
 │   │   ├── openai_image_query.py
-│   │   ├── text_llm_client.py
 │   │   ├── official_names_loader.py
 │   │   ├── official_name_spelling_service.py
 │   └── agents/                      # Named journalists, artists, editors

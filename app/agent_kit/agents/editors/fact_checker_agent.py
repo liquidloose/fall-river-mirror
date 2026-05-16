@@ -1,5 +1,28 @@
 """
-Fact checker agent: returns a JSON fact-check report for article text (read-only).
+Fact-check helper for articles resolved by YouTube video id.
+
+:class:`FactCheckerAgent` loads ``title``, ``bullet_points``, and ``content`` from the
+database, sends them to the configured text LLM with instructions from
+``context_files/fact_check_system.md``, and parses the model reply as JSON.
+
+**Does not** persist reports or mutate articles; callers consume the returned dict only.
+
+**Flow**
+
+1. ``get_article_by_youtube_id(youtube_id)`` → article row or missing.
+2. Build system prompt from ``fact_check_system.md``; user message bundles title,
+   bullets (or ``(none)``), and body.
+3. ``LLMTextQuery(...).get_raw_response`` — expect a JSON **object**; markdown fences
+   stripped when present.
+4. Return envelope ``success``, ``message``, ``youtube_id``, ``article_id``, ``report``.
+
+**Database object** (``db`` passed to the constructor) must provide:
+
+- ``get_article_by_youtube_id(youtube_id)`` → dict with ``id``, ``title``, ``content``,
+  ``bullet_points`` (values may be empty strings), or ``None``
+
+On validation or AI failures, ``success`` is ``False``, ``report`` is ``None``, and
+``message`` describes the issue. ``JSONResponse`` from the LLM layer is handled like a failed request.
 """
 import json
 import os
@@ -9,10 +32,12 @@ from typing import Any, Dict
 
 from fastapi.responses import JSONResponse
 
-from app.agent_kit.utility_classes.text_llm_client import get_text_llm
+from app.agent_kit.utility_classes.llm_text_query import LLMTextQuery
+from app.data.enum_classes import TextLLMProvider
 
 logger = logging.getLogger(__name__)
 
+# Returned in ``fact_check_by_youtube_id`` when ``db.get_article_by_youtube_id`` finds no row.
 ARTICLE_NOT_FOUND_FOR_YOUTUBE_ID_MESSAGE = "Article not found for this YouTube id"
 
 _FACT_CHECK_SYSTEM_PROMPT_PATH = os.path.join(
@@ -21,23 +46,61 @@ _FACT_CHECK_SYSTEM_PROMPT_PATH = os.path.join(
 
 
 class FactCheckerAgent:
-    """Produces a structured fact-check report from title, bullet points, and content (no DB writes)."""
+    """
+    Read-only LLM fact-check over article fields keyed by YouTube id.
+
+    See module docstring for required ``db`` methods and return envelope.
+    """
 
     def __init__(self, db: Any) -> None:
         self._db = db
-        self._llm = get_text_llm()
+        self._llm = LLMTextQuery(provider=TextLLMProvider.XAI)
 
     def _build_system_prompt(self) -> str:
+        """Full text of ``fact_check_system.md`` (model instructions and JSON schema)."""
         with open(_FACT_CHECK_SYSTEM_PROMPT_PATH, encoding="utf-8") as f:
             return f.read().strip()
 
     def _build_user_message(self, title: str, bullet_points: str, content: str) -> str:
+        """Single user message carrying title, bullets (or ``(none)``), and body."""
         bullets_display = (bullet_points or "").strip()
         if not bullets_display:
             bullets_display = "(none)"
         return f"Title:\n{title}\n\nBullet points:\n{bullets_display}\n\nContent:\n{content}"
 
     def fact_check_by_youtube_id(self, youtube_id: str) -> Dict[str, Any]:
+        """
+        Look up an article by YouTube id and return an envelope plus optional parsed report.
+
+        **Normalization.** The lookup uses ``youtube_id.strip()`` (empty after strip → validation error).
+        Successful responses echo the stripped id as ``youtube_id``. On "required" failure,
+        ``youtube_id`` is whatever was passed in (may differ from ``yt``), ``article_id`` is ``None``.
+
+        **Early exits** (no LLM call), all with ``report=None``:
+
+        - Blank id → ``success=False``, ``message`` explains requirement.
+        - ``db.get_article_by_youtube_id`` missing → ``success=False``,
+          ``message`` set to ``ARTICLE_NOT_FOUND_FOR_YOUTUBE_ID_MESSAGE``.
+
+        **LLM path.** Builds prompts via ``_build_system_prompt`` / ``_build_user_message``, then
+        ``self._llm.get_raw_response``. Any exception becomes ``success=False`` and ``message``
+        prefixed with ``AI request failed:``.
+
+        **Transport errors.** Some clients return ``JSONResponse`` instead of raising; that is treated
+        as failure: body is decoded, optional JSON ``error`` field becomes ``message`` detail.
+
+        **Parsing.** Model output must be a UTF-8 string coerced to trimmed text, then ``json.loads``.
+
+        - If the response starts with markdown code fences (optional ``json`` language tag),
+          leading and trailing fences are stripped before parse (models often wrap JSON in markdown).
+        - Parse errors → ``success=False``, ``Invalid JSON from AI: …``.
+        - Top-level value **must be a JSON object** (``dict``); arrays or scalars →
+          ``AI response was not a JSON object``.
+
+        **Success.** ``success=True``, ``message="Fact-check complete"``, ``report`` is the parsed
+        object. Field meanings (``overall_risk``, ``flags``, etc.) are defined in
+        ``context_files/fact_check_system.md``. This method **never** writes to ``db``.
+        """
         yt = (youtube_id or "").strip()
         logger.info("Fact-check started for youtube_id=%s", yt)
         if not yt:

@@ -1,33 +1,86 @@
 """
 Official-name spell-check editor (article title + HTML/plain body).
 
-This module implements :class:`EditorAgent`, which loads an article from the
-database, asks the LLM to correct **only** misspellings of canonical names from
-:func:`~app.agent_kit.utility_classes.official_names_loader.get_guideline_text` (source document:
-``agent_kit/agents/editors/context_files/official_names.md``, same text FRJ1 uses),
+:class:`EditorAgent` loads an article, sends title and body to a text LLM with a
+narrow task—fix spellings **only** for names listed in the official-names
+guideline from
+:func:`~app.agent_kit.utility_classes.official_names_loader.get_guideline_text`
+(built from ``agent_kit/agents/editors/context_files/official_names.md``; same
+canonical list FRJ1 uses). It does **not** rewrite for grammar, tone, factual
+accuracy, or style beyond that constrained fix.
 
-**Flow**
+HTTP usage
+==========
 
-1. ``get_article_by_id`` → ``title``, ``content``
-2. Build system prompt embedding the official-names guideline; user message is
-   title + content.
-3. ``XAITextQuery.get_raw_response`` — expect a JSON object
-   ``{"title": "...", "content": "..."}`` (markdown fences stripped if present).
-4. If text is unchanged, no title/content updates; still mark spell-check done.
-5. If text changed, ``update_article_title`` then ``update_article_content``;
-   both must succeed before marking spell-check done.
+Typically constructed per request in :mod:`~app.routers.editor`:
 
-**Database object** (``db`` passed to the constructor) must provide:
+- ``POST /editor/article/{article_id}/spell-check`` calls
+  ``EditorAgent(...).spell_check_and_save(article_id)``.
+- Batch spell-check loops the same method for unchecked articles.
 
-- ``get_article_by_id(article_id)`` → dict with ``title``, ``content`` or ``None``
-- ``update_article_title(article_id, title)`` → ``bool``
-- ``update_article_content(article_id, content)`` → ``bool``
-- ``update_article_spell_checked(article_id, True)`` — called whenever the run
-  finishes successfully (including "no spelling errors discovered")
+The router may add keys such as ``wordpress_synced`` after a successful save;
+this class returns only the envelope described below.
 
-Errors from the model (``JSONResponse``), non-JSON output, or DB failures return
-``success: False`` with a ``message`` and leave spell-check state unchanged except
-where documented above.
+LLM wiring
+==========
+
+Uses :class:`~app.agent_kit.utility_classes.llm_text_query.LLMTextQuery` with
+``TextLLMProvider.XAI``. The process environment must expose the credentials and
+model id expected by that client (currently ``XAI_API_KEY`` and ``XAI_MODEL``).
+
+Flow
+====
+
+1. ``db.get_article_by_id`` → rows with ``title``, ``content`` or missing row.
+2. Build system prompt embedding the guideline; user message is title + body.
+3. ``get_raw_response`` — model must answer with a JSON object
+   ``{"title": "...", "content": "..."}``. If the reply is wrapped in a Markdown
+   fenced code block labeled ``json``, the fences are stripped before
+   ``json.loads``.
+4. Parsing falls back per field: absent ``title`` uses the loaded title;
+   absent ``content`` keeps the loaded body unchanged.
+5. If title and body match the originals, skip DB writes; still call
+   ``update_article_spell_checked(..., True)``.
+6. If either string changed, ``update_article_title`` then ``update_article_content``.
+   Both must report success **before**
+   ``update_article_spell_checked(..., True)``. If ``update_article_content``
+   fails after title updated, the title change may already be persisted and
+   ``spell_checked`` remains ``False``.
+
+Database protocol
+=================
+
+``db`` must implement:
+
+- ``get_article_by_id(article_id: int)`` → ``dict`` with ``title``, ``content``,
+  or a falsy value when missing.
+- ``update_article_title(article_id, title: str)`` → ``bool``
+- ``update_article_content(article_id, content: str)`` → ``bool``
+- ``update_article_spell_checked(article_id, True)`` — on every successful agent
+  outcome (already correct copy or corrections committed).
+
+Response envelope from ``spell_check_and_save``
+==============================================
+
+Every outcome includes:
+
+- ``success`` ``bool``
+- ``message`` ``str`` (human-readable; also used by HTTP layer for status)
+- ``article_id`` ``int``
+- ``original_title`` / ``original_content``
+- ``corrected_title`` / ``corrected_content``
+
+On failures before load, originals and corrected fields may be ``None``. On AI
+or parse failures after load, ``corrected_*`` are typically ``None`` while
+``original_*`` reflect stored copy. Successful runs always populate all four strings.
+
+Failures
+=========
+
+- Missing article, LLM/network exceptions, :class:`fastapi.responses.JSONResponse`
+  from the LLM layer, invalid JSON, or DB update errors → ``success`` is
+  ``False``; ``update_article_spell_checked`` is **not** called except on the two
+  success branches above.
 """
 import json
 import re
@@ -37,7 +90,8 @@ from typing import Any, Dict
 from fastapi.responses import JSONResponse
 
 from app.agent_kit.utility_classes.official_names_loader import get_guideline_text
-from app.agent_kit.utility_classes.xai_text_query import XAITextQuery
+from app.agent_kit.utility_classes.llm_text_query import LLMTextQuery
+from app.data.enum_classes import TextLLMProvider
 
 logger = logging.getLogger(__name__)
 
@@ -46,22 +100,39 @@ class EditorAgent:
     """
     LLM-assisted copy editor scoped to official name spellings.
 
-    Uses the same canonical name list as journalist prompts (see
-    :func:`~app.agent_kit.utility_classes.official_names_loader.get_guideline_text`). Does not run
-    general-purpose grammar or style edits.
+    Holds a database accessor and an xAI-backed
+    :class:`~app.agent_kit.utility_classes.llm_text_query.LLMTextQuery`. Used by
+    :mod:`~app.routers.editor` for spell-check endpoints. Behavioral contract and
+    return shape are documented in this package's module docstring.
+
+    See also:
+        :func:`~app.agent_kit.utility_classes.official_names_loader.get_guideline_text`
+            Source of canonical names inlined into prompts.
     """
 
     def __init__(self, db: Any) -> None:
         """
         Args:
-            db: Object implementing the contract described in this package's
-                module docstring (article fetch/update + spell-checked flag).
+            db: Object implementing the database protocol documented in this
+                module's docstring.
+
+        Notes:
+            Instantiates :class:`~app.agent_kit.utility_classes.llm_text_query.LLMTextQuery`
+            with ``TextLLMProvider.XAI`` on each constructed agent (per HTTP request
+            when used from the FastAPI router).
         """
         self._db = db
-        self._xai = XAITextQuery()
+        self._llm = LLMTextQuery(provider=TextLLMProvider.XAI)
 
     def _build_system_prompt(self) -> str:
-        """Assemble the editor system prompt including the official-names block."""
+        """
+        Compose the spell-check system message: Fall River Mirror role text plus
+        the live official-names guideline from Markdown on disk.
+
+        Returns:
+            Full system prompt string passed as the LLM ``context`` / system
+            instruction alongside the user payload in ``spell_check_and_save``.
+        """
         guideline = get_guideline_text()
         return f"""You are a copy editor for Fall River Mirror.
 
@@ -83,20 +154,29 @@ Return the full title and full content; only the spellings of official names may
 
     def spell_check_and_save(self, article_id: int) -> Dict[str, Any]:
         """
-        Run the official-name spell-check pipeline for one article.
+        Run the official-name spell-check pipeline for a single stored article.
 
-        On **every** successful completion (including when copy is already
-        correct), ``update_article_spell_checked(article_id, True)`` is called.
-        Title and content columns are updated only when the model returns
-        different strings and both updates succeed.
+        Persists corrections only when the model proposes different ``title``
+        or ``content`` strings and both ``update_article_*`` calls succeed.
+
+        Args:
+            article_id: Primary key (or resolver) understood by ``db``.
 
         Returns:
-            A dict always including ``success`` (bool), ``message`` (str),
-            ``article_id`` (int), and the four title/content fields
-            (``original_*`` / ``corrected_*``; originals set on error paths where
-            the article was loaded). Typical ``message`` values include
-            ``"no spelling errors discovered"``, ``"Spelling corrections applied and saved"``,
-            ``"Article not found"``, or an error detail string from AI/DB/JSON parsing.
+            Envelope documented in this module docstring (
+            ``success``, ``message``, ``article_id``, ``original_*``,
+            ``corrected_*``). Successful ``message`` values are lowercase
+            ``"no spelling errors discovered"`` when the model echoed input, or
+            ``"Spelling corrections applied and saved"`` after both DB writes.
+
+        Raises:
+            This method catches LLM and DB exceptions and returns them inside
+            the envelope instead of propagating.
+
+        Warning:
+            A failed ``update_article_content`` after a successful title update can
+            leave the article with an updated title and ``spell_checked`` still
+            false; callers may need remediation or retries.
         """
         logger.info("Spell-check started for article_id=%s", article_id)
         article = self._db.get_article_by_id(article_id)
@@ -123,7 +203,7 @@ Return the full title and full content; only the spellings of official names may
         user_message = f"Title:\n{title}\n\nContent:\n{content}"
         try:
             logger.info("Calling AI for spell-check article_id=%s", article_id)
-            out = self._xai.get_raw_response(system_prompt, user_message)
+            out = self._llm.get_raw_response(system_prompt, user_message)
         except Exception as e:
             logger.exception("Editor agent: AI request raised an exception for article_id=%s", article_id)
             return {

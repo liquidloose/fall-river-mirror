@@ -4,9 +4,9 @@ from typing import Dict, Any, Optional
 
 from fastapi.responses import JSONResponse
 
-from ....data.enum_classes import Tone, ArticleType
+from ....data.enum_classes import Tone, ArticleType, TextLLMProvider
 from ..base_creator import BaseCreator
-from app.agent_kit.utility_classes.xai_text_query import XAITextQuery
+from app.agent_kit.utility_classes.llm_text_query import LLMTextQuery
 
 logger = logging.getLogger(__name__)
 
@@ -160,9 +160,9 @@ class BaseJournalist(BaseCreator):
         else:
             user_message = "Write the article now."
 
-        xai_text_query = XAITextQuery()  # Initialize the XAITextQuery class
+        llm = LLMTextQuery(provider=TextLLMProvider.XAI)
         try:
-            response = xai_text_query.get_response(
+            response = llm.get_response(
                 context=system_prompt,
                 message=user_message,
                 article_type=personality["article_type"],
@@ -207,9 +207,9 @@ class BaseJournalist(BaseCreator):
         logger.info(f"Context: {context}")
         logger.info(f"Message: {message}")
 
-        xai_text_query = XAITextQuery()
+        llm = LLMTextQuery(provider=TextLLMProvider.XAI)
         try:
-            response = xai_text_query.get_response(
+            response = llm.get_response(
                 context=context,
                 message=message,
                 article_type="bullet-point-summary",
