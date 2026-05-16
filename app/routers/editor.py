@@ -6,8 +6,8 @@ from typing import Any, Dict, List, Optional
 from fastapi import APIRouter, Depends, HTTPException, status
 
 from app.dependencies import AppDependencies
-from app.content_department.ai_editors import EditorAgent, FactCheckerAgent
-from app.content_department.ai_editors.fact_checker_agent import (
+from app.agent_kit.agents.editors import EditorAgent, FactCheckerAgent
+from app.agent_kit.agents.editors.fact_checker_agent import (
     ARTICLE_NOT_FOUND_FOR_YOUTUBE_ID_MESSAGE,
 )
 

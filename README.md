@@ -27,7 +27,7 @@
   - [Schema](#schema)
   - [If both articles and transcripts dropped together](#if-both-articles-and-transcripts-dropped-together)
   - [How to check after the fact](#how-to-check-after-the-fact)
-- [Planned API layout (router split)](#planned-api-layout-router-split)
+- [Application architecture](#application-architecture)
 - [AI creator architecture](#ai-creator-architecture)
 - [Project structure](#project-structure)
 - [Development](#development)
@@ -194,20 +194,25 @@ Both modes use the same [`docker-compose.yml`](docker-compose.yml); pass `--prof
 
 ### Article generation
 
-- `POST /article/generate/{context}/{prompt}/{article_type}/{tone}/{committee}` — Generate articles with path parameters
+- `POST /article/generate/{journalist}/{tone}/{article_type}/{transcript_id}` — Generate from a cached transcript row
+- `POST /article/write/{amount_of_articles}` — Batch write pipeline helper
+- `POST /article/create/manually` — Generate a preview article from a transcript (`transcript_id` and optional query params; see `/docs`)
 
 ### Transcript management
 
-- `GET /transcript/{youtube_id}` — Fetch YouTube transcripts with intelligent caching
+- `GET /transcript/fetch/{youtube_id}` — Fetch (and cache) a transcript
+- `DELETE /transcript/delete/{transcript_id}` — Delete one transcript by DB id
+- `POST /transcript/fetch/{amount}` — Bulk fetch (see `/docs`)
+- `GET /transcripts/without-articles`, `GET /transcripts/count`, `GET /transcripts/pending/{journalist}` — Listing and pipeline helpers
 
-### CRUD operations (articles)
+### Articles (CRUD and utilities)
 
-- `POST /experimental/` — Create new article
-- `GET /experimental/` — List all articles (with filtering and pagination)
-- `GET /experimental/{article_id}` — Get specific article
-- `PUT /experimental/{article_id}` — Update article (full update)
-- `PATCH /experimental/{article_id}` — Update article (partial update)
-- `DELETE /experimental/{article_id}` — Delete article
+- `GET /articles/` — List articles (supports filters; see `/docs`)
+- `GET /articles/{article_id}`, `GET /articles/count` — Read and counts
+- `PUT /articles/{article_id}`, `PATCH /articles/{article_id}` — Updates
+- `DELETE /article/{article_id}` — Delete one article (and related art rows)
+- `DELETE /articles/remove-duplicate-per-transcript`, `POST /articles/strip-h1-tags`, `POST /articles/strip-fall-river-from-titles` — Maintenance utilities
+- `PATCH /article/{article_id}/bullet-points`, `POST /bullet-points/generate/batch/{amount_of_articles}` — Bullet-point workflows
 
 ### YouTube crawler
 
@@ -217,14 +222,14 @@ Both modes use the same [`docker-compose.yml`](docker-compose.yml); pass `--prof
 
 - `GET /wordpress/test-jwt` — Verify JWT against the configured WordPress base URL (e.g. fallrivermirror.com). Read-only; sends a GET to the article-youtube-ids endpoint and returns success/status. Does not create or modify any content.
 
-Additional routes (sync, pipeline, images, dedupe, etc.) exist in the running app; see **Swagger UI** at `/docs` for the full list. The [Planned API layout (router split)](#planned-api-layout-router-split) section summarizes how routes are organized today vs. a future refactor.
+Additional routes (sync, pipeline, images, dedupe, editors, etc.) exist in the running app; see **Swagger UI** at `/docs` for the full list. The [Application architecture](#application-architecture) section summarizes how the FastAPI app is layered (`main.py`, routers, services, dependencies).
 
 ## API documentation
 
-Once your server is running, you can access:
+Once your server is running, you can access (host port comes from **`API_PORT`** in `.env`; **`3004`** is the default used in [`docker-compose.yml`](docker-compose.yml) / [`CONFIGURATION.md`](CONFIGURATION.md)):
 
-- **Interactive API docs**: `http://localhost:8000/docs` (Swagger UI)
-- **Alternative docs**: `http://localhost:8000/redoc` (ReDoc)
+- **Interactive API docs**: `http://localhost:3004/docs` (Swagger UI)
+- **Alternative docs**: `http://localhost:3004/redoc` (ReDoc)
 
 ## Database
 
@@ -390,56 +395,53 @@ erDiagram
 3. **Who can call the API**  
    Check crontabs, GitHub Actions, scripts, or other services that might call `DELETE /article/{id}` or `DELETE /transcript/delete/{id}` or `DELETE /articles/remove-duplicate-per-transcript`.
 
-## Planned API layout (router split)
+## Application architecture
 
-Short reference for when we implement the refactor (from a codebase planning pass).
+The HTTP API is split into **domain routers** under [`app/routers/`](app/routers/), a thin **[`app/main.py`](app/main.py)** entrypoint that wires the app, and **services** under [`app/services/`](app/services/) for orchestration (pipeline, WordPress sync, images). Route handlers obtain shared objects through **`AppDependencies`** ([`app/dependencies.py`](app/dependencies.py)), which reads from `request.app.state` populated at startup in `main.py`. A compact mirror of this section lives in [`docs/http-api-architecture.md`](docs/http-api-architecture.md).
 
-### Current state
+### Layers (overview)
 
-- All ~35 API routes live in `app/main.py` (~3.3k lines).
-- No `APIRouter` usage; everything is mounted on `app` directly.
-- Harder to navigate, test, and change one area without touching the rest.
+- **`main.py`** — Constructs `FastAPI`, configures logging and middleware (request logging for selected paths, optional docs protection), opens the SQLite `Database`, runs enum sync (`DatabaseSync`), seeds journalist rows (`JournalistManager`), builds `TranscriptManager` / `ArticleGenerator`, instantiates **`WordPressSyncService`**, **`PipelineService`**, and **`ImageService`**, attaches them to **`app.state`**, registers routers with `include_router`, and logs DB row counts on startup.
+- **`app/dependencies.AppDependencies`** — Injected via `Depends(AppDependencies)` in routers; exposes `database`, `transcript_manager`, `article_generator`, `journalist_manager`, `articles_db`, `wordpress_sync_service`, `pipeline_service`, and `image_service`.
+- **`app/routers/`** — One module per area; each defines an `APIRouter` with routes for that domain.
+- **`app/services/`** — Longer workflows reused from multiple routers (e.g. pipeline run, batch WordPress sync, image generation helpers).
 
-### Goal
-
-Split routes by domain into separate router modules and keep `main.py` as a thin app factory + startup (DB init, journalist init, etc.).
-
-### Target layout
+### Layer diagram
 
 ```mermaid
 flowchart LR
   subgraph main [main.py]
     App[FastAPI app]
-    Init[DB and journalist init]
-    State[app.state]
-    Mount[include_router x 8]
+    Init[DB enum sync journalists managers]
+    Mount[include_router x 10]
   end
-  subgraph deps [app/dependencies.py]
-    AppDeps[AppDependencies class]
+  subgraph state [app.state]
+    Shared[database transcript_manager article_generator journalist_manager articles_db]
+    WordPressSyncService[wordpress_sync_service]
+    PipelineService[pipeline_service]
+    ImageService[image_service]
+  end
+  subgraph di [dependencies.py]
+    AD[AppDependencies]
   end
   subgraph routers [app/routers/]
-    Health[health.py]
-    Transcripts[transcripts.py]
-    Articles[articles.py]
-    Images[images.py]
-    Queue[queue.py]
-    Pipeline[pipeline.py]
-    WordPress[wordpress.py]
-    Journalist[journalist.py]
-    Crawler[crawler.py]
-  end
-  subgraph services [app/services - classes]
-    WordPressSyncService[WordPressSyncService]
-    PipelineService[PipelineService]
-    ImageService[ImageService]
+    Health[health]
+    Transcripts[transcripts]
+    Articles[articles]
+    Images[images]
+    Queue[queue]
+    Pipeline[pipeline]
+    WordPress[wordpress]
+    Journalist[journalist]
+    Crawler[crawler]
+    Editor[editor]
   end
   App --> Init
-  Init --> State
-  State --> deps
-  State --> services
+  Init --> state
   App --> Mount
   Mount --> routers
-  routers --> deps
+  routers --> AD
+  AD --> state
   WordPress --> WordPressSyncService
   Pipeline --> PipelineService
   Pipeline --> WordPressSyncService
@@ -447,31 +449,34 @@ flowchart LR
   Images --> ImageService
 ```
 
-### Suggested router breakdown
+### Routers and responsibilities
 
-| Router / module | Responsibility |
-|-----------------|----------------|
-| **Health** | `GET /` (health check) |
-| **Transcripts** | `GET /transcript/fetch/{youtube_id}`, `DELETE /transcript/delete/{transcript_id}`, `POST /transcript/fetch/{amount}`, `GET /transcripts/without-articles` |
-| **Articles** | `GET /articles/`, `GET /articles/{article_id}`, `GET /articles/count`, `PUT /articles/{article_id}`, `PATCH /articles/{article_id}`, `DELETE /article/{article_id}`, `DELETE /articles/remove-duplicate-per-transcript`, `POST /articles/strip-h1-tags`, `POST /articles/strip-fall-river-from-titles`, article generation and manual create, `POST /article/write/{amount_of_articles}`, `PATCH /article/{article_id}/bullet-points`, `POST /bullet-points/generate/batch/{amount_of_articles}` |
-| **Images / art** | `POST /image/generate/...`, `GET /image/{art_id}`, `DELETE /image/delete/{art_id}`, `DELETE /art/delete-all`, `DELETE /art/cleanup-duplicates`, `PATCH /image/{art_id}/regenerate` |
-| **Queue / pipeline** | `POST /queue/build`, `POST /queue/cleanup`, `GET /queue/stats`, `DELETE /queue/clear`, `POST /pipeline/run`, `GET /transcripts/pending/{journalist}` |
-| **WordPress sync** | `POST /sync-article-to-wordpress/{article_id}`, `POST /sync-articles-to-wordpress`, `POST /sync-missing-articles-to-wordpress` |
-| **Journalist** | `GET /journalist/{journalist_name}` |
-| **YouTube crawler** | `GET /yt_crawler/{video_id}` |
+| Router module | Responsibility |
+|---------------|----------------|
+| **`health`** | `GET /` health check |
+| **`transcripts`** | Transcript fetch/delete/bulk fetch, list without articles, counts, **`GET /transcripts/pending/{journalist}`** |
+| **`articles`** | Article CRUD (SQLite + selective use of in-memory `articles_db`), generation, bullet points, dedupe utilities, title cleanup |
+| **`images`** | Image/art generation, fetch, delete, regenerate, duplicate cleanup |
+| **`queue`** | Queue build/cleanup/stats/clear, **`GET /queue/compare-wordpress`** |
+| **`pipeline`** | **`POST /pipeline/run`** orchestration via `PipelineService` |
+| **`wordpress`** | Sync endpoints, JWT helpers, featured-image repair, sync audit |
+| **`journalist`** | **`GET /journalist/{journalist_name}`** |
+| **`crawler`** | **`GET /yt_crawler/{video_id}`** |
+| **`editor`** | Spell-check and fact-check endpoints, batch spell-check, swap article content toward WordPress |
 
-### Implementation approach
+### Dependency injection and tests
 
-1. Create `app/routers/` (e.g. `__init__.py` plus one file per domain or a few grouped files).
-2. Move route handlers and their immediate helpers from `main.py` into the right router module. Pass shared dependencies (e.g. `database`, `transcript_manager`, `article_generator`) via router constructor or dependency injection.
-3. In `main.py`, create each router and call `app.include_router(router, prefix=..., tags=[...])` (prefix optional).
-4. Keep in `main.py`: app creation, logging config, env/config, DB and journalist init, and any shared helpers used by multiple routers (or move those to `app/utils` or `app/core` if they grow).
-5. Run tests and manual smoke checks; fix imports and any broken references.
+Integration tests override **`AppDependencies`** on the FastAPI app so each request receives an in-memory database and mocks for external APIs. See [`tests/conftest.py`](tests/conftest.py) (`client` fixture and `_make_test_deps`).
 
-### Related (do later or in parallel)
+### Where to extend
 
-- **Article storage**: Several article endpoints still use in-memory `articles_db`; migrating them to the SQLite `articles` table is a separate P0 item (see plan discussion in project docs).
-- **README**: After refactor, consider a short “Architecture” or “API structure” section pointing to `app/routers/` and `main.py`.
+- **New or changed HTTP routes** — Add handlers to the matching file under [`app/routers/`](app/routers/) (or add a new router module and `include_router` it from [`app/main.py`](app/main.py)).
+- **Multi-step workflows** — Prefer [`app/services/`](app/services/) and inject the service through `AppDependencies` / `app.state`.
+- **Schema and persistence** — [`app/data/create_database.py`](app/data/create_database.py) and related data modules.
+
+### Notes
+
+- Some article routes still read/write the in-memory **`articles_db`** dict alongside SQLite; treating SQLite as the single source of truth for articles remains follow-up work.
 
 ## AI creator architecture
 
@@ -504,8 +509,8 @@ The abstract base class for all AI creators. Implements singleton pattern per su
 
 **Shared methods**:
 
-- `get_bio()` — Loads bio from `context_files/bios/{name}_bio.txt`
-- `get_description()` — Loads description from `context_files/descriptions/{name}_description.txt`
+- `get_bio()` — Loads bio from `agent_kit/agents/{role}/context_files/bios/` (`CONTEXT_FILES_ROLE` on the subclass)
+- `get_description()` — Same under `descriptions/`
 - `get_base_personality()` — Returns dict of core traits
 - `_load_attribute_context()` — Helper to load context files
 
@@ -541,14 +546,15 @@ Extends BaseCreator with image-specific functionality.
 
 **Key methods**:
 
-- `generate_image(context, prompt)` — Generate image via xAI Aurora
-- `load_context()` — Load medium/aesthetic context files
+- `generate_image(title, bullet_points, ...)` — Generate editorial illustration via OpenAI or xAI
+- `get_random_trait(trait_type)` — Picks a random `.md` from `medium/`, `aesthetic/`, or `style/art` under the artist `context_files` tree
+- `load_context()` — No-op for artists (traits are chosen per image)
 
 ### Usage example
 
 ```python
-from app.content_department.ai_journalists.aurelius_stone import AureliusStone
-from app.content_department.ai_artists.spectra_veritas import SpectraVeritas
+from app.agent_kit.agents.journalists.aurelius_stone import AureliusStone
+from app.agent_kit.agents.artists.spectra_veritas import SpectraVeritas
 
 # Singleton - same instance every time
 journalist = AureliusStone()
@@ -564,11 +570,11 @@ image = artist.generate_image(context="...", prompt="A city council meeting")
 
 ### Adding a new creator
 
-1. Create class in appropriate folder (`ai_journalists/` or `ai_artists/`)
+1. Create class in the appropriate folder (`app/agent_kit/agents/journalists/` or `app/agent_kit/agents/artists/`)
 2. Inherit from `BaseJournalist` or `BaseArtist`
 3. Define required class constants (identity traits)
 4. Override `get_guidelines()` or other methods as needed
-5. Add bio/description files to `context_files/`
+5. Add bio/description files under `app/agent_kit/agents/journalists/context_files/` or `.../artists/context_files/` (see existing creators).
 
 ```python
 class NewJournalist(BaseJournalist):
@@ -590,24 +596,44 @@ class NewJournalist(BaseJournalist):
 
 ```
 app/
-├── main.py                          # FastAPI application and endpoints (planned: thin factory + router includes — see Planned API layout)
+├── main.py                          # FastAPI app factory: startup wiring, middleware, app.state, router includes
+├── dependencies.py                  # AppDependencies — Depends(...) for routers (reads app.state)
+├── routers/                         # Domain APIRouter modules (health, transcripts, articles, …)
+├── services/                        # PipelineService, WordPressSyncService, ImageService
 ├── data/
 │   ├── create_database.py           # Database management
 │   ├── enum_classes.py              # Enums (Tone, ArticleType, etc.)
 │   └── transcript_manager.py        # YouTube transcript handling
-└── content_department/
-    ├── ai_journalists/
-    │   ├── base_journalist.py       # BaseJournalist class
-    │   └── aurelius_stone.py        # Journalist implementation
-    ├── ai_artists/
-    │   ├── base_artist.py           # BaseArtist class
-    │   └── spectra_veritas.py       # Artist implementation
-    └── creation_tools/
-        ├── base_creator.py          # BaseCreator ABC
-        ├── xai_text_query.py        # Text generation API
-        ├── xai_image_query.py       # Image generation API
-        └── context_files/           # Context/prompt files
+├── agent_kit/                       # Agent kit: named agents + shared utilities
+│   ├── utility_classes/            # API clients, ContextManager, transcription, ArticleGenerator
+│   │   ├── article_generator.py
+│   │   ├── context_manager.py
+│   │   ├── whisper_processor.py
+│   │   ├── xai_text_query.py
+│   │   ├── xai_image_query.py
+│   │   ├── openai_image_query.py
+│   │   ├── text_llm_client.py
+│   │   ├── official_names_loader.py
+│   │   ├── official_name_spelling_service.py
+│   └── agents/                      # Named journalists, artists, editors
+│       ├── base_creator.py          # BaseCreator ABC
+│       ├── journalists/
+│       │   ├── context_files/       # Journalist corpus (tone, slant, article types, writing styles, bios)
+│       │   ├── base_journalist.py
+│       │   ├── aurelius_stone.py
+│       │   └── fr_j1.py
+│       ├── artists/
+│       │   ├── context_files/       # Artist corpus (medium, aesthetic, art styles, bios)
+│       │   ├── base_artist.py
+│       │   ├── spectra_veritas.py
+│       │   └── fra1.py
+│       └── editors/
+│           ├── context_files/       # e.g. `fact_check_system.md`, `official_names.md`
+│           ├── editor_agent.py
+│           └── fact_checker_agent.py
 ```
+
+Note: `BaseCreator` and `ContextManager.read_context_file(..., role=...)` load markdown from `agent_kit/agents/{role}/context_files/` only. With ``role=None``, `ContextManager` still supports the legacy path ``app/context_files/`` (e.g. `ArticleGenerator`).
 
 ## Development
 
@@ -634,7 +660,7 @@ Install test dependencies first if needed: `pip install -r requirements.txt` (py
 
 #### How the tests work
 
-- **Dependency overrides:** The app exposes a single dependency, `get_app_deps`, that provides the database, transcript manager, article generator, and related state. In tests, that dependency is overridden so every request gets a **test double**: a real in-memory SQLite database plus mocks for external services (YouTube, WordPress, etc.). No production DB or APIs are touched. See `tests/conftest.py` for the `client` fixture and `_make_test_deps`.
+- **Dependency overrides:** Route handlers use `Depends(AppDependencies)` ([`app/dependencies.py`](app/dependencies.py)). In tests, **`AppDependencies`** is overridden so every request gets a **test double**: an in-memory SQLite database plus mocks for external services (YouTube, WordPress, etc.). No production DB or APIs are touched. See [`tests/conftest.py`](tests/conftest.py) for the `client` fixture and `_make_test_deps`.
 - **Layers:**
   - **Unit tests** (`tests/unit/`) exercise one class or module in isolation with mocks (e.g. `TranscriptManager` with a fake DB and patched YouTube API).
   - **API integration tests** (`tests/integration/api/`) call routes via FastAPI’s `TestClient` using the overridden deps; they assert status codes and response shape.
@@ -646,14 +672,10 @@ Install test dependencies first if needed: `pip install -r requirements.txt` (py
 
 ### Adding new endpoints
 
-Today, endpoints live in `main.py`. After the [Planned API layout (router split)](#planned-api-layout-router-split), add handlers in the appropriate module under `app/routers/` and register the router from `main.py`.
-
-Until then:
-
-1. Add endpoint in `main.py`
-2. Implement business logic in `utils.py`
-3. Add database methods in `database.py` if needed
-4. Update documentation
+1. Add the route handler to the appropriate module under [`app/routers/`](app/routers/) (or create a new router and `include_router` it from [`app/main.py`](app/main.py)).
+2. Use `Depends(AppDependencies)` to access database, managers, and services unless the handler is trivial.
+3. Put multi-step workflows in [`app/services/`](app/services/) when more than one router might need them; wire the service on `app.state` in `main.py` and expose it from `AppDependencies` if needed.
+4. Add database methods in [`app/data/`](app/data/) as appropriate and update documentation.
 
 ### Database operations
 
@@ -710,15 +732,13 @@ You can test the endpoints using:
 
 ```bash
 # Generate an article
-curl -X POST "http://localhost:8000/article/generate/AI%20basics/Explain%20machine%20learning/SUMMARY/PROFESSIONAL/PLANNING_BOARD"
+curl -X POST "http://localhost:3004/article/generate/FRJ1/professional/news/1"
 
 # Get a transcript (will cache automatically)
-curl "http://localhost:8000/transcript/VjaU4DAxP6s"
+curl "http://localhost:3004/transcript/fetch/VjaU4DAxP6s"
 
-# Create an article via CRUD API
-curl -X POST "http://localhost:8000/experimental/" \
-  -H "Content-Type: application/json" \
-  -d '{"context": "AI in healthcare", "prompt": "Write about AI applications", "article_type": "SUMMARY", "tone": "PROFESSIONAL", "committee": "PLANNING_BOARD"}'
+# Preview-generate from an existing transcript (query params — see /docs)
+curl -X POST "http://localhost:3004/article/create/manually?transcript_id=1&journalist=FR_J1"
 ```
 
 ### Debugging tips

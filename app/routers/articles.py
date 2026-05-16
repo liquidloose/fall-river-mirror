@@ -15,9 +15,9 @@ from app.data.enum_classes import (
     Tone,
     Journalist,
 )
-from app.content_department.ai_journalists.aurelius_stone import AureliusStone
-from app.content_department.ai_journalists.base_journalist import ArticleGenerationError
-from app.content_department.ai_journalists.fr_j1 import FRJ1
+from app.agent_kit.agents.journalists.aurelius_stone import AureliusStone
+from app.agent_kit.agents.journalists.base_journalist import ArticleGenerationError
+from app.agent_kit.agents.journalists.fr_j1 import FRJ1
 
 router = APIRouter(tags=["articles"])
 logger = logging.getLogger(__name__)

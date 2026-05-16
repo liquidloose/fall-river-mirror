@@ -8,6 +8,7 @@
     "customizations": {
         "vscode": {
             "extensions": [
+                "damms005.devdb",
                 "alexcvzz.vscode-sqlite",
                 "anysphere.cursorpyright",
                 "ms-python.black-formatter",

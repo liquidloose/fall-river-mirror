@@ -1,7 +1,7 @@
 # Main app package
 from .data.transcript_manager import TranscriptManager
-from .content_department.creation_tools.context_manager import ContextManager
-from .content_department.creation_tools.article_generator import ArticleGenerator
+from .agent_kit.utility_classes.context_manager import ContextManager
+from .agent_kit.utility_classes.article_generator import ArticleGenerator
 
 __all__ = [
     # Core classes
