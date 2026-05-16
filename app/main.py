@@ -20,8 +20,8 @@ from starlette.middleware.base import BaseHTTPMiddleware
 
 # Local imports
 from app import TranscriptManager, ArticleGenerator
-from app.content_department.ai_journalists.aurelius_stone import AureliusStone
-from app.content_department.ai_journalists.fr_j1 import FRJ1
+from app.agent_kit.agents.journalists.aurelius_stone import AureliusStone
+from app.agent_kit.agents.journalists.fr_j1 import FRJ1
 from app.data.create_database import Database
 from app.data.journalist_manager import JournalistManager
 from app.services.image_service import ImageService

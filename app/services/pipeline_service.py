@@ -1,31 +1,39 @@
 """
-Pipeline service orchestrating the full content production workflow.
+Pipeline service: full content production workflow (queue → transcripts → articles → bullets → art).
 
-The pipeline runs in stages, each handled by a dedicated method on
-``PipelineService``:
+Stages (typical order) are methods on :class:`PipelineService`:
 
-1. **Build queue** (``run_build_queue``) — Scrape a YouTube channel and
-   populate ``video_queue`` with new video IDs that haven't been
-   processed yet.
+1. **Build queue** — :meth:`run_build_queue`: scrape a YouTube channel; add new IDs to ``video_queue``.
+2. **Fetch transcripts** — :meth:`run_bulk_fetch_transcripts`: captions and/or Whisper; persist to ``transcripts``.
+3. **Write articles** — :meth:`run_bulk_write_articles`: AI journalist + ``transcripts`` → ``articles``.
+4. **Bullet points** — :meth:`run_bullet_points_batch`: summarise bodies missing ``bullet_points``.
+5. **Images** — :meth:`run_image_batch`: AI cover art for rows with bullets but no ``art`` row.
 
-2. **Fetch transcripts** (``run_bulk_fetch_transcripts``) — Pull
-   transcripts for queued videos, either from YouTube's built-in captions
-   or via OpenAI Whisper when captions are unavailable, and persist them
-   to ``transcripts``.
+**Async vs sync**
 
-3. **Write articles** (``run_bulk_write_articles``) — Feed transcripts to
-   an AI journalist (e.g. AureliusStone or FRJ1) to produce structured
-   articles, which are saved to ``articles``.
+``run_build_queue``, ``run_bulk_fetch_transcripts``, and ``run_bulk_write_articles`` are ``async``.
+``run_bullet_points_batch`` and ``run_image_batch`` are synchronous.
 
-4. **Bullet points** (``run_bullet_points_batch``) — Generate short
-   bullet-point summaries for articles that don't have them yet.
+**Return shapes (conventions)**
 
-5. **Image generation** (``run_image_batch``) — Create an AI-generated
-   cover image for each article that has bullet points but no art, saving
-   results to the ``art`` table.
+Returns are JSON-serializable ``dict`` objects for the pipeline router. Most stages use:
 
-All methods return plain ``dict`` result objects so they can be serialised
-directly to JSON by the pipeline router.
+- ``success`` (``bool``) — stage-level outcome, where applicable.
+- ``message`` (``str``) — short human-readable summary.
+- ``results`` (``list``) — per-item status rows, where applicable.
+
+:meth:`run_bullet_points_batch` omits top-level ``success``; it returns ``processed``,
+``skipped``, and ``errors`` only. If the database is unavailable it returns
+``{"processed": 0, "skipped": 0, "errors": []}``.
+
+**Dependencies**
+
+Constructor accepts optional :class:`~app.data.create_database.Database`,
+:class:`~app.TranscriptManager`, :class:`~app.data.journalist_manager.JournalistManager`,
+and :class:`~app.services.image_service.ImageService`. Missing dependencies typically
+yield ``success: False`` or zero tallies; :meth:`run_image_batch` still returns
+``success: True`` with an explanatory ``message`` when DB or image service is absent.
+:exc:`ValueError` is raised only for unimplemented ``Journalist`` / ``Artist`` enums.
 """
 
 import json
@@ -38,11 +46,11 @@ from typing import Any, Dict, Optional, Set
 from fastapi.responses import JSONResponse
 
 from app import TranscriptManager
-from app.content_department.ai_artists.fra1 import FRA1
-from app.content_department.ai_artists.spectra_veritas import SpectraVeritas
-from app.content_department.ai_journalists.aurelius_stone import AureliusStone
-from app.content_department.ai_journalists.base_journalist import ArticleGenerationError
-from app.content_department.ai_journalists.fr_j1 import FRJ1
+from app.agent_kit.agents.artists.fra1 import FRA1
+from app.agent_kit.agents.artists.spectra_veritas import SpectraVeritas
+from app.agent_kit.agents.journalists.aurelius_stone import AureliusStone
+from app.agent_kit.agents.journalists.base_journalist import ArticleGenerationError
+from app.agent_kit.agents.journalists.fr_j1 import FRJ1
 from app.data.create_database import Database
 from app.data.enum_classes import ArticleType, Artist, ImageModel, Journalist, Tone
 from app.data.journalist_manager import JournalistManager
@@ -56,19 +64,29 @@ class PipelineService:
     """
     Orchestrates each stage of the content production pipeline.
 
-    The service is intentionally dependency-injected: each collaborator
-    (database, transcript manager, etc.) is passed in at construction
-    time so individual stages can degrade gracefully when a dependency is
-    unavailable (they return a ``success: False`` dict rather than
-    raising).
+    Dependencies are injected at construction time so stages can return structured
+    failures (``success: False`` or empty counts) when a collaborator is missing,
+    instead of raising during HTTP handling.
 
-    Typical call order for a full pipeline run::
+    **Public entry points**
+
+    - :meth:`run_build_queue` — channel scrape → ``video_queue``
+    - :meth:`run_bulk_fetch_transcripts` — ``video_queue`` → ``transcripts``
+    - :meth:`run_bulk_write_articles` — ``transcripts`` → ``articles``
+    - :meth:`run_bullet_points_batch` — fill ``bullet_points`` on articles
+    - :meth:`run_image_batch` — ``articles`` + bullets → ``art`` rows
+
+    **Typical full run** (pseudo-code):
+
+    .. code-block:: python
 
         svc = PipelineService(db, transcript_mgr, journalist_mgr, image_svc)
 
         await svc.run_build_queue(channel_url, limit=10)
         await svc.run_bulk_fetch_transcripts(amount=10, auto_build=False)
-        await svc.run_bulk_write_articles(amount=10, journalist=..., tone=..., article_type=...)
+        await svc.run_bulk_write_articles(
+            amount=10, journalist=..., tone=..., article_type=...
+        )
         svc.run_bullet_points_batch(amount=10)
         svc.run_image_batch(amount=10, artist=..., model=...)
     """
@@ -82,13 +100,14 @@ class PipelineService:
     ) -> None:
         """
         Args:
-            database: SQLite database wrapper used by all pipeline stages.
-            transcript_manager: Handles YouTube caption fetching and Whisper
-                transcription.
-            journalist_manager: Persists and retrieves journalist profile
-                records used when saving articles.
-            image_service: Utility for downloading/decoding remote image URLs
-                before storing them in the database.
+            database: SQLite wrapper used by all pipeline stages; if ``None``,
+                stages that need it return ``success: False`` or empty dicts.
+            transcript_manager: YouTube captions + Whisper; required for
+                :meth:`run_bulk_fetch_transcripts`.
+            journalist_manager: Journalist profiles; required for
+                :meth:`run_bulk_write_articles`.
+            image_service: Fetches/decodes remote image bytes; required for
+                :meth:`run_image_batch` to store binary art in the database.
         """
         self._database = database
         self._transcript_manager = transcript_manager
@@ -103,6 +122,8 @@ class PipelineService:
     ) -> Dict[str, Any]:
         """Scrape a YouTube channel and add new videos to ``video_queue``.
 
+        **Async** method; uses :class:`~app.data.video_queue_manager.VideoQueueManager` internally.
+
         Delegates to ``VideoQueueManager.queue_new_videos``, which walks the
         channel's upload history until it has found ``limit`` videos that are
         not yet in the queue or the transcripts table.
@@ -115,14 +136,15 @@ class PipelineService:
                 WordPress and should therefore never be queued.
 
         Returns:
-            A dict with keys:
+            Dict with:
 
-            - ``success`` (bool): ``False`` only when the database is
-              unavailable.
-            - ``message`` (str): Human-readable summary.
-            - ``results`` (dict): Raw output from
-              ``VideoQueueManager.queue_new_videos``, including a
-              ``newly_queued`` count.
+            - ``success`` (``bool``): ``False`` only when the database is unavailable.
+            - ``message`` (``str``): Summary for operators.
+            - ``results`` (``dict``): Raw payload from
+              :meth:`~app.data.video_queue_manager.VideoQueueManager.queue_new_videos`,
+              including ``newly_queued`` count. On DB failure, ``results`` is ``[]``.
+            - ``error`` (``str``, optional): Present when ``success`` is ``False``
+              (no ``message`` on that path today — see implementation).
         """
         db = self._database
         if not db:
@@ -148,6 +170,8 @@ class PipelineService:
         include_whisper_items: bool = True,
     ) -> Dict[str, Any]:
         """Fetch transcripts for queued videos and persist them to ``transcripts``.
+
+        **Async** method; performs blocking sleeps and sync DB/API work between iterations.
 
         Works through ``video_queue`` in priority order: videos that need
         Whisper (``transcript_available=0``) are attempted first because they
@@ -179,20 +203,27 @@ class PipelineService:
                 processed.  Useful when Whisper quota is exhausted.
 
         Returns:
-            A dict with keys:
+            Dict with:
 
-            - ``success`` (bool): ``False`` when a dependency is unavailable,
-              the queue was empty, or any transcript fetch fails.
-            - ``message`` (str): Human-readable summary of attempts vs.
-              successes.
-            - ``transcripts_fetched`` (int)
-            - ``transcripts_failed`` (int)
-            - ``results`` (list[dict]): Per-video status with ``youtube_id``,
-              ``status`` (``"success"`` / ``"failed"``), ``source``,
-              ``from_cache``, and ``saved_to_db`` fields.
-            - ``auto_build`` (dict, optional): Present only when an auto-
-              build was triggered; includes ``videos_added`` and
-              ``channel_url``.
+            - ``success`` (``bool``): ``False`` when dependencies are missing, the
+              queue had no fetchable work, **or** every attempt in this run produced
+              zero new transcripts (``transcripts_fetched == 0``). If at least one
+              transcript is fetched, ``success`` is ``True`` even when some videos failed.
+            - ``message`` (``str``): Summary of attempts vs successes.
+            - ``transcripts_fetched`` (``int``): Successful fetches this run.
+            - ``transcripts_failed`` (``int``): Failed attempts this run.
+            - ``results`` (``list[dict]``): Per-video rows: ``youtube_id``, ``status``
+              (``"success"`` / ``"failed"``), and on success ``source``, ``from_cache``,
+              ``saved_to_db``; on failure ``error``.
+            - ``auto_build`` (``dict``, optional): If auto-build ran: ``triggered``,
+              ``videos_added``, ``channel_url``.
+            - ``error`` / ``error_code`` (optional): When Whisper is disabled and no
+              caption-eligible rows exist (see implementation).
+
+        **Stopping downstream work**
+
+        Callers should treat ``success: False`` and ``transcripts_fetched == 0`` as
+        a hard stop before article generation in the same pipeline pass.
         """
         db = self._database
         transcript_mgr = self._transcript_manager
@@ -390,6 +421,8 @@ class PipelineService:
     ) -> Dict[str, Any]:
         """Generate articles from stored transcripts using an AI journalist.
 
+        **Async** method (callable with ``await`` from the pipeline); DB and LLM calls inside are synchronous.
+
         Selects up to ``amount`` transcripts that do not yet have a
         corresponding article (``LEFT JOIN articles … WHERE a.id IS NULL``),
         oldest first.  For each transcript the journalist's ``load_context``
@@ -416,26 +449,24 @@ class PipelineService:
                 because the corresponding article already exists on WordPress.
 
         Returns:
-            A dict with keys:
+            Dict with:
 
-            - ``success`` (bool): ``False`` when dependencies are missing or
-              no eligible transcripts were found.
-            - ``message`` (str): Human-readable summary.
-            - ``articles_generated`` (int)
-            - ``articles_failed`` (int)
-            - ``article_ids`` (list[int]): Database IDs of newly created
-              articles.
-            - ``results`` (list[dict]): Per-transcript status with
-              ``youtube_id``, ``transcript_id``, ``status``, and ``title``.
-            - ``diagnostics`` (dict, optional): Present only when 0
-              transcripts were eligible; contains ``transcripts_without_
-              article``, ``excluded_by_wordpress``, and
+            - ``success`` (``bool``): ``False`` if dependencies are missing or no
+              transcript rows were eligible for this batch. If at least one row was
+              processed, ``success`` is always ``True``, even when every write failed
+              (check ``articles_generated`` vs ``articles_failed``).
+            - ``message`` (``str``): Summary or diagnostic text.
+            - ``articles_generated`` (``int``), ``articles_failed`` (``int``)
+            - ``article_ids`` (``list[int]``): New ``articles.id`` values on success.
+            - ``results`` (``list[dict]``): Per transcript — ``youtube_id``,
+              ``transcript_id``, ``status``, ``title`` or ``error``.
+            - ``diagnostics`` (``dict``, optional): When zero rows were eligible:
+              ``transcripts_without_article``, ``excluded_by_wordpress``,
               ``skip_youtube_ids_count``.
 
         Raises:
-            ValueError: If the ``journalist`` enum value has no corresponding
-                implementation class, or the journalist profile could not be
-                created in the database.
+            ValueError: Unknown ``journalist`` enum, or journalist row could not
+                be created or loaded after upsert.
         """
         db = self._database
         journalist_mgr = self._journalist_manager
@@ -589,32 +620,31 @@ class PipelineService:
         }
 
     def run_bullet_points_batch(self, amount: int) -> Dict[str, Any]:
-        """Generate bullet-point summaries for articles that don't have them yet.
+        """Generate bullet-point summaries for articles missing ``bullet_points``.
 
-        Retrieves all articles, filters to those without ``bullet_points``,
-        then processes the newest ones first (descending ``id`` order).  This
-        ordering ensures that articles produced earlier in the same pipeline
-        run receive their summaries before older, potentially stale rows.
+        **Sync** stage. Does not use a top-level ``success`` flag (see module conventions).
 
-        Bullet-point generation is handled by ``AureliusStone`` regardless of
-        which journalist originally wrote the article, since the summarisation
-        prompt is journalist-agnostic.
+        Loads all articles via ``Database.get_all_articles``, keeps rows with empty
+        ``bullet_points``, sorts by ``id`` descending (newest first so recent pipeline
+        output is summarised before older rows).
 
-        Errors on individual articles are collected in the ``errors`` list and
-        do not abort the batch.
+        Summarisation uses :class:`~app.agent_kit.agents.journalists.aurelius_stone.AureliusStone`
+        and :meth:`~app.agent_kit.agents.journalists.base_journalist.BaseJournalist.generate_bullet_points`
+        regardless of which journalist authored the article.
+
+        Per-article failures append to ``errors`` and continue the batch.
 
         Args:
-            amount: Maximum number of articles to process in this call.
+            amount: Maximum number of articles to receive new bullet text this call.
 
         Returns:
-            A dict with keys:
+            Dict with:
 
-            - ``processed`` (int): Number of articles successfully given
-              bullet points.
-            - ``skipped`` (int): Number of articles that already had bullet
-              points and were not re-processed.
-            - ``errors`` (list[dict]): Any per-article failures, each with
-              ``id`` and ``error`` keys.
+            - ``processed`` (``int``): Articles updated with bullet points.
+            - ``skipped`` (``int``): Articles that already had ``bullet_points``.
+            - ``errors`` (``list[dict]``): Failures with ``id`` and ``error`` strings.
+
+            If ``database`` is ``None``, returns ``{"processed": 0, "skipped": 0, "errors": []}``.
         """
         db = self._database
         if not db:
@@ -648,46 +678,39 @@ class PipelineService:
     def run_image_batch(
         self, amount: int, artist: Artist, model: ImageModel
     ) -> Dict[str, Any]:
-        """Generate AI cover images for articles that have bullet points but no art.
+        """Generate AI cover images for articles with bullets but no ``art`` row.
 
-        Queries for articles where ``bullet_points`` is populated and no row
-        exists yet in the ``art`` table (``LEFT JOIN art … WHERE art.id IS
-        NULL``), newest first, up to ``amount``.
+        **Sync** stage.
 
-        For each article the artist's ``generate_image`` method is called with
-        the article title and bullet points.  If the artist returns an
-        ``image_url``, the raw image bytes are fetched via
-        ``ImageService.decode_url`` and stored in the ``art`` table alongside
-        the prompt, medium, aesthetic, and other metadata.
+        Selects articles where ``bullet_points`` is non-empty and ``LEFT JOIN art`` finds
+        no row, ``ORDER BY articles.id DESC``, ``LIMIT amount``. Invokes the artist's
+        :meth:`~app.agent_kit.agents.artists.base_artist.BaseArtist.generate_image` with
+        title, bullets, and ``model.value``. When an ``image_url`` is returned,
+        :meth:`~app.services.image_service.ImageService.decode_url` fetches bytes and
+        :meth:`~app.data.create_database.Database.add_art` persists metadata and binary data.
 
-        A second existence check is performed inside the loop (before calling
-        the model) to guard against race conditions where art was added
-        between the initial query and the current iteration.
+        Re-checks ``art`` inside the loop to avoid duplicate generation if another writer
+        inserted a row after the initial query.
 
         Args:
-            amount: Maximum number of images to generate.
-            artist: Which AI artist persona to use (see ``Artist`` enum).
-            model: Image model to use for generation (see ``ImageModel`` enum);
-                the enum value is passed directly to the artist and stored in
-                the database for provenance.
+            amount: Cap on candidate articles to attempt this call.
+            artist: :class:`~app.data.enum_classes.Artist` value with a concrete implementation
+                class (e.g. ``SpectraVeritas``, ``FRA1``).
+            model: :class:`~app.data.enum_classes.ImageModel`; stored on the ``art`` row for provenance.
 
         Returns:
-            A dict with keys:
+            Dict with:
 
-            - ``success`` (bool): Always ``True`` (individual failures are
-              captured in ``results``); ``False`` only when a required
-              dependency is unavailable.
-            - ``message`` (str): Human-readable summary.
-            - ``images_generated`` (int)
-            - ``images_failed`` (int)
-            - ``results`` (list[dict]): Per-article status with
-              ``article_id``, ``status`` (``"success"`` / ``"failed"`` /
-              ``"skipped"``), and either ``art_id`` + ``title`` on success or
-              an ``error`` string on failure.
+            - ``success`` (``bool``): Currently always ``True`` for implemented paths (including
+              when the database or image service is missing — then counts are zero and
+              ``message`` explains the gap). Check ``images_generated`` / ``results`` for substance.
+            - ``message`` (``str``): Operator-facing summary.
+            - ``images_generated`` (``int``), ``images_failed`` (``int``)
+            - ``results`` (``list[dict]``): Per article — ``article_id``, ``status`` (``success`` /
+              ``failed`` / ``skipped``), plus ``art_id`` / ``title`` or ``error`` / ``reason``.
 
         Raises:
-            ValueError: If the ``artist`` enum value has no corresponding
-                implementation class.
+            ValueError: ``artist`` enum has no mapped implementation class.
         """
         db = self._database
         image_svc = self._image_service

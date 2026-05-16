@@ -1,11 +1,13 @@
 ---
-description: Response-length commands — recognize /oneliner, /tldr, /short, /medium, /long, /code, /normal in user messages and constrain reply length accordingly.
+description: Response-length commands — default /medium; recognize /oneliner, /tldr, /short, /medium, /long, /code, /normal and constrain reply length accordingly.
 alwaysApply: true
 ---
 
 # Response-length commands
 
-When the user's message contains one of the slash commands below (anywhere in the message, case-insensitive), constrain that turn's response to the matching length budget. Commands apply to **that single turn only** — the next message returns to default behavior unless re-issued.
+**Default:** If the user's message contains **no** slash command from the table below, constrain that turn's response to the **`/medium`** budget (2–3 paragraphs, ≤300 words; inline code + short lists; one fenced code block max if essential).
+
+When the user's message **does** contain a slash command (anywhere in the message, case-insensitive), constrain that turn to the matching budget instead. Commands apply to **that single turn only** — the next message returns to **default `/medium`** unless another command appears.
 
 If multiple commands appear, the **shortest** wins. If a command would force me to omit information that is genuinely needed for correctness or safety, I keep the answer correct and note the conflict in one brief sentence.
 
@@ -21,11 +23,11 @@ If the user is asking *about* a command rather than invoking it ("what does /tld
 | `/medium` | 2–3 paragraphs, ≤300 words | Inline code + short lists; one fenced code block max if essential |
 | `/long` | No hard word cap, but stay focused on what was asked | Full markdown — headers, lists, multiple code blocks |
 | `/code` | Code-only response, prose ≤2 sentences per block | One or more code blocks or code references |
-| `/normal` | Default behavior — no length constraint | Whatever the situation calls for |
+| `/normal` | No length constraint | Overrides default `/medium`; full length as the situation calls for |
 
 ## Behavior
 
-- The command token controls **how** I answer, not **what** I answer. Strip it from the user's intent and answer the underlying question.
+- With **no** command token, **`/medium` applies** (see Default above). With a command token, that token controls **how** I answer, not **what** I answer — strip it from the user's intent and answer the underlying question.
 - Stay inside the budget even if I have more to say. Pick the highest-signal pieces and drop the rest.
 - For `/oneliner` and `/tldr`, never use bullet points, headers, or code blocks — even for multi-part answers.
 - For `/code`, prefer code references (with file path and line numbers) over markdown code blocks when the code already exists in the codebase.

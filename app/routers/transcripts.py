@@ -165,8 +165,8 @@ def get_pending_transcripts(
     deps: AppDependencies = Depends(AppDependencies),
 ) -> Dict[str, Any]:
     """Get transcripts that don't have an article from a specific journalist."""
-    from app.content_department.ai_journalists.aurelius_stone import AureliusStone
-    from app.content_department.ai_journalists.fr_j1 import FRJ1
+    from app.agent_kit.agents.journalists.aurelius_stone import AureliusStone
+    from app.agent_kit.agents.journalists.fr_j1 import FRJ1
 
     try:
         db = deps.database

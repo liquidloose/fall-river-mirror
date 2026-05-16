@@ -1,5 +1,35 @@
 """
-WordPress sync service: fetch article YouTube IDs from WordPress and sync articles to WordPress.
+WordPress integration for the **fr-mirror** site: JWT auth, read-only REST queries, and pushing local articles to WordPress.
+
+This module talks to two kinds of endpoints:
+
+1. **Custom plugin routes** (paths like ``/wp-json/fr-mirror/v2/...``) — create/update posts and list
+   YouTube IDs already published. Paths default to constants in this file but can be overridden via env
+   (see :class:`WordPressSyncService`).
+2. **Core WordPress REST** ``wp/v2/article`` — paginated article lists with ``context=edit`` for audits,
+   meeting-date sorting (theme hook), and featured-image repair scans.
+
+**Authentication**
+
+Uses ``WORDPRESS_JWT_TOKEN`` in the ``Authorization: Bearer`` header when set. Obtained/refreshed via
+:meth:`WordPressSyncService.refresh_jwt_token` (``WORDPRESS_JWT_USER`` / ``WORDPRESS_JWT_PASSWORD`` against
+``/wp-json/jwt-auth/v1/token``). :meth:`WordPressSyncService._request_with_jwt_retry` retries once after a
+``jwt_auth_invalid_token`` 401/403.
+
+**Environment (common)**
+
+- ``WORDPRESS_BASE_URL`` — site origin, no trailing slash required (normalized in code).
+- ``WORDPRESS_JWT_TOKEN`` — optional until first protected call; refreshed in-process on success.
+- ``WORDPRESS_JWT_USER``, ``WORDPRESS_JWT_PASSWORD`` — for :meth:`~WordPressSyncService.refresh_jwt_token`.
+- ``WORDPRESS_API_PATH_CREATE_ARTICLE``, ``WORDPRESS_API_PATH_UPDATE_ARTICLE``,
+  ``WORDPRESS_API_PATH_ARTICLE_YOUTUBE_IDS`` — optional path overrides.
+
+**Return conventions**
+
+Public operations that perform HTTP or validation typically return a ``dict`` with ``success`` (``bool``),
+``error`` or ``message``, and HTTP-oriented keys like ``status_code`` / ``http_status`` where applicable,
+so routers can JSON-serialize without catching exceptions. Read helpers that fail log and return empty
+collections (``set()`` / ``[]``) instead of raising.
 """
 
 import base64
@@ -16,7 +46,7 @@ from app.data.create_database import Database
 
 logger = logging.getLogger(__name__)
 
-# WordPress fr-mirror REST API. Base URL is from WORDPRESS_BASE_URL env only (no default in code).
+# fr-mirror REST API paths (under WORDPRESS_BASE_URL). Override with WORDPRESS_API_PATH_* env vars.
 DEFAULT_API_PATH_CREATE = "/wp-json/fr-mirror/v2/create-article"
 DEFAULT_API_PATH_UPDATE = "/wp-json/fr-mirror/v2/update-article"
 DEFAULT_API_PATH_YOUTUBE_IDS = "/wp-json/fr-mirror/v2/article-youtube-ids"
@@ -24,7 +54,28 @@ DEFAULT_API_PATH_YOUTUBE_IDS = "/wp-json/fr-mirror/v2/article-youtube-ids"
 
 class WordPressSyncService:
     """
-    Syncs articles from the FastAPI database to the WordPress create-article endpoint.
+    Bridge between local :class:`~app.data.create_database.Database` rows and the WordPress site.
+
+    **Auth / diagnostics**
+
+    - :meth:`refresh_jwt_token`, :meth:`test_jwt_get`
+    - Internal: :meth:`_headers`, :meth:`_request_with_jwt_retry`
+
+    **Read-only WordPress**
+
+    - :meth:`get_article_youtube_ids` — fr-mirror plugin set of IDs already published
+    - :meth:`get_article_audit_data_from_wordpress` — full ``wp/v2/article`` listing for diff/audit
+    - :meth:`get_articles_sorted_by_meeting_date` — server-side sort via theme REST filter
+
+    **Writes / sync**
+
+    - :meth:`sync_one_article` — DB article → create-article (draft), requires content, bullets, art
+    - :meth:`update_article_title_and_content` — partial update endpoint
+    - :meth:`repair_article_featured_image` — featured image only by ``youtube_id``
+    - :meth:`repair_missing_featured_images` — scan WP posts and repair broken/missing featured_media
+
+    The optional ``database`` may be ``None``; methods that need SQLite return structured errors instead
+    of raising.
     """
 
     def __init__(
@@ -35,6 +86,16 @@ class WordPressSyncService:
         api_path_update: Optional[str] = None,
         api_path_youtube_ids: Optional[str] = None,
     ) -> None:
+        """
+        Args:
+            database: Local SQLite access; required for sync/repair methods that read ``articles`` / ``art``.
+            base_url: WordPress origin. Defaults to ``WORDPRESS_BASE_URL``; stripped and normalized (no trailing ``/``).
+            api_path_create: Defaults to env ``WORDPRESS_API_PATH_CREATE_ARTICLE`` or
+                :data:`DEFAULT_API_PATH_CREATE`.
+            api_path_update: Env ``WORDPRESS_API_PATH_UPDATE_ARTICLE`` or :data:`DEFAULT_API_PATH_UPDATE`.
+            api_path_youtube_ids: Env ``WORDPRESS_API_PATH_ARTICLE_YOUTUBE_IDS`` or
+                :data:`DEFAULT_API_PATH_YOUTUBE_IDS`.
+        """
         self._database = database
         self._base_url = (base_url if base_url is not None else os.environ.get("WORDPRESS_BASE_URL", "")).strip().rstrip("/")
         self._api_path_create = api_path_create or os.environ.get("WORDPRESS_API_PATH_CREATE_ARTICLE") or DEFAULT_API_PATH_CREATE
@@ -42,7 +103,7 @@ class WordPressSyncService:
         self._api_path_youtube_ids = api_path_youtube_ids or os.environ.get("WORDPRESS_API_PATH_ARTICLE_YOUTUBE_IDS") or DEFAULT_API_PATH_YOUTUBE_IDS
 
     def _headers(self) -> Dict[str, str]:
-        """Request headers; includes Bearer token when WORDPRESS_JWT_TOKEN is set."""
+        """JSON request headers; adds ``Authorization: Bearer`` when ``WORDPRESS_JWT_TOKEN`` is set."""
         h = {"Content-Type": "application/json"}
         jwt = (os.environ.get("WORDPRESS_JWT_TOKEN") or "").strip()
         if jwt:
@@ -63,7 +124,12 @@ class WordPressSyncService:
             return False
 
     def _request_with_jwt_retry(self, request_fn: Callable[[], requests.Response]) -> requests.Response:
-        """Run request_fn(); on 401/403 with jwt_auth_invalid_token, refresh JWT and retry once."""
+        """
+        Execute ``request_fn`` (typically a closure over ``requests.get/post``).
+
+        If the response looks like ``jwt_auth_invalid_token``, calls :meth:`refresh_jwt_token`
+        and retries **once**; otherwise returns the first response.
+        """
         response = request_fn()
         if not self._is_jwt_invalid_token_response(response):
             return response
@@ -75,8 +141,15 @@ class WordPressSyncService:
 
     def refresh_jwt_token(self) -> Dict[str, Any]:
         """
-        Call the WordPress jwt-auth /token endpoint with service credentials from env.
-        On success, updates WORDPRESS_JWT_TOKEN in the process environment and returns a status dict.
+        Obtain a JWT from WordPress ``jwt-auth`` and store it in ``os.environ``.
+
+        POSTs to ``{WORDPRESS_BASE_URL}/wp-json/jwt-auth/v1/token`` with
+        ``WORDPRESS_JWT_USER`` and ``WORDPRESS_JWT_PASSWORD``. On success sets
+        ``WORDPRESS_JWT_TOKEN`` for subsequent :meth:`_headers` calls.
+
+        Returns:
+            Dict with ``success`` (bool), ``status_code`` (int), and ``error`` (``str`` or ``None``).
+            On request failure ``error`` holds body or exception text.
         """
         base_url = (self._base_url or "").rstrip("/")
         if not base_url:
@@ -153,7 +226,17 @@ class WordPressSyncService:
             }
 
     def get_article_youtube_ids(self, base_url: Optional[str] = None) -> Set[str]:
-        """Fetch the set of youtube_ids that already have an article on WordPress. Returns empty set on error."""
+        """
+        GET fr-mirror ``article-youtube-ids`` and return the published YouTube ID set.
+
+        Appends ``nocache`` timestamp to avoid stale CDN caches. Uses :meth:`_request_with_jwt_retry`.
+
+        Args:
+            base_url: Optional origin override; defaults to configured ``_base_url``.
+
+        Returns:
+            Set of non-empty ``youtube_id`` strings. On any failure logs a warning and returns ``set()``.
+        """
         url = (base_url or self._base_url) + self._api_path_youtube_ids
         sep = "&" if "?" in url else "?"
         url = f"{url}{sep}nocache={int(time.time())}"
@@ -181,8 +264,13 @@ class WordPressSyncService:
 
     def test_jwt_get(self) -> Dict[str, Any]:
         """
-        Send a GET request to the article-youtube-ids endpoint to verify JWT.
-        Read-only; does not create or modify any content. Returns success, status_code, and optional response summary.
+        Read-only probe: GET the article-youtube-ids endpoint with current JWT.
+
+        Does not create or mutate WordPress content. Useful for health checks.
+
+        Returns:
+            Dict with ``success`` (2xx), ``status_code``, optional ``response_body`` preview
+            (count + first five IDs), ``error`` / ``raw_response`` on failure.
         """
         url = self._base_url + self._api_path_youtube_ids
         url = f"{url}?nocache={int(time.time())}"
@@ -220,10 +308,13 @@ class WordPressSyncService:
 
     def get_article_audit_data_from_wordpress(self) -> List[Dict[str, Any]]:
         """
-        Fetch all article posts from the built-in WP REST API (wp/v2/article).
-        Returns a normalized list of {youtube_id, post_id, title, content} for audit comparison.
-        Uses per_page=100 and context=edit; paginates until all articles are fetched.
-        Returns empty list on error.
+        Page through ``wp/v2/article`` (``context=edit``, 100 per page) for audit / diff tooling.
+
+        Normalizes each post to ``youtube_id``, ``post_id``, ``title``, ``content`` using meta
+        ``_article_youtube_id`` and ``_article_content`` where present.
+
+        Returns:
+            List of dict rows, or ``[]`` if any request fails (warning logged).
         """
         base = self._base_url.rstrip("/")
         all_items: List[Dict[str, Any]] = []
@@ -275,9 +366,9 @@ class WordPressSyncService:
         limit: Optional[int] = None,
     ) -> List[Dict[str, Any]]:
         """
-        Fetch article posts from wp/v2/article ordered server-side by the
-        ``_article_meeting_date`` custom field, including the full article body
-        and bullet points so callers don't need a local SQLite row.
+        **Read-only.** List ``wp/v2/article`` posts sorted server-side by ``_article_meeting_date``.
+
+        Includes full body and ``_article_bullet_points`` meta so callers do not need SQLite.
 
         Uses the theme's REST sort hook: passing ``__frmCustomFieldFilter=_article_meeting_date``
         triggers ``rest_article_query`` (in functions.php) to set
@@ -384,17 +475,22 @@ class WordPressSyncService:
         repair_limit: Optional[int] = None,
     ) -> Dict[str, Any]:
         """
-        Scan WordPress article posts and repair missing/broken featured images using FastAPI DB art.
+        Scan WordPress ``wp/v2/article`` posts and repair featured images using local DB art.
 
-        - iteration_limit: max number of posts to inspect in this run (None = no explicit limit).
-        - repair_limit: max number of repairs to attempt in this run (None = no explicit limit).
+        A post is **broken** if ``featured_media`` is set but media has no ``source_url`` or HEAD
+        to the URL is not 2xx. **Missing** if there is no ``featured_media``. Good posts are skipped.
 
-        A post is considered:
-        - "broken" when featured_media is set but the media's source_url is missing/empty
-          or returns non-2xx on a quick HTTP HEAD request.
-        - "missing" when no featured_media is set (and no custom featured-image meta is used).
+        Repairs call :meth:`repair_article_featured_image` (update-article with base64 image); no AI.
 
-        Repairs are performed using repair_article_featured_image(youtube_id); no AI calls are made.
+        Args:
+            iteration_limit: Max posts to inspect (``None`` = until pagination ends or limits satisfied).
+            repair_limit: Max successful repairs to attempt (``None`` = unlimited).
+
+        Returns:
+            On success: ``success``, ``iteration_limit``, ``repair_limit``, ``scanned``,
+            ``broken_or_missing_count``, ``repaired_count``, ``items`` (per-post detail with
+            ``status``, ``reason``, ``repaired``, ``repair_error``, etc.).
+            On failure: ``success: False``, ``error``, ``http_status``.
         """
         base = (self._base_url or "").rstrip("/")
         if not base:
@@ -559,8 +655,23 @@ class WordPressSyncService:
 
     def sync_one_article(self, article_id: int) -> Dict[str, Any]:
         """
-        Fetch an article from the database and POST it to the WordPress create-article endpoint.
-        Returns a result dict; does not raise.
+        Push one local article to WordPress **create-article** as a draft (if not already on WP).
+
+        Loads the row from ``database``, resolves journalist name and ``meeting_date`` from linked
+        transcript, builds a data-URL **featured_image** from the first ``art`` row (PNG/JPEG sniff),
+        and skips create if :meth:`get_article_youtube_ids` already contains the article's ``youtube_id``.
+
+        **Required fields:** non-empty ``content``, ``bullet_points``, and binary art; otherwise returns
+        ``400``-style payload without calling WordPress.
+
+        Args:
+            article_id: Primary key in local ``articles``.
+
+        Returns:
+            **Skipped:** ``success``, ``article_id``, ``created: False``, ``skipped: True``,
+            ``reason: already_on_wordpress``.
+            **Created:** ``success``, ``created: True``, ``wordpress_response`` (JSON body).
+            **Errors:** ``success: False``, ``error``, ``http_status``, optional ``raw_response``.
         """
         db = self._database
         if not db:
@@ -770,8 +881,14 @@ class WordPressSyncService:
 
     def update_article_title_and_content(self, article_id: int) -> Dict[str, Any]:
         """
-        Send the current article title and content from our DB to WordPress update-article endpoint.
-        WordPress should update only title and content of the existing post; do not delete or change slug.
+        POST current DB **title** and **content** to the fr-mirror **update-article** endpoint.
+
+        Payload includes local ``article_id`` and ``youtube_id`` for WP to locate the post. Does not
+        change slug or delete the post (WordPress plugin contract).
+
+        Returns:
+            ``success``, ``article_id``, ``wordpress_response`` on 2xx; otherwise ``success: False``,
+            ``error``, ``http_status``, ``raw_response``.
         """
         db = self._database
         if not db:
@@ -835,7 +952,15 @@ class WordPressSyncService:
 
     def repair_article_featured_image(self, youtube_id: str) -> Dict[str, Any]:
         """
-        Get featured image for youtube_id from DB and POST it to WordPress update-article (sets featured image).
+        Upload featured image bytes from DB to WordPress via **update-article** for a ``youtube_id``.
+
+        Uses :meth:`~app.data.create_database.Database.get_featured_image_by_youtube_id`; encodes
+        as data-URL and POSTs ``{youtube_id, featured_image}``.
+
+        Returns:
+            Dict with ``success`` (2xx check), ``status_code``, ``response`` (body text),
+            and ``_from`` provenance string. On missing DB image or blank base URL, returns
+            ``success: False`` with ``error`` / ``http_status``.
         """
         db = self._database
         if not db:

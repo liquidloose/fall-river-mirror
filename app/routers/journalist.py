@@ -7,8 +7,8 @@ from fastapi import APIRouter, Depends, HTTPException, status
 
 from app.dependencies import AppDependencies
 from app.data.enum_classes import Journalist
-from app.content_department.ai_journalists.aurelius_stone import AureliusStone
-from app.content_department.ai_journalists.fr_j1 import FRJ1
+from app.agent_kit.agents.journalists.aurelius_stone import AureliusStone
+from app.agent_kit.agents.journalists.fr_j1 import FRJ1
 
 router = APIRouter(tags=["journalist"])
 logger = logging.getLogger(__name__)
@@ -44,14 +44,13 @@ def get_journalist_profile(
             "full_name": journalist.FULL_NAME,
         })
         try:
-            slant = journalist._load_attribute_context(
-                "./app/context_files", "slant", journalist.SLANT
-            )
+            slant = journalist._load_attribute_context("slant", journalist.SLANT)
             style = journalist._load_attribute_context(
-                "./app/context_files", "style", journalist.STYLE
+                "style/writing",
+                journalist.STYLE,
             )
             tone = journalist._load_attribute_context(
-                "./app/context_files", "tone", journalist.DEFAULT_TONE.value
+                "tone", journalist.DEFAULT_TONE.value
             )
             profile.update({"slant": slant, "style": style, "tone": tone})
         except Exception as e:

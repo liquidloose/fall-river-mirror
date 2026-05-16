@@ -117,8 +117,8 @@ POST /article/write/10?journalist=aurelius_stone&tone=professional&article_type=
 
 - Loads transcripts from database
 - **Journalist Context Assembly** (`BaseJournalist.load_context()`):
-  - Tone context file (e.g., `professional.txt`)
-  - Article type context file (e.g., `news.txt`)
+  - Tone context file (e.g., `professional.md`)
+  - Article type context file (e.g., `news.md`)
   - Slant context file (journalist's political slant)
   - Style context file (journalist's writing style)
 - **Article Generation** (`BaseJournalist.generate_article()`):

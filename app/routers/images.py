@@ -8,8 +8,8 @@ from fastapi.responses import Response
 
 from app.dependencies import AppDependencies
 from app.data.enum_classes import Artist, ImageModel
-from app.content_department.ai_artists.spectra_veritas import SpectraVeritas
-from app.content_department.ai_artists.fra1 import FRA1
+from app.agent_kit.agents.artists.spectra_veritas import SpectraVeritas
+from app.agent_kit.agents.artists.fra1 import FRA1
 
 router = APIRouter(tags=["images"])
 logger = logging.getLogger(__name__)
