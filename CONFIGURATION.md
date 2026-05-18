@@ -25,6 +25,18 @@ DB_PASSWORD=your_database_password
 
 The compose file defines the Docker network as **`fr-mirror-bridge`**; a `network=...` line in older samples is not used by this compose file.
 
+### `fr-mirror-ai` uvicorn reload (dev vs prod)
+
+By default **`UVICORN_RELOAD` is off** (`0`): production runs plain uvicorn with no file watcher.
+
+For local development with hot reload, add to **`.env` only** (not production):
+
+```bash
+UVICORN_RELOAD=1
+```
+
+Logs are written to **`/tmp/fr-mirror-app.log`** inside the container (override with `APP_LOG_PATH`) so file logging does not trigger reload loops under `/code`.
+
 ---
 
 ## WordPress and JWT
@@ -71,9 +83,19 @@ GIT_USER_NAME=your_github_username
 
 ```bash
 XAI_API_KEY=your_xai_api_key_here
+XAI_MODEL=grok-4
 OPENAI_API_KEY=your_openai_api_key_here
 YOUTUBE_API_KEY=your_youtube_api_key_here
+ANTHROPIC_API_KEY=your_anthropic_api_key_here
+# Optional; default in code is claude-3-5-sonnet-20241022
+ANTHROPIC_MODEL=claude-3-5-sonnet-20241022
 ```
+
+**xAI text** (journalists, editors, fact-check with `provider=xai`): requires `XAI_API_KEY` and `XAI_MODEL` (no default model id in code).
+
+**Anthropic text** (fact-check with `provider=anthropic`): requires `ANTHROPIC_API_KEY`; `ANTHROPIC_MODEL` is optional.
+
+**Fact-check endpoint** — `POST /editor/article/by-youtube/{youtube_id}/fact-check?provider=xai|anthropic` (Swagger shows a provider dropdown). Every response includes `provider` and `model` (the backend and model id from env).
 
 **OpenAI** is used for Whisper transcription fallback and for image generation (`OPENAI_API_KEY`); there is no separate `DALLE_API_KEY` in this codebase.
 

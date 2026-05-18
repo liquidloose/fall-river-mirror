@@ -140,14 +140,21 @@ services:
     environment:
       - DATABASE_URL
       - YOUTUBE_COOKIES_PATH
+      # Set UVICORN_RELOAD=1 in .env for local dev only; prod should leave unset or 0
+      - UVICORN_RELOAD=${UVICORN_RELOAD:-0}
     env_file:
       - .env
       - .env.prod
     command: >
       sh -c "
         git config --global user.email ${GIT_USER_EMAIL} &&
-        git config --global user.name ${GIT_USER_NAME} && 
-        uvicorn app.main:app --host 0.0.0.0 --port 80 --reload
+        git config --global user.name ${GIT_USER_NAME} &&
+        if [ \"$$UVICORN_RELOAD\" = \"1\" ]; then
+          exec uvicorn app.main:app --host 0.0.0.0 --port 80 --reload
+            --reload-exclude app.log --reload-exclude '*.log';
+        else
+          exec uvicorn app.main:app --host 0.0.0.0 --port 80;
+        fi
       "
   typesense:
     profiles: [dev, prod]

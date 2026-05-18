@@ -14,7 +14,8 @@ database, sends them to the configured text LLM with instructions from
    bullets (or ``(none)``), and body.
 3. ``LLMTextQuery(...).get_raw_response`` — expect a JSON **object**; markdown fences
    stripped when present.
-4. Return envelope ``success``, ``message``, ``youtube_id``, ``article_id``, ``report``.
+4. Return envelope ``success``, ``message``, ``youtube_id``, ``article_id``, ``provider``,
+   ``model``, ``report``.
 
 **Database object** (``db`` passed to the constructor) must provide:
 
@@ -49,12 +50,23 @@ class FactCheckerAgent:
     """
     Read-only LLM fact-check over article fields keyed by YouTube id.
 
+    Constructor accepts ``provider`` (:class:`~app.data.enum_classes.TextLLMProvider`) to
+    select xAI or Anthropic. Every response envelope includes ``provider`` and ``model``
+    from :meth:`~app.agent_kit.utility_classes.llm_text_query.LLMTextQuery.llm_metadata`.
+
     See module docstring for required ``db`` methods and return envelope.
     """
 
-    def __init__(self, db: Any) -> None:
+    def __init__(
+        self,
+        db: Any,
+        provider: TextLLMProvider = TextLLMProvider.XAI,
+    ) -> None:
         self._db = db
-        self._llm = LLMTextQuery(provider=TextLLMProvider.XAI)
+        self._llm = LLMTextQuery(provider=provider)
+
+    def _envelope(self, **fields: Any) -> Dict[str, Any]:
+        return {**self._llm.llm_metadata(), **fields}
 
     def _build_system_prompt(self) -> str:
         """Full text of ``fact_check_system.md`` (model instructions and JSON schema)."""
@@ -100,27 +112,29 @@ class FactCheckerAgent:
         **Success.** ``success=True``, ``message="Fact-check complete"``, ``report`` is the parsed
         object. Field meanings (``overall_risk``, ``flags``, etc.) are defined in
         ``context_files/fact_check_system.md``. This method **never** writes to ``db``.
+
+        All envelopes include ``provider`` and ``model`` (intended backend and model id from env).
         """
         yt = (youtube_id or "").strip()
         logger.info("Fact-check started for youtube_id=%s", yt)
         if not yt:
-            return {
-                "success": False,
-                "message": "YouTube id is required",
-                "youtube_id": youtube_id,
-                "article_id": None,
-                "report": None,
-            }
+            return self._envelope(
+                success=False,
+                message="YouTube id is required",
+                youtube_id=youtube_id,
+                article_id=None,
+                report=None,
+            )
         article = self._db.get_article_by_youtube_id(yt)
         if not article:
             logger.warning("Fact-check: no article for youtube_id=%s", yt)
-            return {
-                "success": False,
-                "message": ARTICLE_NOT_FOUND_FOR_YOUTUBE_ID_MESSAGE,
-                "youtube_id": yt,
-                "article_id": None,
-                "report": None,
-            }
+            return self._envelope(
+                success=False,
+                message=ARTICLE_NOT_FOUND_FOR_YOUTUBE_ID_MESSAGE,
+                youtube_id=yt,
+                article_id=None,
+                report=None,
+            )
         article_id = article["id"]
         title = (article.get("title") or "").strip()
         content = article.get("content") or ""
@@ -140,13 +154,13 @@ class FactCheckerAgent:
             out = self._llm.get_raw_response(system_prompt, user_message)
         except Exception as e:
             logger.exception("Fact checker: AI request raised for article_id=%s", article_id)
-            return {
-                "success": False,
-                "message": f"AI request failed: {e!s}",
-                "youtube_id": yt,
-                "article_id": article_id,
-                "report": None,
-            }
+            return self._envelope(
+                success=False,
+                message=f"AI request failed: {e!s}",
+                youtube_id=yt,
+                article_id=article_id,
+                report=None,
+            )
         if isinstance(out, JSONResponse):
             try:
                 body = out.body.decode("utf-8")
@@ -155,13 +169,13 @@ class FactCheckerAgent:
             except Exception:
                 err_msg = "AI returned an error response"
             logger.warning("Fact checker: AI request failed for article_id=%s: %s", article_id, err_msg)
-            return {
-                "success": False,
-                "message": f"AI request failed: {err_msg}",
-                "youtube_id": yt,
-                "article_id": article_id,
-                "report": None,
-            }
+            return self._envelope(
+                success=False,
+                message=f"AI request failed: {err_msg}",
+                youtube_id=yt,
+                article_id=article_id,
+                report=None,
+            )
         logger.info("AI fact-check response received for article_id=%s", article_id)
         raw = (out or "").strip()
         if raw.startswith("```"):
@@ -176,25 +190,25 @@ class FactCheckerAgent:
                 e,
                 exc_info=True,
             )
-            return {
-                "success": False,
-                "message": f"Invalid JSON from AI: {e!s}",
-                "youtube_id": yt,
-                "article_id": article_id,
-                "report": None,
-            }
+            return self._envelope(
+                success=False,
+                message=f"Invalid JSON from AI: {e!s}",
+                youtube_id=yt,
+                article_id=article_id,
+                report=None,
+            )
         if not isinstance(data, dict):
-            return {
-                "success": False,
-                "message": "AI response was not a JSON object",
-                "youtube_id": yt,
-                "article_id": article_id,
-                "report": None,
-            }
-        return {
-            "success": True,
-            "message": "Fact-check complete",
-            "youtube_id": yt,
-            "article_id": article_id,
-            "report": data,
-        }
+            return self._envelope(
+                success=False,
+                message="AI response was not a JSON object",
+                youtube_id=yt,
+                article_id=article_id,
+                report=None,
+            )
+        return self._envelope(
+            success=True,
+            message="Fact-check complete",
+            youtube_id=yt,
+            article_id=article_id,
+            report=data,
+        )

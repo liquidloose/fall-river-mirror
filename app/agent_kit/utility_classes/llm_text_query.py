@@ -43,6 +43,19 @@ class LLMTextQuery:
             f"anthropic_model={self._anthropic_model or '(default)'}"
         )
 
+    @property
+    def provider(self) -> TextLLMProvider:
+        return self._provider
+
+    @property
+    def model_id(self) -> str:
+        if self._provider is TextLLMProvider.XAI:
+            return self._xai_model
+        return self._anthropic_model or "claude-3-5-sonnet-20241022"
+
+    def llm_metadata(self) -> dict[str, str]:
+        return {"provider": self.provider.value, "model": self.model_id}
+
     def get_raw_response(self, context: str, message: str) -> str | JSONResponse:
         logger.debug(
             f"get_raw_response provider={self._provider.value} context_chars={len(context or '')} "
