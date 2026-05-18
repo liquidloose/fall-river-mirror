@@ -6,6 +6,7 @@ from typing import Any, Dict, List, Optional
 from fastapi import APIRouter, Depends, HTTPException, status
 
 from app.dependencies import AppDependencies
+from app.data.enum_classes import TextLLMProvider
 from app.agent_kit.agents.editors import EditorAgent, FactCheckerAgent
 from app.agent_kit.agents.editors.fact_checker_agent import (
     ARTICLE_NOT_FOUND_FOR_YOUTUBE_ID_MESSAGE,
@@ -64,17 +65,27 @@ def spell_check_article(
 @router.post("/article/by-youtube/{youtube_id}/fact-check")
 def fact_check_article_by_youtube(
     youtube_id: str,
+    provider: TextLLMProvider = TextLLMProvider.XAI,
     deps: AppDependencies = Depends(AppDependencies),
 ) -> Dict[str, Any]:
-    """Return a JSON fact-check report for manual WordPress editing (read-only; no DB or WP updates)."""
-    logger.info("Fact-check requested for youtube_id=%s", youtube_id)
+    """Return a JSON fact-check report for manual WordPress editing (read-only; no DB or WP updates).
+
+    Query ``provider``: ``xai`` (default) or ``anthropic``. Requires ``XAI_API_KEY`` + ``XAI_MODEL``
+    for xAI, or ``ANTHROPIC_API_KEY`` (+ optional ``ANTHROPIC_MODEL``) for Anthropic. Response
+    includes ``provider`` and ``model`` echoing the backend and model id used.
+    """
+    logger.info(
+        "Fact-check requested for youtube_id=%s provider=%s",
+        youtube_id,
+        provider.value,
+    )
     db = deps.database
     if not db:
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="Database not available",
         )
-    agent = FactCheckerAgent(db)
+    agent = FactCheckerAgent(db, provider=provider)
     result = agent.fact_check_by_youtube_id(youtube_id)
     if not result["success"] and result.get("message") == ARTICLE_NOT_FOUND_FOR_YOUTUBE_ID_MESSAGE:
         raise HTTPException(
@@ -87,8 +98,10 @@ def fact_check_article_by_youtube(
             detail="YouTube id is required",
         )
     logger.info(
-        "Fact-check finished for youtube_id=%s: success=%s message=%s",
+        "Fact-check finished for youtube_id=%s provider=%s model=%s success=%s message=%s",
         youtube_id,
+        result.get("provider"),
+        result.get("model"),
         result.get("success"),
         result.get("message", "ok"),
     )

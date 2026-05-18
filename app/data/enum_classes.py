@@ -49,6 +49,13 @@ class ImageModel(str, Enum):
     GROK = "grok-imagine-image"
 
 
+class TextLLMProvider(str, Enum):
+    """Selects backend in :class:`~app.agent_kit.utility_classes.llm_text_query.LLMTextQuery`."""
+
+    XAI = "xai"
+    ANTHROPIC = "anthropic"
+
+
 class PipelineQueueMode(str, Enum):
     """Whether to build the queue from the channel (use Whisper when needed) or only process existing queue (skip Whisper path)."""
 

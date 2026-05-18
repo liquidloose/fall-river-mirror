@@ -42,10 +42,11 @@ from app.routers import (
     editor,
 )
 
-# testConfigure logging: always console; file only if writable (app.log may be root-owned in Docker)
+# Console always; optional file outside /code so uvicorn --reload does not watch app.log
+_log_file = os.environ.get("APP_LOG_PATH", "/tmp/fr-mirror-app.log")
 _handlers = [logging.StreamHandler()]
 try:
-    _handlers.append(logging.FileHandler("app.log"))
+    _handlers.append(logging.FileHandler(_log_file))
 except (OSError, PermissionError):
     pass
 logging.basicConfig(
@@ -53,6 +54,7 @@ logging.basicConfig(
     format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
     handlers=_handlers,
 )
+logging.getLogger("watchfiles").setLevel(logging.INFO)
 logger = logging.getLogger(__name__)
 
 # Initialize database instance at the top level
@@ -235,7 +237,7 @@ app.include_router(editor.router)
 
 @app.exception_handler(Exception)
 async def unhandled_exception_handler(request: Request, exc: Exception):
-    """Log any unhandled exception so it appears in app.log; then return 500."""
+    """Log any unhandled exception so it appears in the configured log file; then return 500."""
     if isinstance(exc, HTTPException):
         raise exc
     logger.error("Unhandled exception: %s", exc, exc_info=True)

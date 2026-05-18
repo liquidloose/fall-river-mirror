@@ -8,8 +8,9 @@ from fastapi.responses import JSONResponse
 
 from app.agent_kit.agents.base_creator import BaseCreator
 from app.agent_kit.utility_classes.openai_image_query import OpenAIImageQuery
-from app.agent_kit.utility_classes.xai_text_query import XAITextQuery
+from app.agent_kit.utility_classes.llm_text_query import LLMTextQuery
 from app.agent_kit.utility_classes.xai_image_query import XAIImageQuery
+from app.data.enum_classes import TextLLMProvider
 
 logger = logging.getLogger(__name__)
 
@@ -89,10 +90,10 @@ class BaseArtist(BaseCreator):
         if not bullet_points or len(bullet_points) <= 300:
             return bullet_points
 
-        xai_text_query = XAITextQuery()
+        llm = LLMTextQuery(provider=TextLLMProvider.XAI)
 
         try:
-            response = xai_text_query.get_response(
+            response = llm.get_response(
                 context="You are a concise summarizer. Create a very brief visual description suitable for an image generation prompt. Focus on key visual elements, themes, and mood. If citizen concerns or community sentiment are mentioned, reflect that tension or emotion in the visual mood. Maximum 250 characters. Return ONLY the summary text, no explanations.",
                 message=f"Summarize these bullet points into a brief visual description:\n\n{bullet_points}",
             )
