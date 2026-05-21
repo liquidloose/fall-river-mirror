@@ -54,6 +54,7 @@ class TextLLMProvider(str, Enum):
 
     XAI = "xai"
     ANTHROPIC = "anthropic"
+    GEMINI = "gemini"
 
 
 class PipelineQueueMode(str, Enum):

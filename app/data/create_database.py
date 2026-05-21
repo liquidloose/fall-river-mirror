@@ -150,6 +150,7 @@ class Database:
         - tones: Available tones for articles
         - article_types: Available article types
         - art: AI-generated artwork
+        - anchors: RAG-ready chunks emitted by extractors (e.g. Gemma Nye)
         """
         self.logger.info("Creating/verifying all database tables...")
 
@@ -261,6 +262,33 @@ class Database:
         self._add_column_if_not_exists("art", "snippet", "TEXT")
         # Migration: add model column if it doesn't exist
         self._add_column_if_not_exists("art", "model", "TEXT")
+
+        # Anchors table - one row per RAG-ready chunk emitted by an extractor
+        # (factual anchor or executive-summary bullet). Rows from the same
+        # extractor call share `run_id`; re-extractions get a new UUID.
+        # Keyed by `youtube_id` (globally unique, stable across DB rebuilds)
+        # rather than the SQLite transcripts.id row, so anchors can survive
+        # a transcripts table reload without becoming orphaned.
+        self._create_table(
+            "anchors",
+            "id INTEGER PRIMARY KEY AUTOINCREMENT, "
+            "youtube_id TEXT NOT NULL, "  # FK to transcripts.youtube_id (globally unique)
+            "run_id TEXT NOT NULL, "  # UUID, shared by all rows from one extractor call
+            "doc_type TEXT NOT NULL, "  # "factual_anchor" | "executive_summary"
+            "timestamp_string TEXT, "  # e.g. "01:15:30"; NULL for executive_summary
+            "timestamp_seconds INTEGER, "  # seconds offset; NULL for executive_summary
+            "anchor_headline TEXT, "  # short topic label; NULL for executive_summary
+            "anchor_text TEXT NOT NULL, "  # self-contained factual sentence
+            "has_official_vote INTEGER NOT NULL DEFAULT 0, "  # any formal decision
+            "has_official_roll_call INTEGER NOT NULL DEFAULT 0, "  # named-member recorded vote
+            "text_to_embed TEXT NOT NULL, "  # precomputed embedding input string
+            "extractor_name TEXT NOT NULL, "  # e.g. "Gemma Nye"
+            "model TEXT, "  # provider model id (e.g. gemini-2.0-pro)
+            "created_at TEXT NOT NULL, "
+            "embedded_at TEXT, "  # NULL until pushed to vector store
+            "embedding_id TEXT, "  # vector-store row id once embedded
+            "FOREIGN KEY(youtube_id) REFERENCES transcripts(youtube_id)",
+        )
 
         self.tables_created = True
         self.logger.info("All tables created/verified successfully")

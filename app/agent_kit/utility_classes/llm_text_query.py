@@ -36,22 +36,26 @@ class LLMTextQuery:
         self._xai_api_key = os.getenv("XAI_API_KEY")
         self._xai_model = (os.getenv("XAI_MODEL") or "").strip()
         self._anthropic_api_key = os.getenv("ANTHROPIC_API_KEY")
-        self._anthropic_model = (os.getenv("ANTHROPIC_MODEL", "claude-3-5-sonnet-20241022") or "").strip()
+        self._anthropic_model = (
+            os.getenv("ANTHROPIC_MODEL", "claude-3-5-sonnet-20241022") or ""
+        ).strip()
+        self._gemini_api_key = os.getenv("GEMINI_API_KEY")
+        self._gemini_model = (os.getenv("GEMINI_MODEL") or "").strip()
+        self.model_id: str = {
+            TextLLMProvider.XAI: self._xai_model,
+            TextLLMProvider.GEMINI: self._gemini_model,
+            TextLLMProvider.ANTHROPIC: self._anthropic_model,
+        }[provider]
         logger.info(
             f"LLMTextQuery init provider={provider.value} xai_key_set={bool(self._xai_api_key)} "
             f"xai_model={self._xai_model or '(unset)'} anthropic_key_set={bool(self._anthropic_api_key)} "
-            f"anthropic_model={self._anthropic_model or '(default)'}"
+            f"anthropic_model={self._anthropic_model or '(default)'} "
+            f"gemini_key_set={bool(self._gemini_api_key)} gemini_model={self._gemini_model or '(unset)'}"
         )
 
     @property
     def provider(self) -> TextLLMProvider:
         return self._provider
-
-    @property
-    def model_id(self) -> str:
-        if self._provider is TextLLMProvider.XAI:
-            return self._xai_model
-        return self._anthropic_model or "claude-3-5-sonnet-20241022"
 
     def llm_metadata(self) -> dict[str, str]:
         return {"provider": self.provider.value, "model": self.model_id}
@@ -63,6 +67,19 @@ class LLMTextQuery:
         )
         if self._provider is TextLLMProvider.XAI:
             return self._xai_completion(context, message)
+        if self._provider is TextLLMProvider.GEMINI:
+            logger.warning(
+                "Gemini provider selected but the integration is not yet implemented"
+            )
+            return JSONResponse(
+                status_code=501,
+                content={
+                    "error": (
+                        "Gemini provider is selected but not yet implemented in LLMTextQuery. "
+                        "Wire up _gemini_completion before calling extractors/agents configured with TextLLMProvider.GEMINI."
+                    )
+                },
+            )
         return self._anthropic_completion(context, message)
 
     def _xai_completion(self, context: str, message: str) -> str | JSONResponse:
@@ -137,7 +154,9 @@ class LLMTextQuery:
             )
             out = self._anthropic_concat_text(msg)
             if not out:
-                logger.warning("Anthropic returned empty text after concatenating content blocks")
+                logger.warning(
+                    "Anthropic returned empty text after concatenating content blocks"
+                )
             else:
                 logger.info(f"Anthropic completion ok model={model} chars={len(out)}")
             return out
