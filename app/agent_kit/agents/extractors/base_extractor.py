@@ -44,8 +44,9 @@ from pathlib import Path
 from typing import Any, ClassVar, Dict, Optional
 
 from fastapi.responses import JSONResponse
+from pydantic import BaseModel
 
-from app.agent_kit.utility_classes.llm_text_query import LLMTextQuery
+from app.agent_kit.utility_classes.llm_text_query import LLMTextQuery, ModelEnum
 from app.data.enum_classes import TextLLMProvider
 
 from ..base_creator import BaseCreator
@@ -84,6 +85,17 @@ class BaseExtractor(BaseCreator):
     # Extractors are pinned to Gemini. Override on a subclass only if you genuinely
     # need a different backend — the rest of the design assumes long-context Gemini.
     PROVIDER: ClassVar[TextLLMProvider] = TextLLMProvider.GEMINI
+
+    # Per-extractor model selection. ``None`` falls back to the provider's default
+    # in :data:`~app.data.enum_classes.DEFAULT_MODEL_FOR_PROVIDER`. Subclasses
+    # override this to pin a specific Gemini model (e.g. ``GeminiModel.GEMINI_3_PRO_PREVIEW``
+    # for long-context extraction work). Callers may also override at construction
+    # time once we wire that into the extractor classes themselves.
+    MODEL: ClassVar[Optional[ModelEnum]] = None
+
+    def _resolve_model(self, model_override: Optional[ModelEnum] = None) -> Optional[ModelEnum]:
+        """Per-call model: ``model_override`` when set, else the class default."""
+        return model_override if model_override is not None else self.MODEL
 
     # Subdirectory + filename-suffix conventions for the two prompt files.
     # Mirror the bios/descriptions pattern from BaseCreator (``{name}_bio.md`` etc.).
@@ -210,12 +222,20 @@ class BaseExtractor(BaseCreator):
 
     EXTRACTION_LOG_DIR: ClassVar[Path] = Path("logs") / "extractions"
 
+    # Default TTL (seconds) for transcripts uploaded via
+    # :meth:`_create_extraction_cache`. 900s comfortably covers a multi-pass
+    # extraction. If real-world runs ever brush against this, the follow-up
+    # is to expose a ``gemini_extend_cache`` call between passes.
+    EXTRACTION_CACHE_TTL_SECONDS: ClassVar[int] = 900
+
     def _call_llm_and_parse(
         self,
         system_instruction: str,
         user_message: str,
         *,
         youtube_video_id: Optional[str] = None,
+        run_id: Optional[str] = None,
+        pass_label: str = "main",
     ) -> Dict[str, Any]:
         """
         Shared LLM-call + JSON-parse plumbing for all extractors.
@@ -255,8 +275,8 @@ class BaseExtractor(BaseCreator):
             - When the parsed value is not a JSON object: ``success=False``,
               ``data=None``, ``message`` explains.
         """
-        run_id = str(uuid.uuid4())
-        llm = LLMTextQuery(provider=self.PROVIDER)
+        run_id = run_id or str(uuid.uuid4())
+        llm = LLMTextQuery(provider=self.PROVIDER, model=self.MODEL)
         meta = llm.llm_metadata()
         started_at = datetime.now(timezone.utc).isoformat()
 
@@ -327,6 +347,7 @@ class BaseExtractor(BaseCreator):
                 "model": meta.get("model"),
                 "started_at": started_at,
                 "completed_at": completed_at,
+                "pass_label": pass_label,
                 "system_instruction": system_instruction,
                 "user_message": user_message,
                 "raw_response": log_raw,
@@ -361,11 +382,13 @@ class BaseExtractor(BaseCreator):
         """
         Write a per-call JSON debug log under :attr:`EXTRACTION_LOG_DIR`.
 
-        Filename pattern: ``{utc_iso_ts}_yt{youtube_video_id}_r{run_id}.json``
+        Filename pattern:
+        ``{utc_iso_ts}_yt{youtube_video_id}_r{run_id}_p{pass_label}.json``
         where ``:`` characters in the timestamp are replaced with ``-`` for
         cross-platform filesystem safety. When ``youtube_video_id`` is
-        missing, the literal string ``"unknown"`` is used so the file is
-        still uniquely named by ``run_id``.
+        missing, the literal string ``"unknown"`` is used; when
+        ``pass_label`` is missing the literal ``"main"`` is used so
+        single-pass extractor calls have stable filenames.
 
         The log payload captures both inputs (system instruction, user
         message) and outputs (raw Gemini response, parse status, error
@@ -382,9 +405,10 @@ class BaseExtractor(BaseCreator):
         """
         run_id = payload.get("run_id", "unknown")
         youtube_video_id = payload.get("youtube_video_id") or "unknown"
+        pass_label = payload.get("pass_label") or "main"
         ts = payload.get("started_at") or datetime.now(timezone.utc).isoformat()
         safe_ts = ts.replace(":", "-")
-        filename = f"{safe_ts}_yt{youtube_video_id}_r{run_id}.json"
+        filename = f"{safe_ts}_yt{youtube_video_id}_r{run_id}_p{pass_label}.json"
         path = self.EXTRACTION_LOG_DIR / filename
         try:
             self.EXTRACTION_LOG_DIR.mkdir(parents=True, exist_ok=True)
@@ -396,3 +420,222 @@ class BaseExtractor(BaseCreator):
                 f"{self.FULL_NAME}: failed to write extraction log {path}: {e}"
             )
             return None
+
+    # ------------------------------------------------------------------
+    # Multi-pass cached-content helpers (Gemini-only)
+    # ------------------------------------------------------------------
+
+    def _create_extraction_cache(
+        self,
+        transcript: str,
+        *,
+        run_id: str,
+        youtube_video_id: Optional[str] = None,
+        display_name: Optional[str] = None,
+        model: Optional[ModelEnum] = None,
+        system_instruction: Optional[str] = None,
+        cache_pass_label: str = "cache_create",
+    ) -> Optional[str]:
+        """Upload ``transcript`` as a Gemini ``CachedContent`` and return its name.
+
+        Gemma runs one cache per pass with that pass's ``system_instruction``
+        baked in at create time (Gemini forbids system_instruction on generate
+        when ``cached_content`` is set). ``run_id`` ties per-pass log files
+        together.
+
+        Returns:
+            ``cache_name`` string on success; ``None`` when the cache create
+            failed. Also writes a ``p{cache_pass_label}`` log file so failures
+            are traceable from disk without re-running the extraction.
+        """
+        effective_model = self._resolve_model(model)
+        llm = LLMTextQuery(provider=self.PROVIDER, model=effective_model)
+        meta = llm.llm_metadata()
+        started_at = datetime.now(timezone.utc).isoformat()
+        result = llm.gemini_create_cache(
+            transcript,
+            ttl_seconds=self.EXTRACTION_CACHE_TTL_SECONDS,
+            display_name=display_name,
+            system_instruction=system_instruction,
+        )
+        completed_at = datetime.now(timezone.utc).isoformat()
+
+        success = isinstance(result, str)
+        cache_name: Optional[str] = result if success else None
+        error: Optional[str] = None
+        if not success:
+            try:
+                body = result.body.decode("utf-8")  # type: ignore[union-attr]
+                error = json.loads(body).get("error", body) or "cache create failed"
+            except Exception:
+                error = "cache create failed"
+            logger.warning(
+                f"{self.FULL_NAME}: cache create failed yt={youtube_video_id or 'unknown'} "
+                f"run_id={run_id}: {error}"
+            )
+
+        self._write_extraction_log(
+            {
+                "run_id": run_id,
+                "youtube_video_id": youtube_video_id,
+                "extractor_name": self.FULL_NAME,
+                "provider": meta.get("provider"),
+                "model": meta.get("model"),
+                "started_at": started_at,
+                "completed_at": completed_at,
+                "pass_label": cache_pass_label,
+                "ttl_seconds": self.EXTRACTION_CACHE_TTL_SECONDS,
+                "transcript_chars": len(transcript or ""),
+                "display_name": display_name,
+                "cache_name": cache_name,
+                "parse_status": "success" if success else "api_error",
+                "error": error,
+            }
+        )
+        return cache_name
+
+    def _delete_extraction_cache(
+        self, cache_name: Optional[str], *, model: Optional[ModelEnum] = None
+    ) -> None:
+        """Best-effort cache cleanup; never raises.
+
+        Safe to call from a ``finally`` block. Accepts ``None`` so callers
+        do not have to gate the call on cache-create success.
+        """
+        if not cache_name:
+            return
+        try:
+            LLMTextQuery(
+                provider=self.PROVIDER, model=self._resolve_model(model)
+            ).gemini_delete_cache(cache_name)
+        except Exception as e:  # noqa: BLE001
+            logger.warning(
+                f"{self.FULL_NAME}: cache delete swallowed exception cache={cache_name}: {e}"
+            )
+
+    def _call_cached_llm_and_parse(
+        self,
+        cache_name: str,
+        *,
+        run_id: str,
+        pass_label: str,
+        system_instruction: Optional[str] = None,
+        user_message: str,
+        response_schema: Optional[type[BaseModel]] = None,
+        youtube_video_id: Optional[str] = None,
+        model: Optional[ModelEnum] = None,
+    ) -> Dict[str, Any]:
+        """Cached-content equivalent of :meth:`_call_llm_and_parse`.
+
+        Accepts an externally-generated ``run_id`` so every pass in one
+        logical extraction shares the same identifier across log files and
+        downstream anchor rows. ``pass_label`` distinguishes per-pass logs
+        (e.g. ``"extract"``, ``"fact_check"``, ``"bullets"``).
+
+        Pass ``system_instruction=None`` when the system prompt was already
+        set on the cache at create time (Gemma's per-pass cache pattern).
+
+        When ``response_schema`` is given, Gemini constrains its output to
+        the Pydantic shape and this method returns the parsed ``dict`` in
+        the envelope's ``data`` field. When omitted, the raw text is parsed
+        as JSON the same way :meth:`_call_llm_and_parse` does.
+        """
+        effective_model = self._resolve_model(model)
+        llm = LLMTextQuery(provider=self.PROVIDER, model=effective_model)
+        meta = llm.llm_metadata()
+        started_at = datetime.now(timezone.utc).isoformat()
+
+        result_success = False
+        result_message = ""
+        result_data: Optional[Dict[str, Any]] = None
+        parse_status = "success"
+        error: Optional[str] = None
+        raw_response: Any = None
+        raw_text: Optional[str] = None
+
+        try:
+            raw = llm.gemini_generate_with_cache(
+                cache_name,
+                system_instruction=system_instruction,
+                user_message=user_message,
+                response_schema=response_schema,
+            )
+        except Exception as e:
+            logger.exception(f"{self.FULL_NAME}: cached LLM call raised pass={pass_label}")
+            parse_status = "api_error"
+            error = f"LLM request failed: {e!s}"
+            result_message = error
+        else:
+            if isinstance(raw, JSONResponse):
+                try:
+                    body = raw.body.decode("utf-8")
+                    err = json.loads(body).get("error", body) or "Unknown LLM error"
+                except Exception:
+                    err = "LLM returned an error response"
+                logger.warning(
+                    f"{self.FULL_NAME}: cached LLM returned error envelope pass={pass_label}: {err}"
+                )
+                parse_status = "api_error"
+                error = f"LLM request failed: {err}"
+                result_message = error
+            elif isinstance(raw, dict):
+                # response_schema path: Gemini returned a parsed dict directly.
+                raw_response = raw
+                result_data = raw
+                result_success = True
+                result_message = "Extraction complete"
+            else:
+                raw_text = (raw or "").strip()
+                text = raw_text
+                if text.startswith("```"):
+                    text = re.sub(r"^```(?:json)?\s*", "", text)
+                    text = re.sub(r"\s*```\s*$", "", text)
+                try:
+                    data = json.loads(text) if text else None
+                except json.JSONDecodeError as e:
+                    logger.warning(
+                        f"{self.FULL_NAME}: invalid JSON from cached LLM pass={pass_label}: {e}"
+                    )
+                    parse_status = "parse_error"
+                    error = f"Invalid JSON from LLM: {e!s}"
+                    result_message = error
+                else:
+                    raw_response = data
+                    if not isinstance(data, dict):
+                        parse_status = "shape_error"
+                        error = "LLM response was not a JSON object"
+                        result_message = error
+                    else:
+                        result_success = True
+                        result_message = "Extraction complete"
+                        result_data = data
+
+        completed_at = datetime.now(timezone.utc).isoformat()
+        log_raw = raw_response if raw_response is not None else raw_text
+        self._write_extraction_log(
+            {
+                "run_id": run_id,
+                "youtube_video_id": youtube_video_id,
+                "extractor_name": self.FULL_NAME,
+                "provider": meta.get("provider"),
+                "model": meta.get("model"),
+                "started_at": started_at,
+                "completed_at": completed_at,
+                "pass_label": pass_label,
+                "cache_name": cache_name,
+                "response_schema": response_schema.__name__ if response_schema else None,
+                "system_instruction": system_instruction,
+                "user_message": user_message,
+                "raw_response": log_raw,
+                "parse_status": parse_status,
+                "error": error,
+            }
+        )
+
+        return {
+            **meta,
+            "run_id": run_id,
+            "success": result_success,
+            "message": result_message,
+            "data": result_data,
+        }

@@ -7,7 +7,15 @@ from typing import Any, Dict, Optional
 from fastapi import APIRouter, Depends, HTTPException, status
 
 from app.dependencies import AppDependencies
-from app.data.enum_classes import ArticleType, Artist, ImageModel, Journalist, PipelineQueueMode, Tone
+from app.data.enum_classes import (
+    ArticleType,
+    Artist,
+    ImageModel,
+    Journalist,
+    PipelineQueueMode,
+    TextModel,
+    Tone,
+)
 
 router = APIRouter(tags=["pipeline"])
 logger = logging.getLogger(__name__)
@@ -22,12 +30,47 @@ async def run_data_pipeline(
     journalist: Journalist = Journalist.FR_J1,
     tone: Tone = Tone.PROFESSIONAL,
     article_type: ArticleType = ArticleType.NEWS,
+    text_model: Optional[TextModel] = None,
     model: ImageModel = ImageModel.GPT_IMAGE_1,
     sync_to_wordpress: bool = True,
     deps: AppDependencies = Depends(AppDependencies),
 ) -> Dict[str, Any]:
-    """Run the full data pipeline: build queue (or skip), fetch transcripts, write articles, bullet points, images. Optionally sync to WordPress.
-    queue_mode: Use Whisper = build queue and use Whisper when needed; Skip Whisper = skip queue build, only process existing queue."""
+    """Run the full data pipeline end-to-end.
+
+    Stages (in order): build queue (or skip) → fetch transcripts → write
+    articles → bullet points → cover images → optional WordPress sync.
+
+    Parameters
+    ----------
+    - **amount**: Target number of items to process per stage (e.g. number of
+      transcripts to fetch, articles to write).
+    - **channel_url**: YouTube channel to source new videos from. Falls back
+      to the ``DEFAULT_YOUTUBE_CHANNEL_URL`` env var when omitted.
+    - **queue_mode**:
+      - ``Use Whisper`` — build the queue from the channel, then fetch
+        transcripts; use Whisper for videos that lack native captions.
+      - ``Skip Whisper`` *(default)* — do **not** build the queue from the
+        channel, and only process videos that already have captions
+        (Whisper-needed items are excluded for this run).
+    - **auto_build**: Top-up safety net for the transcript-fetch stage. When
+      ``True`` *and* ``queue_mode == Use Whisper`` *and* the queue holds
+      fewer videos than ``amount``, the pipeline scrapes ``channel_url`` to
+      add the shortfall before fetching. When ``False`` (or under ``Skip
+      Whisper``), only the videos already in the queue are processed — you
+      get exactly what's queued, no automatic top-up. Has no effect under
+      ``Skip Whisper`` regardless of value.
+    - **journalist / tone / article_type**: Persona, voice, and format
+      passed to the AI journalist used for the article-writing stage.
+    - **text_model**: Optional override for which text-LLM provider + model
+      the journalist uses to write article bodies. When omitted, the
+      journalist's built-in default (xAI/Grok) is used. The dropdown lists
+      every supported model across xAI, Anthropic, and Gemini; the provider
+      is inferred from the chosen model id.
+    - **model**: Image-generation model used for the cover-art stage
+      (separate from ``text_model``).
+    - **sync_to_wordpress**: When ``True``, push newly imaged articles to
+      WordPress after generation; when ``False``, skip the sync step.
+    """
     logger.info(
         "Pipeline run started: amount=%s queue_mode=%s sync_to_wordpress=%s",
         amount, queue_mode.value, sync_to_wordpress,
@@ -158,7 +201,12 @@ async def run_data_pipeline(
     try:
         # Write articles for all transcripts that don't have one (1:1). WordPress skip is only when syncing.
         aggregated["article_write"] = await pipeline.run_bulk_write_articles(
-            amount, journalist, tone, article_type, skip_youtube_ids=None
+            amount,
+            journalist,
+            tone,
+            article_type,
+            skip_youtube_ids=None,
+            text_model=text_model,
         )
         log_step_outcome("article_write", aggregated["article_write"])
     except Exception as e:

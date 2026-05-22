@@ -8,6 +8,8 @@ from typing import Any, Dict, Optional
 from fastapi import Request
 
 from app import ArticleGenerator, TranscriptManager
+from app.agent_kit.agents.extractors.gemma_nye import GemmaNye
+from app.data.anchor_manager import AnchorManager
 from app.data.create_database import Database
 from app.data.journalist_manager import JournalistManager
 
@@ -52,3 +54,11 @@ class AppDependencies:
     @property
     def image_service(self) -> Optional[Any]:
         return getattr(self._request.app.state, "image_service", None)
+
+    @property
+    def anchor_manager(self) -> Optional[AnchorManager]:
+        return getattr(self._request.app.state, "anchor_manager", None)
+
+    @property
+    def gemma_extractor(self) -> Optional[GemmaNye]:
+        return getattr(self._request.app.state, "gemma_extractor", None)

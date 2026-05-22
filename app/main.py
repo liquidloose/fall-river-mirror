@@ -20,8 +20,10 @@ from starlette.middleware.base import BaseHTTPMiddleware
 
 # Local imports
 from app import TranscriptManager, ArticleGenerator
+from app.agent_kit.agents.extractors.gemma_nye import GemmaNye
 from app.agent_kit.agents.journalists.aurelius_stone import AureliusStone
 from app.agent_kit.agents.journalists.fr_j1 import FRJ1
+from app.data.anchor_manager import AnchorManager
 from app.data.create_database import Database
 from app.data.journalist_manager import JournalistManager
 from app.services.image_service import ImageService
@@ -40,6 +42,7 @@ from app.routers import (
     journalist,
     crawler,
     editor,
+    extractions,
 )
 
 # Console always; optional file outside /code so uvicorn --reload does not watch app.log
@@ -196,11 +199,15 @@ def get_app_deps(request: Request) -> AppDeps:
 # Service layer (OOP)
 image_service = ImageService()
 wordpress_sync_service = WordPressSyncService(database)
+anchor_manager = AnchorManager(database) if database else None
+gemma_extractor = GemmaNye()
 pipeline_service = PipelineService(
     database=database,
     transcript_manager=transcript_manager,
     journalist_manager=journalist_manager,
     image_service=image_service,
+    anchor_manager=anchor_manager,
+    gemma_extractor=gemma_extractor,
 )
 
 # Attach to app.state for AppDependencies
@@ -211,6 +218,8 @@ app.state.journalist_manager = journalist_manager
 app.state.articles_db = articles_db
 app.state.image_service = image_service
 app.state.wordpress_sync_service = wordpress_sync_service
+app.state.anchor_manager = anchor_manager
+app.state.gemma_extractor = gemma_extractor
 app.state.pipeline_service = pipeline_service
 
 # For dependency injection (get_app_deps) used by tests
@@ -233,6 +242,7 @@ app.include_router(wordpress.router)
 app.include_router(journalist.router)
 app.include_router(crawler.router)
 app.include_router(editor.router)
+app.include_router(extractions.router)
 
 
 @app.exception_handler(Exception)

@@ -51,6 +51,9 @@ typesense-data/
 /app/data/fr-mirror.db
 app.log
 
+# Per-call extraction debug logs (Gemma Nye et al.); regenerated on every run.
+logs/
+
 # YouTube OAuth credentials and tokens (contains sensitive credentials)
 client_secret.json
 youtube_oauth_token.json

@@ -38,7 +38,7 @@ from fastapi.responses import JSONResponse
 
 from ....data.enum_classes import Tone, ArticleType, TextLLMProvider
 from ..base_creator import BaseCreator
-from app.agent_kit.utility_classes.llm_text_query import LLMTextQuery
+from app.agent_kit.utility_classes.llm_text_query import LLMTextQuery, ModelEnum
 
 logger = logging.getLogger(__name__)
 
@@ -333,15 +333,25 @@ class BaseJournalist(BaseCreator):
 
         return {"title": title, "content": article_content}
 
-    def generate_article(self, context: str, user_content: str) -> Dict[str, Any]:
+    def generate_article(
+        self,
+        context: str,
+        user_content: str,
+        provider: Optional[TextLLMProvider] = None,
+        model: Optional[ModelEnum] = None,
+    ) -> Dict[str, Any]:
         """
-        Generate an article body using the xAI/Grok API.
+        Generate an article body using the configured text-LLM provider.
 
         Builds the system prompt via :meth:`get_system_prompt`, optionally
         appends ``user_content`` as an "Additional context:" user message,
         and dispatches the call through
-        :class:`~app.agent_kit.utility_classes.llm_text_query.LLMTextQuery`
-        with ``provider=TextLLMProvider.XAI``.
+        :class:`~app.agent_kit.utility_classes.llm_text_query.LLMTextQuery`.
+        Provider defaults to ``TextLLMProvider.XAI`` for backward compat with
+        callers that haven't opted into per-call model selection; pass
+        ``provider`` (and optionally a matching ``model`` enum member) to
+        route to Anthropic or Gemini, or to pin a specific model on any
+        provider.
 
         If the LLM helper returns a :class:`fastapi.responses.JSONResponse`,
         that signals an explicit API error rather than a model completion;
@@ -355,6 +365,12 @@ class BaseJournalist(BaseCreator):
             user_content: Optional extra instructions/context for this run.
                 When falsy, the user message degenerates to
                 ``"Write the article now."``.
+            provider: Override the text-LLM provider for this call. Defaults
+                to :attr:`TextLLMProvider.XAI` when ``None``.
+            model: Override the model id within the chosen provider. Must be
+                an enum member that matches ``provider`` (validated by
+                :class:`LLMTextQuery`). When ``None``, the provider's default
+                model is used.
 
         Returns:
             ``{"title": str, "content": str}`` per :meth:`_format_response`.
@@ -374,7 +390,10 @@ class BaseJournalist(BaseCreator):
         else:
             user_message = "Write the article now."
 
-        llm = LLMTextQuery(provider=TextLLMProvider.XAI)
+        llm = LLMTextQuery(
+            provider=provider or TextLLMProvider.XAI,
+            model=model,
+        )
         try:
             response = llm.get_response(
                 context=system_prompt,
