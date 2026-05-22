@@ -6,7 +6,10 @@ against one shared :class:`CachedContent` upload of the transcript:
 
 1. ``cache_create`` — upload the transcript once with a 900s TTL.
 2. ``extract`` — draft factual anchors (Pydantic-constrained shape).
-3. ``fact_check`` — re-emit the corrected full list of anchors.
+3. ``fact_check`` — re-emit the corrected full list of anchors, plus a
+   unified ``fact_check_audit`` log of every draft removed / corrected /
+   added. Per-anchor ``fact_check_note`` is an uncertainty caveat the
+   model populates only when it wants to flag self-doubt.
 4. ``bullets`` — 5-8 executive bullets plus committee classification.
 
 The three LLM-reading passes are independent: only the cached transcript
@@ -18,7 +21,9 @@ because we inject them into its user message.
 After pass 4, we stitch in ``timestamp_seconds`` (parsed from each anchor's
 timestamp string) and ``text_to_embed`` (a one-line formatted summary
 suitable for downstream vector indexing) locally — these are deterministic
-transformations that don't need an LLM.
+transformations that don't need an LLM. When a fact-check ``fact_check_note``
+is present, it is appended into ``text_to_embed`` so the uncertainty
+caveat rides along into RAG.
 
 Persistence stays with the caller. :meth:`extract` returns the envelope;
 caller hands it to :class:`~app.data.anchor_manager.AnchorManager`.
@@ -120,17 +125,22 @@ class GemmaNye(BaseExtractor):
             - ``factual_anchor_items`` — corrected anchors from the fact-check
               pass, each augmented locally with ``timestamp_seconds`` and
               ``text_to_embed``. Each anchor may carry a ``fact_check_note``
-              field from the fact-check pass (empty string when the draft was
-              re-emitted unchanged).
+              uncertainty caveat from the fact-check pass (empty string when
+              the model was confident); when non-empty the caveat is
+              appended into ``text_to_embed`` so RAG queries see it.
             - ``executive_summary_bullets`` — list of summary bullets from
               the bullets pass.
             - ``primary_committee`` — committee enum string from the
               bullets pass.
-            - ``removed_drafts`` — list of draft anchors the fact-check pass
-              concluded were fabricated and dropped. Each carries
-              ``original_timestamp_string``, ``original_anchor_headline``,
-              ``original_anchor_text``, and ``removal_reason``. Empty list
-              is the common case. Callers should pass this through to
+            - ``fact_check_audit`` — unified audit log of every draft the
+              fact-check pass removed, corrected, or added. Each entry
+              carries ``kind`` (``'removed' | 'corrected' | 'added'``),
+              originals (verbatim from the draft for removed/corrected;
+              null for added), ``corrected_anchor_text`` (verbatim copy of
+              the matching ``factual_anchor_items`` entry for
+              corrected/added; null for removed), and ``audit_note``
+              (empty when the model was confident in the decision). Empty
+              list is the common case. Callers should pass this through to
               :class:`~app.data.anchor_manager.AnchorManager.insert_from_envelope`
               so the audit rows land in ``fact_check_removals``.
 
@@ -185,7 +195,7 @@ class GemmaNye(BaseExtractor):
             for a in corrected["data"]["factual_anchor_items"]
         ]
 
-        removed_drafts = corrected["data"].get("removed_drafts") or []
+        fact_check_audit = corrected["data"].get("fact_check_audit") or []
         envelope = {
             **draft,
             "run_id": run_id,
@@ -197,14 +207,14 @@ class GemmaNye(BaseExtractor):
                     "executive_summary_bullets"
                 ],
                 "primary_committee": committee_str,
-                "removed_drafts": removed_drafts,
+                "fact_check_audit": fact_check_audit,
             },
         }
         logger.info(
             f"{self.FULL_NAME}: extraction done yt={youtube_video_id} run_id={run_id} "
             f"anchors={len(stitched_anchors)} "
             f"bullets={len(envelope['data']['executive_summary_bullets'])} "
-            f"removed_drafts={len(removed_drafts)} "
+            f"fact_check_audit={len(fact_check_audit)} "
             f"committee={committee_str!r}"
         )
         return envelope
@@ -386,14 +396,23 @@ class GemmaNye(BaseExtractor):
     ) -> str:
         """Format a single anchor as one line suitable for vector embedding.
 
-        Pattern: ``Date: {date} | Committee: {committee} | Topic: {headline} | Fact: {text}``
+        Base pattern:
+            ``Date: {date} | Committee: {committee} | Topic: {headline} | Fact: {text}``
+
+        When the fact-check pass populated ``fact_check_note`` on this anchor
+        (i.e. the model flagged self-doubt about the anchor's content), the
+        caveat is appended as ``| Caveat: {note}`` so RAG queries see the
+        uncertainty alongside the fact. Confident anchors (empty/missing
+        note) get the base pattern unchanged.
         """
-        return (
+        base = (
             f"Date: {meeting_date} | "
             f"Committee: {committee} | "
             f"Topic: {anchor.get('anchor_headline', '')} | "
             f"Fact: {anchor.get('anchor_text', '')}"
         )
+        note = (anchor.get("fact_check_note") or "").strip()
+        return f"{base} | Caveat: {note}" if note else base
 
     def _stitch_anchor(
         self, raw: Dict[str, Any], meeting_date: str, committee: str

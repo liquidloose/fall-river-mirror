@@ -33,7 +33,7 @@ flowchart LR
     direction TB
     P0[[Gemini CachedContent<br/>transcript + per-pass system instructions<br/>TTL 900s · created on entry to section 2]]:::cache
     P1[Pass 1 · extract<br/>schema: ExtractEnvelope<br/>→ draft factual_anchor_items]
-    P2[Pass 2 · fact_check<br/>input: draft_anchors_json<br/>schema: FactCheckEnvelope<br/>→ verified anchors + removed_drafts]
+    P2[Pass 2 · fact_check<br/>input: draft_anchors_json<br/>schema: FactCheckEnvelope<br/>→ verified anchors + fact_check_audit]
     P3[Pass 3 · bullets + committee<br/>input: committee_list<br/>schema: BulletsAndCommittee<br/>→ executive_summary + primary_committee]
     AN[(anchors)]
     FCR[(fact_check_removals)]
@@ -172,7 +172,7 @@ sequenceDiagram
   rect rgba(240,220,180,0.4)
     Note over G,API: Pass 2 — fact_check<br/>schema = FactCheckEnvelope
     G->>API: generate(user_prompt + draft_anchors_json)
-    API-->>G: fact_checked items + removed_drafts
+    API-->>G: fact_checked items + fact_check_audit
   end
 
   rect rgba(220,200,240,0.4)
@@ -197,16 +197,17 @@ Each pass writes a debug JSON to `logs/extractions/{ts}_yt{id}_r{run_id}_p{pass_
 ```mermaid
 flowchart LR
   subgraph env [GemmaNye envelope]
-    FAI[factual_anchor_items&lbrack;&rbrack;<br/>timestamp_string, headline, text,<br/>has_official_vote, roll_call_type,<br/>fact_check_note, timestamp_seconds,<br/>text_to_embed]
+    FAI[factual_anchor_items&lbrack;&rbrack;<br/>timestamp_string, headline, text,<br/>has_official_vote, roll_call_type,<br/>fact_check_note caveat<br/>"empty when confident; appended into text_to_embed when populated",<br/>timestamp_seconds, text_to_embed]
     ESB[executive_summary_bullets&lbrack;&rbrack;<br/>5–8 strings]
     PC[primary_committee<br/>Committee enum value]
-    RD[removed_drafts&lbrack;&rbrack;<br/>headline, text, removal_reason]
+    FCA["fact_check_audit&lbrack;&rbrack;<br/>kind (removed|corrected|added),<br/>originals (null for added),<br/>corrected_anchor_text (null for removed),<br/>audit_note (empty when confident)"]
   end
 
   FAI -->|doc_type=factual_anchor| AT[(anchors)]
   ESB -->|doc_type=executive_summary| AT
   PC -.->|currently unused on insert| AT
-  RD --> FCR[(fact_check_removals)]
+  FCA --> FCR[(fact_check_removals)]
+  AT -.->|anchor_id FK for kind=corrected/added| FCR
 
   AT -. embedded_at NULL .-> VS[future vector store]:::future
 

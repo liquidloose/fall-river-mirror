@@ -284,7 +284,7 @@ class Database:
             "has_voting_roll_call INTEGER NOT NULL DEFAULT 0, "  # LEGACY (pre-enum): kept for historical rows; new code uses roll_call_type below
             "has_attendance_roll_call INTEGER NOT NULL DEFAULT 0, "  # LEGACY (pre-enum): kept for historical rows; new code uses roll_call_type below
             "roll_call_type TEXT NOT NULL DEFAULT 'none', "  # enum: 'none' | 'attendance' | 'voting' — see app.data.enum_classes.RollCallType
-            "fact_check_note TEXT, "  # fact-check pass audit field: brief description of what was wrong with the draft anchor; NULL/empty for unchanged anchors and extract-pass rows. NEVER embedded.
+            "fact_check_note TEXT, "  # fact-check pass uncertainty caveat for this anchor (e.g. "timestamp approximate", "speaker attribution uncertain"). NULL/empty when the model is confident. WHEN POPULATED, this string IS appended into `text_to_embed` so RAG queries see the caveat alongside the fact.
             "text_to_embed TEXT NOT NULL, "  # precomputed embedding input string
             "extractor_name TEXT NOT NULL, "  # e.g. "Gemma Nye"
             "model TEXT, "  # provider model id (e.g. gemini-2.0-pro)
@@ -311,32 +311,49 @@ class Database:
         self._add_column_if_not_exists(
             "anchors", "roll_call_type", "TEXT NOT NULL DEFAULT 'none'"
         )
-        # Migration: per-anchor fact-check audit field. Populated by the
-        # fact-check pass when it changes a draft anchor (or adds a missing
-        # one); NULL for extract-pass rows and for unchanged fact-check rows.
-        # NEVER concatenated into `text_to_embed` — this column is for prompt
-        # iteration / model-error analysis only.
+        # Migration: per-anchor fact-check uncertainty caveat. Populated by the
+        # fact-check pass ONLY when the model wants to flag self-doubt about
+        # the anchor's content (e.g. ambiguous timestamp, unsure speaker
+        # attribution). NULL/empty when the model is confident and for all
+        # extract-pass rows. When populated, this string IS appended into
+        # `text_to_embed` so RAG queries see the caveat alongside the fact.
         self._add_column_if_not_exists("anchors", "fact_check_note", "TEXT")
 
-        # Fact-check removals audit log. One row per draft anchor that the
-        # fact-check pass concluded was fabricated and dropped from the
-        # corrected list. Lives in its own table — NOT alongside `anchors` —
-        # because the anchors table is the canonical RAG/vector-store source
-        # and must stay factual. Correlated with the corresponding anchor run
-        # via `run_id` (shared with `anchors.run_id`).
+        # Fact-check audit log. One row per draft anchor the fact-check pass
+        # removed, corrected, or added — distinguished by `kind`. Lives in
+        # its own table (never alongside `anchors`) so the canonical
+        # RAG/vector-store source stays clean of audit metadata. Correlated
+        # with the corresponding anchor run via `run_id` (shared with
+        # `anchors.run_id`); rows for `kind in ('corrected','added')` also
+        # carry `anchor_id` linking to the resulting `anchors.id` row.
+        #
+        # Table name kept as `fact_check_removals` to avoid migration churn
+        # — the scope is broader than removals now (every fact-check
+        # decision audit row lives here).
+        #
+        # `audit_note` is an UNCERTAINTY FLAG, not a discrepancy log:
+        # populated only when the model wants to flag self-doubt about the
+        # fact-check decision (e.g. "removal might be wrong; ambiguous
+        # transcript section"). NULL/empty when confident. Bulk error
+        # analysis works by inspecting the structural fields (`kind`,
+        # `original_*`, joined `anchors.anchor_text` via `anchor_id`); the
+        # `audit_note` column is for human-reviewer flags only.
         self._create_table(
             "fact_check_removals",
             "id INTEGER PRIMARY KEY AUTOINCREMENT, "
             "youtube_id TEXT NOT NULL, "  # FK to transcripts.youtube_id
             "run_id TEXT NOT NULL, "  # same UUID as the corresponding anchors.run_id
-            "original_timestamp_string TEXT, "  # whatever the draft anchor claimed
-            "original_anchor_headline TEXT, "
-            "original_anchor_text TEXT NOT NULL, "
-            "removal_reason TEXT NOT NULL, "  # short factual reason
+            "kind TEXT NOT NULL DEFAULT 'removed', "  # 'removed' | 'corrected' | 'added'
+            "anchor_id INTEGER, "  # FK to anchors.id; NULL only for kind='removed'
+            "original_timestamp_string TEXT, "  # whatever the draft anchor claimed; NULL for kind='added'
+            "original_anchor_headline TEXT, "  # NULL for kind='added'
+            "original_anchor_text TEXT, "  # NULL for kind='added'
+            "audit_note TEXT, "  # uncertainty caveat about the fact-check decision; NULL/empty when confident
             "extractor_name TEXT NOT NULL, "
             "model TEXT, "  # provider model id of the fact-check pass
             "created_at TEXT NOT NULL, "
-            "FOREIGN KEY(youtube_id) REFERENCES transcripts(youtube_id)",
+            "FOREIGN KEY(youtube_id) REFERENCES transcripts(youtube_id), "
+            "FOREIGN KEY(anchor_id) REFERENCES anchors(id)",
         )
 
         self.tables_created = True

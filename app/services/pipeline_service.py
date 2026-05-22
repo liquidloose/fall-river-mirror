@@ -903,9 +903,10 @@ class PipelineService:
               the ``anchors`` table. Excludes summary-bullet rows.
             - ``bullets_inserted`` (``int``): Executive-summary bullet rows
               written to the ``anchors`` table (one row per bullet).
-            - ``removed_drafts_inserted`` (``int``): Audit rows written to
-              ``fact_check_removals`` for draft anchors the fact-check pass
-              dropped as fabricated.
+            - ``audit_inserted`` (``dict``): Per-kind audit-row counts written
+              to ``fact_check_removals``, with keys ``removed``,
+              ``corrected``, ``added``, and ``total``. All zeros when the
+              fact-check pass left every draft unchanged.
             - ``primary_committee`` (``str``, optional): Committee enum value
               the extractor classified the meeting under.
             - ``error`` (``str``, optional): Present when ``success`` is
@@ -1058,16 +1059,29 @@ class PipelineService:
 
         anchors_inserted = len(data.get("factual_anchor_items") or [])
         bullets_inserted = len(data.get("executive_summary_bullets") or [])
-        removed_drafts_inserted = len(data.get("removed_drafts") or [])
+        # Per-kind counts come from the envelope, not from AnchorManager's
+        # final tallies. Entries the persistence layer skips (orphan guards,
+        # missing required fields) won't be subtracted here — kept simple
+        # since those skips are warning-logged at insert time and represent
+        # malformed model output, not normal flow.
+        audit_entries = data.get("fact_check_audit") or []
+        audit_inserted = {"removed": 0, "corrected": 0, "added": 0}
+        for _entry in audit_entries:
+            _kind = _entry.get("kind") if isinstance(_entry, dict) else None
+            if _kind in audit_inserted:
+                audit_inserted[_kind] += 1
+        audit_inserted["total"] = sum(audit_inserted.values())
         logger.info(
             "Pipeline extract_anchors: complete yt=%s extractor=%s run_id=%s "
-            "anchors=%d bullets=%d removed=%d",
+            "anchors=%d bullets=%d audit_removed=%d audit_corrected=%d audit_added=%d",
             youtube_id,
             extractor.value,
             run_id,
             anchors_inserted,
             bullets_inserted,
-            removed_drafts_inserted,
+            audit_inserted["removed"],
+            audit_inserted["corrected"],
+            audit_inserted["added"],
         )
         return {
             "success": True,
@@ -1079,6 +1093,6 @@ class PipelineService:
             "model": envelope.get("model"),
             "anchors_inserted": anchors_inserted,
             "bullets_inserted": bullets_inserted,
-            "removed_drafts_inserted": removed_drafts_inserted,
+            "audit_inserted": audit_inserted,
             "primary_committee": data.get("primary_committee"),
         }
