@@ -48,11 +48,23 @@ from fastapi.responses import JSONResponse
 from app import TranscriptManager
 from app.agent_kit.agents.artists.fra1 import FRA1
 from app.agent_kit.agents.artists.spectra_veritas import SpectraVeritas
+from app.agent_kit.agents.extractors.gemma_nye import GemmaNye
 from app.agent_kit.agents.journalists.aurelius_stone import AureliusStone
 from app.agent_kit.agents.journalists.base_journalist import ArticleGenerationError
 from app.agent_kit.agents.journalists.fr_j1 import FRJ1
+from app.data.anchor_manager import AnchorManager
 from app.data.create_database import Database
-from app.data.enum_classes import ArticleType, Artist, ImageModel, Journalist, Tone
+from app.data.enum_classes import (
+    ArticleType,
+    Artist,
+    Extractor,
+    GeminiModel,
+    ImageModel,
+    Journalist,
+    TextModel,
+    Tone,
+    resolve_text_model,
+)
 from app.data.journalist_manager import JournalistManager
 from app.data.video_queue_manager import VideoQueueManager
 from app.services.image_service import ImageService
@@ -97,6 +109,8 @@ class PipelineService:
         transcript_manager: Optional[TranscriptManager],
         journalist_manager: Optional[JournalistManager],
         image_service: Optional[ImageService],
+        anchor_manager: Optional[AnchorManager] = None,
+        gemma_extractor: Optional[GemmaNye] = None,
     ) -> None:
         """
         Args:
@@ -108,11 +122,23 @@ class PipelineService:
                 :meth:`run_bulk_write_articles`.
             image_service: Fetches/decodes remote image bytes; required for
                 :meth:`run_image_batch` to store binary art in the database.
+            anchor_manager: Writes extractor output to the ``anchors`` and
+                ``fact_check_removals`` tables; required for
+                :meth:`run_extract_anchors`. Optional for backward compat
+                with callers that only use the article/image pipeline.
+            gemma_extractor: Singleton ``GemmaNye`` instance used by
+                :meth:`run_extract_anchors`. Injected from ``app.state`` so
+                identity/config (provider, model, prompt files) is owned at
+                the app layer rather than re-instantiated per request.
+                Optional for backward compat with callers that only use
+                the article/image pipeline.
         """
         self._database = database
         self._transcript_manager = transcript_manager
         self._journalist_manager = journalist_manager
         self._image_service = image_service
+        self._anchor_manager = anchor_manager
+        self._gemma_extractor = gemma_extractor
 
     async def run_build_queue(
         self,
@@ -418,6 +444,7 @@ class PipelineService:
         tone: Tone,
         article_type: ArticleType,
         skip_youtube_ids: Optional[Set[str]] = None,
+        text_model: Optional[TextModel] = None,
     ) -> Dict[str, Any]:
         """Generate articles from stored transcripts using an AI journalist.
 
@@ -447,6 +474,11 @@ class PipelineService:
             article_type: Article format/type (e.g. ``ArticleType.STANDARD``).
             skip_youtube_ids: YouTube IDs whose transcripts should be ignored
                 because the corresponding article already exists on WordPress.
+            text_model: Optional unified :class:`TextModel` member selecting
+                which provider + model the journalist should use to generate
+                article bodies. When ``None``, the journalist's built-in
+                default (xAI/Grok with the per-provider default model) is
+                used, preserving prior behavior.
 
         Returns:
             Dict with:
@@ -564,6 +596,15 @@ class PipelineService:
         article_ids = []
         articles_generated = 0
         articles_failed = 0
+        if text_model is not None:
+            llm_provider, llm_model = resolve_text_model(text_model)
+            logger.info(
+                "Pipeline article write: using provider=%s model=%s",
+                llm_provider.value,
+                llm_model.value,
+            )
+        else:
+            llm_provider, llm_model = None, None
         for row in transcripts:
             transcript_id, committee, youtube_id, transcript_content = (
                 row[0], row[1], row[2], row[3],
@@ -573,7 +614,12 @@ class PipelineService:
                     tone=tone, article_type=article_type
                 )
                 full_context = f"{base_context}\n\nTRANSCRIPT CONTENT TO ANALYZE:\n{transcript_content}"
-                article_result = journalist_instance.generate_article(full_context, "")
+                article_result = journalist_instance.generate_article(
+                    full_context,
+                    "",
+                    provider=llm_provider,
+                    model=llm_model,
+                )
                 new_id = db.add_article(
                     committee=committee,
                     youtube_id=youtube_id,
@@ -813,4 +859,226 @@ class PipelineService:
             "images_generated": images_generated,
             "images_failed": images_failed,
             "results": results,
+        }
+
+    def run_extract_anchors(
+        self,
+        youtube_id: str,
+        *,
+        extractor: Extractor = Extractor.GEMMA_NYE,
+        text_model: Optional[GeminiModel] = None,
+    ) -> Dict[str, Any]:
+        """Run a selected extractor over a stored transcript.
+
+        Synchronous (the underlying Gemini calls are blocking I/O). The route
+        handler awaits this in a threadpool via FastAPI's default sync-handler
+        behavior, so per-request blocking is fine for a manually-triggered
+        endpoint. Do not call this from inside an existing async event loop.
+
+        Args:
+            youtube_id: The YouTube video id of the transcript to extract.
+                Must exist in the ``transcripts`` table.
+            extractor: Which agent extractor to run (Swagger dropdown).
+                Today only :data:`~app.data.enum_classes.Extractor.GEMMA_NYE`
+                is wired; unknown values return ``unknown_extractor``.
+            text_model: Optional Gemini model override for all four LLM
+                passes. When omitted, the extractor's class default applies
+                (``GEMINI_3_PRO_PREVIEW`` for Gemma). Use a Flash variant
+                when billing is off or quotas are tight.
+
+        Returns:
+            Dict with:
+
+            - ``success`` (``bool``): ``False`` when dependencies are missing,
+              the transcript isn't found, the transcript has no content, or
+              extraction failed.
+            - ``message`` (``str``): Summary for operators.
+            - ``youtube_id`` (``str``): Echoed back for log correlation.
+            - ``extractor`` (``str``): Echo of the chosen extractor display name.
+            - ``run_id`` (``str``, optional): Extraction run UUID; present on
+              successful extractions and on extractor-returned failures.
+            - ``provider`` / ``model`` (``str``, optional): The text-LLM
+              provider + model id used for the extract pass.
+            - ``anchors_inserted`` (``int``): Factual-anchor rows written to
+              the ``anchors`` table. Excludes summary-bullet rows.
+            - ``bullets_inserted`` (``int``): Executive-summary bullet rows
+              written to the ``anchors`` table (one row per bullet).
+            - ``removed_drafts_inserted`` (``int``): Audit rows written to
+              ``fact_check_removals`` for draft anchors the fact-check pass
+              dropped as fabricated.
+            - ``primary_committee`` (``str``, optional): Committee enum value
+              the extractor classified the meeting under.
+            - ``error`` (``str``, optional): Present when ``success`` is
+              ``False``; carries a short cause code.
+        """
+        db = self._database
+        anchor_manager = self._anchor_manager
+        if not db:
+            return {
+                "success": False,
+                "message": "Database not available",
+                "youtube_id": youtube_id,
+                "error": "Database not initialized",
+            }
+        if not anchor_manager:
+            return {
+                "success": False,
+                "message": "AnchorManager not wired into PipelineService",
+                "youtube_id": youtube_id,
+                "error": "AnchorManager not available",
+            }
+        if extractor != Extractor.GEMMA_NYE:
+            return {
+                "success": False,
+                "message": f"Extractor {extractor.value!r} is not wired yet",
+                "youtube_id": youtube_id,
+                "extractor": extractor.value,
+                "error": "unknown_extractor",
+            }
+        gemma = self._gemma_extractor
+        if not gemma:
+            return {
+                "success": False,
+                "message": "Gemma extractor not wired into PipelineService",
+                "youtube_id": youtube_id,
+                "extractor": extractor.value,
+                "error": "GemmaExtractor not available",
+            }
+
+        try:
+            db.cursor.execute(
+                "SELECT content, yt_published_date FROM transcripts WHERE youtube_id = ? LIMIT 1",
+                (youtube_id,),
+            )
+            row = db.cursor.fetchone()
+        except Exception as e:
+            logger.exception(
+                "Pipeline extract_anchors: transcript lookup failed yt=%s", youtube_id
+            )
+            return {
+                "success": False,
+                "message": f"Transcript lookup failed: {e}",
+                "youtube_id": youtube_id,
+                "error": str(e),
+            }
+        if not row:
+            return {
+                "success": False,
+                "message": f"No transcript found for youtube_id={youtube_id}",
+                "youtube_id": youtube_id,
+                "error": "transcript_not_found",
+            }
+        transcript_content, yt_published_date = row[0], row[1]
+        if not transcript_content or not transcript_content.strip():
+            return {
+                "success": False,
+                "message": f"Transcript for youtube_id={youtube_id} is empty",
+                "youtube_id": youtube_id,
+                "error": "transcript_empty",
+            }
+        meeting_date = (yt_published_date or "")[:10] or "unknown"
+
+        model_override = text_model  # GeminiModel member or None
+        logger.info(
+            "Pipeline extract_anchors: starting yt=%s extractor=%s model=%s "
+            "transcript_chars=%d meeting_date=%s",
+            youtube_id,
+            extractor.value,
+            model_override.value
+            if model_override
+            else (gemma.MODEL.value if gemma.MODEL is not None else "default"),
+            len(transcript_content),
+            meeting_date,
+        )
+        try:
+            envelope = gemma.extract(
+                transcript=transcript_content,
+                youtube_video_id=youtube_id,
+                meeting_date=meeting_date,
+                model=model_override,
+            )
+        except Exception as e:
+            logger.exception(
+                "Pipeline extract_anchors: %s raised yt=%s",
+                extractor.value,
+                youtube_id,
+            )
+            return {
+                "success": False,
+                "message": f"{extractor.value} extraction raised: {e}",
+                "youtube_id": youtube_id,
+                "extractor": extractor.value,
+                "error": str(e),
+            }
+
+        if not envelope.get("success"):
+            logger.warning(
+                "Pipeline extract_anchors: %s returned success=False yt=%s msg=%s",
+                extractor.value,
+                youtube_id,
+                envelope.get("message"),
+            )
+            return {
+                "success": False,
+                "message": envelope.get("message") or f"{extractor.value} extraction failed",
+                "youtube_id": youtube_id,
+                "extractor": extractor.value,
+                "run_id": envelope.get("run_id"),
+                "provider": envelope.get("provider"),
+                "model": envelope.get("model"),
+                "error": envelope.get("message") or "extraction_failed",
+            }
+
+        data = envelope.get("data") or {}
+        run_id = envelope.get("run_id")
+        try:
+            anchor_manager.insert_from_envelope(
+                youtube_id=youtube_id,
+                run_id=run_id,
+                envelope=data,
+                extractor_name=gemma.FULL_NAME,
+                model=envelope.get("model"),
+            )
+        except Exception as e:
+            logger.exception(
+                "Pipeline extract_anchors: AnchorManager insert raised yt=%s run_id=%s",
+                youtube_id,
+                run_id,
+            )
+            return {
+                "success": False,
+                "message": f"AnchorManager insert raised (anchors NOT persisted): {e}",
+                "youtube_id": youtube_id,
+                "extractor": extractor.value,
+                "run_id": run_id,
+                "provider": envelope.get("provider"),
+                "model": envelope.get("model"),
+                "error": str(e),
+            }
+
+        anchors_inserted = len(data.get("factual_anchor_items") or [])
+        bullets_inserted = len(data.get("executive_summary_bullets") or [])
+        removed_drafts_inserted = len(data.get("removed_drafts") or [])
+        logger.info(
+            "Pipeline extract_anchors: complete yt=%s extractor=%s run_id=%s "
+            "anchors=%d bullets=%d removed=%d",
+            youtube_id,
+            extractor.value,
+            run_id,
+            anchors_inserted,
+            bullets_inserted,
+            removed_drafts_inserted,
+        )
+        return {
+            "success": True,
+            "message": "Extraction complete",
+            "youtube_id": youtube_id,
+            "extractor": extractor.value,
+            "run_id": run_id,
+            "provider": envelope.get("provider"),
+            "model": envelope.get("model"),
+            "anchors_inserted": anchors_inserted,
+            "bullets_inserted": bullets_inserted,
+            "removed_drafts_inserted": removed_drafts_inserted,
+            "primary_committee": data.get("primary_committee"),
         }

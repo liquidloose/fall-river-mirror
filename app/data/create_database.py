@@ -150,6 +150,7 @@ class Database:
         - tones: Available tones for articles
         - article_types: Available article types
         - art: AI-generated artwork
+        - anchors: RAG-ready chunks emitted by extractors (e.g. Gemma Nye)
         """
         self.logger.info("Creating/verifying all database tables...")
 
@@ -261,6 +262,82 @@ class Database:
         self._add_column_if_not_exists("art", "snippet", "TEXT")
         # Migration: add model column if it doesn't exist
         self._add_column_if_not_exists("art", "model", "TEXT")
+
+        # Anchors table - one row per RAG-ready chunk emitted by an extractor
+        # (factual anchor or executive-summary bullet). Rows from the same
+        # extractor call share `run_id`; re-extractions get a new UUID.
+        # Keyed by `youtube_id` (globally unique, stable across DB rebuilds)
+        # rather than the SQLite transcripts.id row, so anchors can survive
+        # a transcripts table reload without becoming orphaned.
+        self._create_table(
+            "anchors",
+            "id INTEGER PRIMARY KEY AUTOINCREMENT, "
+            "youtube_id TEXT NOT NULL, "  # FK to transcripts.youtube_id (globally unique)
+            "run_id TEXT NOT NULL, "  # UUID, shared by all rows from one extractor call
+            "doc_type TEXT NOT NULL, "  # "factual_anchor" | "executive_summary"
+            "timestamp_string TEXT, "  # e.g. "01:15:30"; NULL for executive_summary
+            "timestamp_seconds INTEGER, "  # seconds offset; NULL for executive_summary
+            "anchor_headline TEXT, "  # short topic label; NULL for executive_summary
+            "anchor_text TEXT NOT NULL, "  # self-contained factual sentence
+            "has_official_vote INTEGER NOT NULL DEFAULT 0, "  # any formal decision (voice/hand/roll-call/consensus/acclamation)
+            "has_official_roll_call INTEGER NOT NULL DEFAULT 0, "  # LEGACY (pre-enum): kept for historical rows; new code uses roll_call_type below
+            "has_voting_roll_call INTEGER NOT NULL DEFAULT 0, "  # LEGACY (pre-enum): kept for historical rows; new code uses roll_call_type below
+            "has_attendance_roll_call INTEGER NOT NULL DEFAULT 0, "  # LEGACY (pre-enum): kept for historical rows; new code uses roll_call_type below
+            "roll_call_type TEXT NOT NULL DEFAULT 'none', "  # enum: 'none' | 'attendance' | 'voting' — see app.data.enum_classes.RollCallType
+            "fact_check_note TEXT, "  # fact-check pass audit field: brief description of what was wrong with the draft anchor; NULL/empty for unchanged anchors and extract-pass rows. NEVER embedded.
+            "text_to_embed TEXT NOT NULL, "  # precomputed embedding input string
+            "extractor_name TEXT NOT NULL, "  # e.g. "Gemma Nye"
+            "model TEXT, "  # provider model id (e.g. gemini-2.0-pro)
+            "created_at TEXT NOT NULL, "
+            "embedded_at TEXT, "  # NULL until pushed to vector store
+            "embedding_id TEXT, "  # vector-store row id once embedded
+            "FOREIGN KEY(youtube_id) REFERENCES transcripts(youtube_id)",
+        )
+        # Migration: split legacy `has_official_roll_call` into two distinct concepts.
+        # `has_voting_roll_call`     = named-member recorded vote (subset of has_official_vote)
+        # `has_attendance_roll_call` = clerk-led presence/quorum check (independent of voting)
+        # The legacy column is preserved for historical rows; this intermediate step
+        # is itself now legacy — see the roll_call_type migration immediately below.
+        self._add_column_if_not_exists(
+            "anchors", "has_voting_roll_call", "INTEGER NOT NULL DEFAULT 0"
+        )
+        self._add_column_if_not_exists(
+            "anchors", "has_attendance_roll_call", "INTEGER NOT NULL DEFAULT 0"
+        )
+        # Migration: collapse the three roll-call booleans into a single
+        # `roll_call_type` enum column ('none' | 'attendance' | 'voting'). The
+        # three legacy boolean columns above are kept so historical rows remain
+        # readable; new rows leave them at 0 and use this column instead.
+        self._add_column_if_not_exists(
+            "anchors", "roll_call_type", "TEXT NOT NULL DEFAULT 'none'"
+        )
+        # Migration: per-anchor fact-check audit field. Populated by the
+        # fact-check pass when it changes a draft anchor (or adds a missing
+        # one); NULL for extract-pass rows and for unchanged fact-check rows.
+        # NEVER concatenated into `text_to_embed` — this column is for prompt
+        # iteration / model-error analysis only.
+        self._add_column_if_not_exists("anchors", "fact_check_note", "TEXT")
+
+        # Fact-check removals audit log. One row per draft anchor that the
+        # fact-check pass concluded was fabricated and dropped from the
+        # corrected list. Lives in its own table — NOT alongside `anchors` —
+        # because the anchors table is the canonical RAG/vector-store source
+        # and must stay factual. Correlated with the corresponding anchor run
+        # via `run_id` (shared with `anchors.run_id`).
+        self._create_table(
+            "fact_check_removals",
+            "id INTEGER PRIMARY KEY AUTOINCREMENT, "
+            "youtube_id TEXT NOT NULL, "  # FK to transcripts.youtube_id
+            "run_id TEXT NOT NULL, "  # same UUID as the corresponding anchors.run_id
+            "original_timestamp_string TEXT, "  # whatever the draft anchor claimed
+            "original_anchor_headline TEXT, "
+            "original_anchor_text TEXT NOT NULL, "
+            "removal_reason TEXT NOT NULL, "  # short factual reason
+            "extractor_name TEXT NOT NULL, "
+            "model TEXT, "  # provider model id of the fact-check pass
+            "created_at TEXT NOT NULL, "
+            "FOREIGN KEY(youtube_id) REFERENCES transcripts(youtube_id)",
+        )
 
         self.tables_created = True
         self.logger.info("All tables created/verified successfully")
