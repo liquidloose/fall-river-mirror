@@ -1,13 +1,13 @@
 """Image and art endpoints: generate, get, delete, regenerate, cleanup."""
 
 import logging
-from typing import Any, Dict
+from typing import Any, Dict, Optional
 
 from fastapi import APIRouter, Depends, HTTPException, status
 from fastapi.responses import Response
 
 from app.dependencies import AppDependencies
-from app.data.enum_classes import Artist, ImageModel
+from app.data.enum_classes import Artist, ImageModel, TextModel, resolve_text_model
 from app.agent_kit.agents.artists.spectra_veritas import SpectraVeritas
 from app.agent_kit.agents.artists.fra1 import FRA1
 
@@ -20,6 +20,7 @@ def bulk_generate_images(
     amount: int,
     artist_name: Artist = Artist.SPECTRA_VERITAS,
     model: ImageModel = ImageModel.GPT_IMAGE_1,
+    snippet_text_model: Optional[TextModel] = None,
     deps: AppDependencies = Depends(AppDependencies),
 ) -> Dict[str, Any]:
     """Bulk generate images for articles that have bullet points but no existing art."""
@@ -39,7 +40,12 @@ def bulk_generate_images(
             f"Starting bulk image generation: {amount} images, "
             f"artist={artist_name.value}, model={model.value}"
         )
-        return pipeline.run_image_batch(amount, artist_name, model)
+        return pipeline.run_image_batch(
+            amount,
+            artist_name,
+            model,
+            snippet_text_model=snippet_text_model,
+        )
     except ValueError as e:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
     except HTTPException:
@@ -57,6 +63,7 @@ def generate_image(
     artist_name: Artist,
     article_id: int,
     model: ImageModel = ImageModel.GPT_IMAGE_1,
+    snippet_text_model: Optional[TextModel] = None,
     deps: AppDependencies = Depends(AppDependencies),
 ) -> Dict[str, Any]:
     """Generate an image for an article using the specified artist and model."""
@@ -99,10 +106,16 @@ def generate_image(
             "article_id": article_id,
         }
     artist_instance = artist_class()
+    snippet_provider = None
+    snippet_model = None
+    if snippet_text_model is not None:
+        snippet_provider, snippet_model = resolve_text_model(snippet_text_model)
     image_result = artist_instance.generate_image(
         title=article["title"],
         bullet_points=bullet_points,
         model=model.value,
+        snippet_provider=snippet_provider,
+        snippet_model=snippet_model,
     )
     if image_result.get("image_url"):
         try:
@@ -206,6 +219,7 @@ def regenerate_art_image(
     art_id: int,
     artist_name: Artist = Artist.SPECTRA_VERITAS,
     model: ImageModel = ImageModel.GPT_IMAGE_1,
+    snippet_text_model: Optional[TextModel] = None,
     deps: AppDependencies = Depends(AppDependencies),
 ) -> Dict[str, Any]:
     """Regenerate the image for an existing art record."""
@@ -249,11 +263,17 @@ def regenerate_art_image(
                 detail=f"Artist '{artist_name.value}' not implemented",
             )
         artist_instance = artist_class()
+        snippet_provider = None
+        snippet_model = None
+        if snippet_text_model is not None:
+            snippet_provider, snippet_model = resolve_text_model(snippet_text_model)
         logger.info(f"Regenerating image for art ID {art_id} (article: {article_id})")
         image_result = artist_instance.generate_image(
             title=article["title"],
             bullet_points=bullet_points,
             model=model.value,
+            snippet_provider=snippet_provider,
+            snippet_model=snippet_model,
         )
         if image_result.get("error"):
             raise HTTPException(

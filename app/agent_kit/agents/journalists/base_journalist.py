@@ -30,6 +30,7 @@ Error handling:
   ``{"bullet_points": ..., "error": ...}`` so callers can render partial
   failures inline.
 """
+
 import json
 import logging
 from typing import Dict, Any, Optional
@@ -39,6 +40,9 @@ from fastapi.responses import JSONResponse
 from ....data.enum_classes import Tone, ArticleType, TextLLMProvider
 from ..base_creator import BaseCreator
 from app.agent_kit.utility_classes.llm_text_query import LLMTextQuery, ModelEnum
+from app.agent_kit.utility_classes.prompt_utilities import (
+    inline_timestamp_link_prompt_lines,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -271,6 +275,7 @@ class BaseJournalist(BaseCreator):
         """
         personality = self.get_personality()
         guidelines = self.get_guidelines()
+        timestamp_link_instructions = inline_timestamp_link_prompt_lines()
 
         prompt_parts = [
             context,
@@ -278,7 +283,7 @@ class BaseJournalist(BaseCreator):
             f"You are {personality['name']}, a {personality['slant']} journalist with a {personality['style']} writing style.",
             "",
             "Write an article with the following characteristics:",
-            "- Subject: The transcript content provided above",
+            "- Subject: The pre-vetted ANCHOR CONTEXT provided above",
             f"- Tone: {personality['tone']}",
             f"- Article Type: {personality['article_type']}",
             f"- Style: {personality['style']}",
@@ -293,6 +298,7 @@ class BaseJournalist(BaseCreator):
             "- Use HTML paragraph tags (<p>...</p>) for paragraphs",
             "- You may use <h2>, <h3> for section headers within the article body",
             "- You may use <strong>, <em>, <blockquote>, <ul>, <li> for formatting",
+            *timestamp_link_instructions,
             "- Do NOT include document-level HTML: no <!DOCTYPE>, <html>, <head>, <body>, <meta>, <title>, <style>, <script>",
             "- Do NOT wrap the article in <article> or <div> tags - just the content",
             "- Do NOT include markdown formatting - use HTML only",
@@ -416,9 +422,7 @@ class BaseJournalist(BaseCreator):
         except ArticleGenerationError:
             raise
         except Exception as e:
-            raise ArticleGenerationError(
-                f"Failed to generate article: {str(e)}"
-            ) from e
+            raise ArticleGenerationError(f"Failed to generate article: {str(e)}") from e
 
     def generate_bullet_points(self, article_content: str) -> Dict[str, Any]:
         """
@@ -456,7 +460,12 @@ class BaseJournalist(BaseCreator):
             + "\n"
             + article_content
         )
-        message = "Now write a bullet point summary of the article content. Keep the summary under 850 characters. If there are any citizen concerns, public comments, or community feedback mentioned, include them as a dedicated bullet point."
+        message = (
+            "Now write a bullet point summary of the article content. "
+            "Keep the summary under 850 characters. "
+            "If there are any citizen concerns, public comments, or community feedback mentioned, include them as a dedicated bullet point. "
+            "Return valid HTML list markup only, using exactly one <ul> with <li> items (no markdown bullets)."
+        )
         logger.info(f"Context: {context}")
         logger.info(f"Message: {message}")
 

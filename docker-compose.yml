@@ -151,7 +151,7 @@ services:
         git config --global user.name ${GIT_USER_NAME} &&
         if [ \"$$UVICORN_RELOAD\" = \"1\" ]; then
           exec uvicorn app.main:app --host 0.0.0.0 --port 80 --reload
-            --reload-exclude app.log --reload-exclude '*.log';
+            --reload-exclude 'logs/*' --reload-exclude '*.log';
         else
           exec uvicorn app.main:app --host 0.0.0.0 --port 80;
         fi

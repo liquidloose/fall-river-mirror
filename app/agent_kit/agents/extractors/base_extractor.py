@@ -274,6 +274,11 @@ class BaseExtractor(BaseCreator):
               ``message`` quotes the ``json.JSONDecodeError``.
             - When the parsed value is not a JSON object: ``success=False``,
               ``data=None``, ``message`` explains.
+
+        Sibling of :meth:`_call_cached_llm_and_parse`. This is the
+        **non-cached** path — single-shot generate, no transcript upload.
+        Gemma's four-pass extraction does NOT use this method; it uses the
+        cached path. See docs/extraction-pipeline-refactor-notes.md.
         """
         run_id = run_id or str(uuid.uuid4())
         llm = LLMTextQuery(provider=self.PROVIDER, model=self.MODEL)
@@ -447,6 +452,22 @@ class BaseExtractor(BaseCreator):
             ``cache_name`` string on success; ``None`` when the cache create
             failed. Also writes a ``p{cache_pass_label}`` log file so failures
             are traceable from disk without re-running the extraction.
+
+        Call chain — cached Gemini extraction (one block runs per pass, three passes per extraction):
+
+          GemmaNye.extract
+            → _pass_extract / _pass_fact_check / _pass_bullets_and_committee
+              → _pass_with_cached_transcript
+                ├─ BaseExtractor._create_extraction_cache
+                │    └─ LLMTextQuery.gemini_create_cache         → client.caches.create
+                ├─ BaseExtractor._call_cached_llm_and_parse
+                │    └─ LLMTextQuery.gemini_generate_with_cache  → client.models.generate_content  ★
+                └─ BaseExtractor._delete_extraction_cache
+                     └─ LLMTextQuery.gemini_delete_cache         → client.caches.delete
+
+        ★ = the actual Gemini round-trip (the LLM "extraction request" you're tracing).
+        YOU ARE HERE: BaseExtractor._create_extraction_cache — uploads transcript + system prompt to Gemini cache; first hop of each pass.
+        See docs/extraction-pipeline-refactor-notes.md for layering rationale and refactor targets.
         """
         effective_model = self._resolve_model(model)
         llm = LLMTextQuery(provider=self.PROVIDER, model=effective_model)
@@ -501,6 +522,22 @@ class BaseExtractor(BaseCreator):
 
         Safe to call from a ``finally`` block. Accepts ``None`` so callers
         do not have to gate the call on cache-create success.
+
+        Call chain — cached Gemini extraction (one block runs per pass, three passes per extraction):
+
+          GemmaNye.extract
+            → _pass_extract / _pass_fact_check / _pass_bullets_and_committee
+              → _pass_with_cached_transcript
+                ├─ BaseExtractor._create_extraction_cache
+                │    └─ LLMTextQuery.gemini_create_cache         → client.caches.create
+                ├─ BaseExtractor._call_cached_llm_and_parse
+                │    └─ LLMTextQuery.gemini_generate_with_cache  → client.models.generate_content  ★
+                └─ BaseExtractor._delete_extraction_cache
+                     └─ LLMTextQuery.gemini_delete_cache         → client.caches.delete
+
+        ★ = the actual Gemini round-trip (the LLM "extraction request" you're tracing).
+        YOU ARE HERE: BaseExtractor._delete_extraction_cache — cleanup hop of each pass; runs in a finally block.
+        See docs/extraction-pipeline-refactor-notes.md for layering rationale and refactor targets.
         """
         if not cache_name:
             return
@@ -539,6 +576,22 @@ class BaseExtractor(BaseCreator):
         the Pydantic shape and this method returns the parsed ``dict`` in
         the envelope's ``data`` field. When omitted, the raw text is parsed
         as JSON the same way :meth:`_call_llm_and_parse` does.
+
+        Call chain — cached Gemini extraction (one block runs per pass, three passes per extraction):
+
+          GemmaNye.extract
+            → _pass_extract / _pass_fact_check / _pass_bullets_and_committee
+              → _pass_with_cached_transcript
+                ├─ BaseExtractor._create_extraction_cache
+                │    └─ LLMTextQuery.gemini_create_cache         → client.caches.create
+                ├─ BaseExtractor._call_cached_llm_and_parse
+                │    └─ LLMTextQuery.gemini_generate_with_cache  → client.models.generate_content  ★
+                └─ BaseExtractor._delete_extraction_cache
+                     └─ LLMTextQuery.gemini_delete_cache         → client.caches.delete
+
+        ★ = the actual Gemini round-trip (the LLM "extraction request" you're tracing).
+        YOU ARE HERE: BaseExtractor._call_cached_llm_and_parse — middle hop of each pass; sends the generate request against the cache and parses the response.
+        See docs/extraction-pipeline-refactor-notes.md for layering rationale and refactor targets.
         """
         effective_model = self._resolve_model(model)
         llm = LLMTextQuery(provider=self.PROVIDER, model=effective_model)

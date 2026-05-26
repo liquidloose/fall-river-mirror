@@ -8,6 +8,7 @@ class ArticleType(str, Enum):
     OP_ED = "op_ed"
     CRITICAL = "critical"
     NEWS = "news"
+    SEQUENTIAL_NEWS = "sequential_news"
     FEATURE = "feature"
     PROFILE = "profile"
     INVESTIGATIVE = "investigative"
@@ -177,6 +178,30 @@ def resolve_text_model(text_model: "TextModel") -> tuple["TextLLMProvider", Enum
         except ValueError:
             continue
     raise ValueError(f"Unknown text model value: {value!r}")
+
+
+def resolve_gemini_text_model(
+    text_model: "TextModel | GeminiModel | None",
+    *,
+    field_name: str = "text_model",
+) -> Optional["GeminiModel"]:
+    """Resolve a model input to ``GeminiModel`` for extractor-safe usage.
+
+    Accepts either a unified :data:`TextModel` or a direct :class:`GeminiModel`.
+    If a non-Gemini unified model is passed, raises :class:`ValueError` with a
+    user-facing message suitable for HTTP 400 responses.
+    """
+    if text_model is None:
+        return None
+    if isinstance(text_model, GeminiModel):
+        return text_model
+    provider, model = resolve_text_model(text_model)
+    if provider != TextLLMProvider.GEMINI:
+        raise ValueError(
+            f"{field_name} must be a Gemini model for extraction; "
+            f"got {text_model.value!r} from provider {provider.value!r}."
+        )
+    return GeminiModel(model.value)
 
 
 class Committee(str, Enum):

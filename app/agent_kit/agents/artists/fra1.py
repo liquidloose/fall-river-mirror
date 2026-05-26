@@ -1,7 +1,9 @@
-from typing import Dict, Any
+from enum import Enum
+from typing import Dict, Any, Optional
 from app.agent_kit.agents.artists.base_artist import BaseArtist
 from app.agent_kit.utility_classes.openai_image_query import OpenAIImageQuery
 from app.agent_kit.utility_classes.xai_image_query import XAIImageQuery
+from app.data.enum_classes import TextLLMProvider
 
 
 class FRA1(BaseArtist):
@@ -29,7 +31,12 @@ class FRA1(BaseArtist):
     )
 
     def generate_image(
-        self, title: str, bullet_points: str = "", model: str = "gpt-image-1"
+        self,
+        title: str,
+        bullet_points: str = "",
+        model: str = "gpt-image-1",
+        snippet_provider: Optional[TextLLMProvider] = None,
+        snippet_model: Optional[Enum] = None,
     ) -> Dict[str, Any]:
         """
         Generate an editorial illustration with FRA1's fixed style.
@@ -44,7 +51,15 @@ class FRA1(BaseArtist):
         personality = self.get_personality()
 
         # Generate a short snippet from bullet points to stay under 1024 char limit
-        snippet = self.generate_snippet(bullet_points) if bullet_points else ""
+        snippet = (
+            self.generate_snippet(
+                bullet_points,
+                snippet_provider=snippet_provider,
+                snippet_model=snippet_model,
+            )
+            if bullet_points
+            else ""
+        )
 
         # Build prompt with FRA1's fixed style
         full_prompt = (

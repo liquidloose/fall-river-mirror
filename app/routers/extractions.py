@@ -6,7 +6,12 @@ from typing import Any, Dict, Optional
 from fastapi import APIRouter, Depends, HTTPException, status
 
 from app.dependencies import AppDependencies
-from app.data.enum_classes import Extractor, GeminiModel
+from app.data.enum_classes import (
+    Extractor,
+    GeminiModel,
+    TextModel,
+    resolve_gemini_text_model,
+)
 
 router = APIRouter(tags=["extractions"])
 logger = logging.getLogger(__name__)
@@ -16,6 +21,7 @@ logger = logging.getLogger(__name__)
 def extract_anchors(
     youtube_id: str,
     extractor: Extractor = Extractor.GEMMA_NYE,
+    extractor_text_model: Optional[TextModel] = None,
     text_model: Optional[GeminiModel] = None,
     deps: AppDependencies = Depends(AppDependencies),
 ) -> Dict[str, Any]:
@@ -27,10 +33,29 @@ def extract_anchors(
             detail="Pipeline service not available",
         )
 
+    try:
+        resolved_model = resolve_gemini_text_model(
+            extractor_text_model,
+            field_name="extractor_text_model",
+        )
+    except ValueError as e:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=str(e),
+        )
+    if text_model is not None:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=(
+                "The query param 'text_model' is no longer supported on /extract/anchors/{youtube_id}. "
+                "Use 'extractor_text_model' instead."
+            ),
+        )
+
     result = pipeline.run_extract_anchors(
         youtube_id,
         extractor=extractor,
-        text_model=text_model,
+        text_model=resolved_model,
     )
 
     if not result.get("success"):

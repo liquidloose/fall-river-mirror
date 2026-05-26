@@ -355,6 +355,85 @@ class Database:
             "FOREIGN KEY(youtube_id) REFERENCES transcripts(youtube_id), "
             "FOREIGN KEY(anchor_id) REFERENCES anchors(id)",
         )
+        # Migration guard: older DBs may have a partial
+        # fact_check_removals schema from the pre-audit-expansion era.
+        # Ensure every column used by AnchorManager inserts exists.
+        self._add_column_if_not_exists(
+            "fact_check_removals",
+            "run_id",
+            "TEXT",
+        )
+        self._add_column_if_not_exists(
+            "fact_check_removals",
+            "kind",
+            "TEXT NOT NULL DEFAULT 'removed'",
+        )
+        self._add_column_if_not_exists(
+            "fact_check_removals",
+            "anchor_id",
+            "INTEGER",
+        )
+        self._add_column_if_not_exists(
+            "fact_check_removals",
+            "original_timestamp_string",
+            "TEXT",
+        )
+        self._add_column_if_not_exists(
+            "fact_check_removals",
+            "original_anchor_headline",
+            "TEXT",
+        )
+        self._add_column_if_not_exists(
+            "fact_check_removals",
+            "original_anchor_text",
+            "TEXT",
+        )
+        self._add_column_if_not_exists(
+            "fact_check_removals",
+            "audit_note",
+            "TEXT",
+        )
+        self._add_column_if_not_exists(
+            "fact_check_removals",
+            "model",
+            "TEXT",
+        )
+
+        # Spelling-corrections audit log. One row per canonical-name spelling
+        # fix the pass-4 spell-check applied to an anchor or bullet. Lives
+        # in its own table (never alongside `anchors`) so the canonical
+        # RAG/vector-store source stays clean of audit metadata. Correlated
+        # with the corresponding anchor run via `run_id` (shared with
+        # `anchors.run_id`); every row carries `anchor_id` linking to the
+        # resulting `anchors.id` row — both factual and summary rows live
+        # in `anchors`, so the join works for both `target_kind` values.
+        # Multiple spelling fixes per anchor produce multiple rows that all
+        # link to the same `anchor_id`.
+        #
+        # `audit_note` is an UNCERTAINTY FLAG, not a correction log:
+        # populated only when the model wants to flag self-doubt about the
+        # correction (e.g. "ambiguous context; could also be a private
+        # citizen named Kugan"). NULL/empty when confident. Bulk
+        # error-pattern queries inspect the structural fields
+        # (`target_kind`, `original_term`, `corrected_term`, joined
+        # `anchors.anchor_text` via `anchor_id`); the `audit_note` column
+        # is for human-reviewer flags only.
+        self._create_table(
+            "spelling_corrections",
+            "id INTEGER PRIMARY KEY AUTOINCREMENT, "
+            "youtube_id TEXT NOT NULL, "  # FK to transcripts.youtube_id
+            "run_id TEXT NOT NULL, "  # same UUID as the corresponding anchors.run_id
+            "anchor_id INTEGER NOT NULL, "  # FK to anchors.id (both factual_anchor and executive_summary rows)
+            "target_kind TEXT NOT NULL DEFAULT 'factual_anchor', "  # 'factual_anchor' | 'executive_summary'
+            "original_term TEXT NOT NULL, "  # misspelled token in the pre-pass-4 input
+            "corrected_term TEXT NOT NULL, "  # canonical spelling applied
+            "audit_note TEXT, "  # uncertainty caveat about the correction; NULL/empty when confident
+            "extractor_name TEXT NOT NULL, "
+            "model TEXT, "  # provider model id of the spell-check pass
+            "created_at TEXT NOT NULL, "
+            "FOREIGN KEY(youtube_id) REFERENCES transcripts(youtube_id), "
+            "FOREIGN KEY(anchor_id) REFERENCES anchors(id)",
+        )
 
         self.tables_created = True
         self.logger.info("All tables created/verified successfully")
@@ -1126,42 +1205,6 @@ class Database:
                 "update_article_title",
                 e,
                 {"article_id": article_id, "title_len": title_len},
-            )
-            return False
-
-    def update_article_spell_checked(self, article_id: int, spell_checked: bool) -> bool:
-        """
-        Set the spell_checked flag for an article (True after spell-check has been run).
-
-        Args:
-            article_id: The unique identifier of the article
-            spell_checked: True if spell-checked, False otherwise
-
-        Returns:
-            True if update succeeded, False otherwise
-        """
-        try:
-            self._log_operation(
-                "update_article_spell_checked",
-                {"article_id": article_id, "spell_checked": spell_checked},
-            )
-            value = 1 if spell_checked else 0
-            self.cursor.execute(
-                "UPDATE articles SET spell_checked = ? WHERE id = ?",
-                (value, article_id),
-            )
-            self.conn.commit()
-            return self.cursor.rowcount > 0
-        except Exception as e:
-            self.logger.exception(
-                "update_article_spell_checked failed: article_id=%s - %s",
-                article_id,
-                e,
-            )
-            self._log_error(
-                "update_article_spell_checked",
-                e,
-                {"article_id": article_id, "spell_checked": spell_checked},
             )
             return False
 

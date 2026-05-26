@@ -1,22 +1,31 @@
 """
 Gemma Nye — Fall River meeting-data extractor (four-pass Gemini pipeline).
 
-One :meth:`GemmaNye.extract` call runs four sequential Gemini operations
-against one shared :class:`CachedContent` upload of the transcript:
+One :meth:`GemmaNye.extract` call runs four sequential Gemini reading
+passes against the transcript. Each pass owns its own short-lived
+:class:`CachedContent` upload (``cache.create`` → ``generate`` →
+``cache.delete``) because Gemini bakes the system instruction into the
+cache at create time and the four passes need four different system
+instructions — so cache reuse across passes is not an option here:
 
-1. ``cache_create`` — upload the transcript once with a 900s TTL.
-2. ``extract`` — draft factual anchors (Pydantic-constrained shape).
-3. ``fact_check`` — re-emit the corrected full list of anchors, plus a
+1. ``extract`` — draft factual anchors (Pydantic-constrained shape).
+2. ``fact_check`` — re-emit the corrected full list of anchors, plus a
    unified ``fact_check_audit`` log of every draft removed / corrected /
    added. Per-anchor ``fact_check_note`` is an uncertainty caveat the
    model populates only when it wants to flag self-doubt.
-4. ``bullets`` — 5-8 executive bullets plus committee classification.
+3. ``bullets`` — 5-8 executive bullets plus committee classification.
+4. ``spell_check`` — re-emit the pass-2 anchors AND the pass-3 bullets
+   with canonical Fall River spellings applied (officials, boards,
+   streets — list inlined into the pass-4 system instructions). Parallel
+   ``spelling_corrections`` audit log records every term replaced.
+   Replaced EditorAgent's post-hoc article spell-check; spelling now
+   happens at the anchor layer, before journalists ever see the data.
 
-The three LLM-reading passes are independent: only the cached transcript
-is shared. Each pass gets its own system instruction, its own user message,
-and its own ``response_schema``. We deliberately do not pass conversation
-history between passes — the fact-check pass sees the draft anchors only
-because we inject them into its user message.
+The four passes are independent on the LLM side: no cache is reused and
+no conversation history flows between calls. Cross-pass data dependencies
+flow only through the user message: pass 2 sees pass 1's draft anchors;
+pass 4 sees both pass 2's corrected anchors and pass 3's bullets. None
+of that traffic relies on Gemini remembering anything.
 
 After pass 4, we stitch in ``timestamp_seconds`` (parsed from each anchor's
 timestamp string) and ``text_to_embed`` (a one-line formatted summary
@@ -26,7 +35,10 @@ is present, it is appended into ``text_to_embed`` so the uncertainty
 caveat rides along into RAG.
 
 Persistence stays with the caller. :meth:`extract` returns the envelope;
-caller hands it to :class:`~app.data.anchor_manager.AnchorManager`.
+caller hands it to :class:`~app.data.anchor_manager.AnchorManager`, which
+writes anchors + bullets to ``anchors``, fact-check audit rows to
+``fact_check_removals``, and spelling-correction audit rows to
+``spelling_corrections``.
 """
 
 import json
@@ -40,6 +52,7 @@ from app.agent_kit.agents.extractors.schemas import (
     BulletsAndCommittee,
     ExtractEnvelope,
     FactCheckEnvelope,
+    SpellCheckEnvelope,
 )
 from app.agent_kit.utility_classes.llm_text_query import ModelEnum
 from app.data.enum_classes import (
@@ -55,7 +68,7 @@ class GemmaNye(BaseExtractor):
     """
     Gemma Nye — Fall River meeting-data extractor.
 
-    Operational content lives in markdown, not Python. Three system/user
+    Operational content lives in markdown, not Python. Four system/user
     prompt pairs (one per LLM-reading pass):
 
     - ``context_files/system_instructions/gemma_nye_extract_system_instructions.md``
@@ -64,11 +77,41 @@ class GemmaNye(BaseExtractor):
     - ``context_files/user_prompts/gemma_nye_fact_check_user_prompt.md``
     - ``context_files/system_instructions/gemma_nye_bullets_system_instructions.md``
     - ``context_files/user_prompts/gemma_nye_bullets_user_prompt.md``
+    - ``context_files/system_instructions/gemma_nye_spell_check_system_instructions.md``
+    - ``context_files/user_prompts/gemma_nye_spell_check_user_prompt.md``
 
     Plus the existing bio / description pair.
 
     The class itself owns only identity traits, the chosen Gemini model,
     and the four-pass orchestration in :meth:`extract`.
+
+    Four-pass orchestration (sequential, short-circuit on failure):
+
+      1. ``_pass_extract``               — draft factual anchors from the transcript.
+      2. ``_pass_fact_check``            — re-emit corrected anchors + fact-check audit log.
+                                           Consumes pass 1's ``factual_anchor_items``.
+      3. ``_pass_bullets_and_committee`` — executive bullets + committee classification.
+                                           Independent of passes 1 and 2; reads only
+                                           the transcript.
+      4. ``_pass_spell_check``           — re-emit pass-2 anchors AND pass-3 bullets
+                                           with canonical Fall River spellings applied
+                                           + spelling-corrections audit log. Consumes
+                                           pass 2's ``factual_anchor_items`` and
+                                           pass 3's ``executive_summary_bullets`` —
+                                           the only place those two streams are joined.
+
+    Each pass runs its own fresh cache (``cache.create`` → ``generate`` →
+    ``cache.delete``) because Gemini bakes the system instruction into the
+    cache at create time and the four passes need four different system
+    instructions. Inter-pass communication happens through the user message
+    only (``draft["data"]["factual_anchor_items"]`` for pass 2; pass-2
+    anchors + pass-3 bullets for pass 4) — never through cache reuse or
+    conversation history.
+
+    On any pass failure, :meth:`extract` returns that pass's failure
+    envelope immediately — no downstream pass runs, no partial result is
+    stitched. See :meth:`extract` for the full envelope shape and
+    ``docs/extraction-pipeline-refactor-notes.md`` for the broader call chain.
     """
 
     FIRST_NAME = "Gemma"
@@ -86,7 +129,7 @@ class GemmaNye(BaseExtractor):
 
     # Suffix conventions: the existing BaseExtractor pair loaders read
     # ``{first}_{last}_system_instructions.md`` / ``_user_prompt.md``. The
-    # four-pass design needs three separate pairs, so we load each pair by
+    # four-pass design needs four separate pairs, so we load each pair by
     # passing an explicit suffix to ``_load_named_prompt`` below.
     _EXTRACT_SYSTEM_SUFFIX: ClassVar[str] = "_extract_system_instructions.md"
     _EXTRACT_USER_SUFFIX: ClassVar[str] = "_extract_user_prompt.md"
@@ -94,6 +137,8 @@ class GemmaNye(BaseExtractor):
     _FACT_CHECK_USER_SUFFIX: ClassVar[str] = "_fact_check_user_prompt.md"
     _BULLETS_SYSTEM_SUFFIX: ClassVar[str] = "_bullets_system_instructions.md"
     _BULLETS_USER_SUFFIX: ClassVar[str] = "_bullets_user_prompt.md"
+    _SPELL_CHECK_SYSTEM_SUFFIX: ClassVar[str] = "_spell_check_system_instructions.md"
+    _SPELL_CHECK_USER_SUFFIX: ClassVar[str] = "_spell_check_user_prompt.md"
 
     def extract(
         self,
@@ -114,7 +159,7 @@ class GemmaNye(BaseExtractor):
             meeting_date: ISO 8601 date (YYYY-MM-DD) of the meeting.
             primary_committee: Ignored. Kept in the signature for
                 backward-compat with the previous single-pass call shape;
-                Gemma now classifies the committee herself in pass 4.
+                Gemma now classifies the committee herself in pass 3.
 
         Returns:
             ``{"provider", "model", "run_id", "success", "message", "data"}``
@@ -122,14 +167,18 @@ class GemmaNye(BaseExtractor):
             and is the FK callers stamp onto ``anchors`` rows when
             persisting. ``data`` on success contains:
 
-            - ``factual_anchor_items`` — corrected anchors from the fact-check
-              pass, each augmented locally with ``timestamp_seconds`` and
-              ``text_to_embed``. Each anchor may carry a ``fact_check_note``
-              uncertainty caveat from the fact-check pass (empty string when
-              the model was confident); when non-empty the caveat is
-              appended into ``text_to_embed`` so RAG queries see it.
-            - ``executive_summary_bullets`` — list of summary bullets from
-              the bullets pass.
+            - ``factual_anchor_items`` — spelling-clean anchors from the
+              spell-check pass (which took the fact-check pass's corrected
+              anchors as input), each augmented locally with
+              ``timestamp_seconds`` and ``text_to_embed``. Each anchor may
+              carry a ``fact_check_note`` uncertainty caveat from the
+              fact-check pass (empty string when the model was confident);
+              when non-empty the caveat is appended into ``text_to_embed``
+              so RAG queries see it. Pass 4 round-trips ``fact_check_note``
+              verbatim — it only edits spellings, not facts.
+            - ``executive_summary_bullets`` — spelling-clean list of summary
+              bullets from the spell-check pass (which took the bullets
+              pass's output as input).
             - ``primary_committee`` — committee enum string from the
               bullets pass.
             - ``fact_check_audit`` — unified audit log of every draft the
@@ -143,15 +192,40 @@ class GemmaNye(BaseExtractor):
               list is the common case. Callers should pass this through to
               :class:`~app.data.anchor_manager.AnchorManager.insert_from_envelope`
               so the audit rows land in ``fact_check_removals``.
+            - ``spelling_corrections`` — parallel audit log of every term
+              the spell-check pass replaced. Each entry carries
+              ``target_kind`` (``'factual_anchor' | 'executive_summary'``),
+              ``corrected_anchor_text`` (verbatim copy of the post-pass-4
+              anchor or bullet string — used as the join key to
+              ``anchors.id``), ``original_term``, ``corrected_term``, and
+              ``audit_note`` (empty when the model was confident). Empty
+              list when no misspellings were found. Persistence lands the
+              rows in ``spelling_corrections``.
 
             On any pass failure, ``success`` is ``False`` and ``data`` is
             ``None``; per-pass debug logs under ``logs/extractions/`` reveal
             which pass failed. The cache is always deleted on the way out.
+
+        Call chain — cached Gemini extraction (one block runs per pass, four passes per extraction):
+
+          GemmaNye.extract
+            → _pass_extract / _pass_fact_check / _pass_bullets_and_committee / _pass_spell_check
+              → _pass_with_cached_transcript
+                ├─ BaseExtractor._create_extraction_cache
+                │    └─ LLMTextQuery.gemini_create_cache         → client.caches.create
+                ├─ BaseExtractor._call_cached_llm_and_parse
+                │    └─ LLMTextQuery.gemini_generate_with_cache  → client.models.generate_content  ★
+                └─ BaseExtractor._delete_extraction_cache
+                     └─ LLMTextQuery.gemini_delete_cache         → client.caches.delete
+
+        ★ = the actual Gemini round-trip (the LLM "extraction request" you're tracing).
+        YOU ARE HERE: GemmaNye.extract — orchestrator. Runs the four passes in sequence and stitches results.
+        See docs/extraction-pipeline-refactor-notes.md for layering rationale and refactor targets.
         """
         if primary_committee is not None:
             logger.debug(
                 f"{self.FULL_NAME}: ignoring caller-supplied primary_committee=%r "
-                "(Gemma classifies fresh in pass 4)",
+                "(Gemma classifies fresh in pass 3)",
                 primary_committee,
             )
 
@@ -161,6 +235,27 @@ class GemmaNye(BaseExtractor):
             f"run_id={run_id} transcript_chars={len(transcript or '')}"
         )
 
+        # ─────────────────────────────────────────────────────────────────
+        # Four-pass orchestration. Sequential, short-circuit on failure.
+        #
+        #   pass 1: _pass_extract               → draft anchors
+        #   pass 2: _pass_fact_check            → corrected anchors + fact-check audit
+        #                                         (consumes draft["data"]["factual_anchor_items"])
+        #   pass 3: _pass_bullets_and_committee → bullets + committee
+        #                                         (independent; reads only the transcript)
+        #   pass 4: _pass_spell_check           → spelling-clean anchors + bullets
+        #                                         + spelling-corrections audit
+        #                                         (consumes pass-2 anchors AND pass-3 bullets —
+        #                                         the only place those two streams are joined)
+        #
+        # Each pass runs its own fresh cache (cache.create → generate →
+        # cache.delete) because Gemini bakes the system instruction into
+        # the cache at create time and the four passes need four
+        # different system instructions.
+        #
+        # If any pass fails we return its failure envelope immediately;
+        # no later pass runs and no partial result is stitched below.
+        # ─────────────────────────────────────────────────────────────────
         draft = self._pass_extract(
             transcript, run_id, youtube_video_id, meeting_date, model=model
         )
@@ -184,18 +279,34 @@ class GemmaNye(BaseExtractor):
         if not bullets_committee["success"]:
             return bullets_committee
 
+        spell_checked = self._pass_spell_check(
+            transcript,
+            run_id,
+            youtube_video_id,
+            meeting_date,
+            corrected["data"]["factual_anchor_items"],
+            bullets_committee["data"]["executive_summary_bullets"],
+            model=model,
+        )
+        if not spell_checked["success"]:
+            return spell_checked
+
         committee_value = bullets_committee["data"]["primary_committee"]
         if isinstance(committee_value, Committee):
             committee_str = committee_value.value
         else:
             committee_str = str(committee_value)
 
+        # Stitch on pass-4 anchors so the locally-computed `text_to_embed`
+        # rides the spelling-clean wording into the vector store, not the
+        # pre-spell-check version.
         stitched_anchors = [
             self._stitch_anchor(a, meeting_date, committee_str)
-            for a in corrected["data"]["factual_anchor_items"]
+            for a in spell_checked["data"]["factual_anchor_items"]
         ]
 
         fact_check_audit = corrected["data"].get("fact_check_audit") or []
+        spelling_corrections = spell_checked["data"].get("spelling_corrections") or []
         envelope = {
             **draft,
             "run_id": run_id,
@@ -203,11 +314,13 @@ class GemmaNye(BaseExtractor):
             "message": "Extraction complete",
             "data": {
                 "factual_anchor_items": stitched_anchors,
-                "executive_summary_bullets": bullets_committee["data"][
+                # Bullets sourced from pass 4 (spelling-clean), not pass 3.
+                "executive_summary_bullets": spell_checked["data"][
                     "executive_summary_bullets"
                 ],
                 "primary_committee": committee_str,
                 "fact_check_audit": fact_check_audit,
+                "spelling_corrections": spelling_corrections,
             },
         }
         logger.info(
@@ -215,6 +328,7 @@ class GemmaNye(BaseExtractor):
             f"anchors={len(stitched_anchors)} "
             f"bullets={len(envelope['data']['executive_summary_bullets'])} "
             f"fact_check_audit={len(fact_check_audit)} "
+            f"spelling_corrections={len(spelling_corrections)} "
             f"committee={committee_str!r}"
         )
         return envelope
@@ -235,7 +349,32 @@ class GemmaNye(BaseExtractor):
         response_schema: type,
         model: Optional[ModelEnum] = None,
     ) -> Dict[str, Any]:
-        """One Gemma pass: cache transcript + system prompt, then generate."""
+        """One Gemma pass: cache transcript + system prompt, then generate.
+
+        Shared body of the four per-pass methods (``_pass_extract``,
+        ``_pass_fact_check``, ``_pass_bullets_and_committee``,
+        ``_pass_spell_check``). Each pass owns its own cache lifecycle — we
+        deliberately do not reuse one cache across passes because each pass
+        needs a different system prompt baked into the cache at create time
+        (Gemini forbids ``system_instruction`` on generate when
+        ``cached_content`` is set).
+
+        Call chain — cached Gemini extraction (one block runs per pass, four passes per extraction):
+
+          GemmaNye.extract
+            → _pass_extract / _pass_fact_check / _pass_bullets_and_committee / _pass_spell_check
+              → _pass_with_cached_transcript
+                ├─ BaseExtractor._create_extraction_cache
+                │    └─ LLMTextQuery.gemini_create_cache         → client.caches.create
+                ├─ BaseExtractor._call_cached_llm_and_parse
+                │    └─ LLMTextQuery.gemini_generate_with_cache  → client.models.generate_content  ★
+                └─ BaseExtractor._delete_extraction_cache
+                     └─ LLMTextQuery.gemini_delete_cache         → client.caches.delete
+
+        ★ = the actual Gemini round-trip (the LLM "extraction request" you're tracing).
+        YOU ARE HERE: GemmaNye._pass_with_cached_transcript — runs cache.create → generate → cache.delete for one pass.
+        See docs/extraction-pipeline-refactor-notes.md for layering rationale and refactor targets.
+        """
         cache_name = self._create_extraction_cache(
             transcript,
             run_id=run_id,
@@ -275,6 +414,28 @@ class GemmaNye(BaseExtractor):
         *,
         model: Optional[ModelEnum] = None,
     ) -> Dict[str, Any]:
+        """Pass 1 of 3 — draft factual anchors from the transcript.
+
+        Loads ``gemma_nye_extract_*.md`` prompts, constrains output to
+        :class:`ExtractEnvelope`, delegates the cache + generate + delete
+        cycle to :meth:`_pass_with_cached_transcript`.
+
+        Call chain — cached Gemini extraction (one block runs per pass, four passes per extraction):
+
+          GemmaNye.extract
+            → _pass_extract / _pass_fact_check / _pass_bullets_and_committee / _pass_spell_check
+              → _pass_with_cached_transcript
+                ├─ BaseExtractor._create_extraction_cache
+                │    └─ LLMTextQuery.gemini_create_cache         → client.caches.create
+                ├─ BaseExtractor._call_cached_llm_and_parse
+                │    └─ LLMTextQuery.gemini_generate_with_cache  → client.models.generate_content  ★
+                └─ BaseExtractor._delete_extraction_cache
+                     └─ LLMTextQuery.gemini_delete_cache         → client.caches.delete
+
+        ★ = the actual Gemini round-trip (the LLM "extraction request" you're tracing).
+        YOU ARE HERE: GemmaNye._pass_extract — pass 1 of 4, picks extract prompts + ExtractEnvelope schema.
+        See docs/extraction-pipeline-refactor-notes.md for layering rationale and refactor targets.
+        """
         return self._pass_with_cached_transcript(
             transcript,
             run_id=run_id,
@@ -302,6 +463,31 @@ class GemmaNye(BaseExtractor):
         *,
         model: Optional[ModelEnum] = None,
     ) -> Dict[str, Any]:
+        """Pass 2 of 3 — fact-check draft anchors against the transcript.
+
+        Loads ``gemma_nye_fact_check_*.md`` prompts, injects the draft
+        anchors from pass 1 into the user prompt as ``draft_anchors_json``,
+        constrains output to :class:`FactCheckEnvelope`, delegates the cache
+        + generate + delete cycle to :meth:`_pass_with_cached_transcript`.
+        The fact-check *logic* lives in the markdown file, not here — this
+        method only ferries the draft into the user prompt.
+
+        Call chain — cached Gemini extraction (one block runs per pass, four passes per extraction):
+
+          GemmaNye.extract
+            → _pass_extract / _pass_fact_check / _pass_bullets_and_committee / _pass_spell_check
+              → _pass_with_cached_transcript
+                ├─ BaseExtractor._create_extraction_cache
+                │    └─ LLMTextQuery.gemini_create_cache         → client.caches.create
+                ├─ BaseExtractor._call_cached_llm_and_parse
+                │    └─ LLMTextQuery.gemini_generate_with_cache  → client.models.generate_content  ★
+                └─ BaseExtractor._delete_extraction_cache
+                     └─ LLMTextQuery.gemini_delete_cache         → client.caches.delete
+
+        ★ = the actual Gemini round-trip (the LLM "extraction request" you're tracing).
+        YOU ARE HERE: GemmaNye._pass_fact_check — pass 2 of 4, picks fact-check prompts + FactCheckEnvelope schema, injects draft anchors.
+        See docs/extraction-pipeline-refactor-notes.md for layering rationale and refactor targets.
+        """
         draft_anchors_json = json.dumps(draft_anchors, ensure_ascii=False, indent=2)
         return self._pass_with_cached_transcript(
             transcript,
@@ -330,6 +516,29 @@ class GemmaNye(BaseExtractor):
         *,
         model: Optional[ModelEnum] = None,
     ) -> Dict[str, Any]:
+        """Pass 3 of 3 — executive bullets + committee classification.
+
+        Loads ``gemma_nye_bullets_*.md`` prompts, injects the canonical
+        committee list into the user prompt, constrains output to
+        :class:`BulletsAndCommittee`, delegates the cache + generate +
+        delete cycle to :meth:`_pass_with_cached_transcript`.
+
+        Call chain — cached Gemini extraction (one block runs per pass, four passes per extraction):
+
+          GemmaNye.extract
+            → _pass_extract / _pass_fact_check / _pass_bullets_and_committee / _pass_spell_check
+              → _pass_with_cached_transcript
+                ├─ BaseExtractor._create_extraction_cache
+                │    └─ LLMTextQuery.gemini_create_cache         → client.caches.create
+                ├─ BaseExtractor._call_cached_llm_and_parse
+                │    └─ LLMTextQuery.gemini_generate_with_cache  → client.models.generate_content  ★
+                └─ BaseExtractor._delete_extraction_cache
+                     └─ LLMTextQuery.gemini_delete_cache         → client.caches.delete
+
+        ★ = the actual Gemini round-trip (the LLM "extraction request" you're tracing).
+        YOU ARE HERE: GemmaNye._pass_bullets_and_committee — pass 3 of 4, picks bullets prompts + BulletsAndCommittee schema.
+        See docs/extraction-pipeline-refactor-notes.md for layering rationale and refactor targets.
+        """
         return self._pass_with_cached_transcript(
             transcript,
             run_id=run_id,
@@ -345,6 +554,67 @@ class GemmaNye(BaseExtractor):
                 committee_list=committee_list_for_prompt(),
             ),
             response_schema=BulletsAndCommittee,
+            model=model,
+        )
+
+    def _pass_spell_check(
+        self,
+        transcript: str,
+        run_id: str,
+        youtube_video_id: str,
+        meeting_date: str,
+        corrected_anchors: List[Dict[str, Any]],
+        bullets: List[str],
+        *,
+        model: Optional[ModelEnum] = None,
+    ) -> Dict[str, Any]:
+        """Pass 4 of 4 — apply canonical spellings to anchors and bullets.
+
+        Loads ``gemma_nye_spell_check_*.md`` prompts, injects pass 2's
+        corrected anchors and pass 3's bullets into the user prompt as
+        ``corrected_anchors_json`` and ``bullets_json``, constrains output
+        to :class:`SpellCheckEnvelope`, delegates the cache + generate +
+        delete cycle to :meth:`_pass_with_cached_transcript`. The canonical
+        Fall River names list (officials, boards, streets) is baked into
+        the pass-4 system instructions markdown — this method does not
+        ferry any names list into Python.
+
+        Call chain — cached Gemini extraction (one block runs per pass, four passes per extraction):
+
+          GemmaNye.extract
+            → _pass_extract / _pass_fact_check / _pass_bullets_and_committee / _pass_spell_check
+              → _pass_with_cached_transcript
+                ├─ BaseExtractor._create_extraction_cache
+                │    └─ LLMTextQuery.gemini_create_cache         → client.caches.create
+                ├─ BaseExtractor._call_cached_llm_and_parse
+                │    └─ LLMTextQuery.gemini_generate_with_cache  → client.models.generate_content  ★
+                └─ BaseExtractor._delete_extraction_cache
+                     └─ LLMTextQuery.gemini_delete_cache         → client.caches.delete
+
+        ★ = the actual Gemini round-trip (the LLM "extraction request" you're tracing).
+        YOU ARE HERE: GemmaNye._pass_spell_check — pass 4 of 4, picks spell-check prompts + SpellCheckEnvelope schema, injects pass-2 anchors + pass-3 bullets.
+        See docs/extraction-pipeline-refactor-notes.md for layering rationale and refactor targets.
+        """
+        corrected_anchors_json = json.dumps(
+            corrected_anchors, ensure_ascii=False, indent=2
+        )
+        bullets_json = json.dumps(bullets, ensure_ascii=False, indent=2)
+        return self._pass_with_cached_transcript(
+            transcript,
+            run_id=run_id,
+            pass_label="spell_check",
+            youtube_video_id=youtube_video_id,
+            system_instruction=self._load_named_prompt(
+                self.SYSTEM_INSTRUCTION_SUBDIR, self._SPELL_CHECK_SYSTEM_SUFFIX
+            ),
+            user_message=self._render_named_user_prompt(
+                self._SPELL_CHECK_USER_SUFFIX,
+                youtube_video_id=youtube_video_id,
+                meeting_date=meeting_date,
+                corrected_anchors_json=corrected_anchors_json,
+                bullets_json=bullets_json,
+            ),
+            response_schema=SpellCheckEnvelope,
             model=model,
         )
 

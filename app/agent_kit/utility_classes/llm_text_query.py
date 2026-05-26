@@ -217,6 +217,13 @@ class LLMTextQuery:
 
         Used by the non-cached, non-structured legacy interface. Multi-pass
         extractors should use :meth:`gemini_generate_with_cache` instead.
+
+        Sibling of :meth:`gemini_generate_with_cache`. This is the
+        **non-cached** path — single-shot, no transcript upload, no
+        response_schema support. Gemma's four-pass extraction does NOT use
+        this method. If you're tracing where the extraction request
+        actually fires, you want :meth:`gemini_generate_with_cache`. See
+        docs/extraction-pipeline-refactor-notes.md.
         """
         client_or_err = self._build_gemini_client()
         if isinstance(client_or_err, JSONResponse):
@@ -270,6 +277,22 @@ class LLMTextQuery:
         Returns a :class:`JSONResponse` with status 500 on any failure so
         callers can branch on the type without try/except — matching the
         rest of this class.
+
+        Call chain — cached Gemini extraction (one block runs per pass, three passes per extraction):
+
+          GemmaNye.extract
+            → _pass_extract / _pass_fact_check / _pass_bullets_and_committee
+              → _pass_with_cached_transcript
+                ├─ BaseExtractor._create_extraction_cache
+                │    └─ LLMTextQuery.gemini_create_cache         → client.caches.create
+                ├─ BaseExtractor._call_cached_llm_and_parse
+                │    └─ LLMTextQuery.gemini_generate_with_cache  → client.models.generate_content  ★
+                └─ BaseExtractor._delete_extraction_cache
+                     └─ LLMTextQuery.gemini_delete_cache         → client.caches.delete
+
+        ★ = the actual Gemini round-trip (the LLM "extraction request" you're tracing).
+        YOU ARE HERE: LLMTextQuery.gemini_create_cache — wraps client.caches.create; this is the SDK boundary for the cache upload.
+        See docs/extraction-pipeline-refactor-notes.md for layering rationale and refactor targets.
         """
         client_or_err = self._build_gemini_client()
         if isinstance(client_or_err, JSONResponse):
@@ -358,6 +381,22 @@ class LLMTextQuery:
         ``system_instruction`` is merged into the user ``contents`` string
         (see :meth:`_cached_turn_contents`) because the Gemini API forbids
         ``system_instruction`` on generate when ``cached_content`` is set.
+
+        Call chain — cached Gemini extraction (one block runs per pass, three passes per extraction):
+
+          GemmaNye.extract
+            → _pass_extract / _pass_fact_check / _pass_bullets_and_committee
+              → _pass_with_cached_transcript
+                ├─ BaseExtractor._create_extraction_cache
+                │    └─ LLMTextQuery.gemini_create_cache         → client.caches.create
+                ├─ BaseExtractor._call_cached_llm_and_parse
+                │    └─ LLMTextQuery.gemini_generate_with_cache  → client.models.generate_content  ★
+                └─ BaseExtractor._delete_extraction_cache
+                     └─ LLMTextQuery.gemini_delete_cache         → client.caches.delete
+
+        ★ = the actual Gemini round-trip (the LLM "extraction request" you're tracing).
+        YOU ARE HERE: LLMTextQuery.gemini_generate_with_cache — wraps client.models.generate_content. ★ THIS IS THE EXTRACTION REQUEST. ★
+        See docs/extraction-pipeline-refactor-notes.md for layering rationale and refactor targets.
         """
         client_or_err = self._build_gemini_client()
         if isinstance(client_or_err, JSONResponse):
@@ -421,6 +460,22 @@ class LLMTextQuery:
         Called from a ``finally`` block in extractor orchestration code, so
         an unrecoverable error here must not mask the actual extraction
         result.
+
+        Call chain — cached Gemini extraction (one block runs per pass, three passes per extraction):
+
+          GemmaNye.extract
+            → _pass_extract / _pass_fact_check / _pass_bullets_and_committee
+              → _pass_with_cached_transcript
+                ├─ BaseExtractor._create_extraction_cache
+                │    └─ LLMTextQuery.gemini_create_cache         → client.caches.create
+                ├─ BaseExtractor._call_cached_llm_and_parse
+                │    └─ LLMTextQuery.gemini_generate_with_cache  → client.models.generate_content  ★
+                └─ BaseExtractor._delete_extraction_cache
+                     └─ LLMTextQuery.gemini_delete_cache         → client.caches.delete
+
+        ★ = the actual Gemini round-trip (the LLM "extraction request" you're tracing).
+        YOU ARE HERE: LLMTextQuery.gemini_delete_cache — wraps client.caches.delete; SDK boundary for cleanup.
+        See docs/extraction-pipeline-refactor-notes.md for layering rationale and refactor targets.
         """
         if not cache_name:
             return

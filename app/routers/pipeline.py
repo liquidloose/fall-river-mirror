@@ -10,11 +10,13 @@ from app.dependencies import AppDependencies
 from app.data.enum_classes import (
     ArticleType,
     Artist,
+    Extractor,
     ImageModel,
     Journalist,
     PipelineQueueMode,
     TextModel,
     Tone,
+    resolve_gemini_text_model,
 )
 
 router = APIRouter(tags=["pipeline"])
@@ -30,15 +32,22 @@ async def run_data_pipeline(
     journalist: Journalist = Journalist.FR_J1,
     tone: Tone = Tone.PROFESSIONAL,
     article_type: ArticleType = ArticleType.NEWS,
+    extractor: Extractor = Extractor.GEMMA_NYE,
+    artist: Artist = Artist.FRA1,
+    extractor_text_model: Optional[TextModel] = None,
+    journalist_text_model: Optional[TextModel] = None,
+    image_model: Optional[ImageModel] = None,
+    snippet_text_model: Optional[TextModel] = None,
     text_model: Optional[TextModel] = None,
-    model: ImageModel = ImageModel.GPT_IMAGE_1,
+    model: Optional[ImageModel] = None,
     sync_to_wordpress: bool = True,
     deps: AppDependencies = Depends(AppDependencies),
 ) -> Dict[str, Any]:
     """Run the full data pipeline end-to-end.
 
-    Stages (in order): build queue (or skip) → fetch transcripts → write
-    articles → bullet points → cover images → optional WordPress sync.
+    Stages (in order): build queue (or skip) → fetch transcripts → extract
+    anchors → write articles → bullet points → cover images → optional
+    WordPress sync.
 
     Parameters
     ----------
@@ -59,15 +68,16 @@ async def run_data_pipeline(
       Whisper``), only the videos already in the queue are processed — you
       get exactly what's queued, no automatic top-up. Has no effect under
       ``Skip Whisper`` regardless of value.
+    - **extractor / extractor_text_model**: Extractor persona and optional
+      unified text model override used for anchor extraction. The extractor
+      stage only accepts Gemini-backed model values.
     - **journalist / tone / article_type**: Persona, voice, and format
       passed to the AI journalist used for the article-writing stage.
-    - **text_model**: Optional override for which text-LLM provider + model
-      the journalist uses to write article bodies. When omitted, the
-      journalist's built-in default (xAI/Grok) is used. The dropdown lists
-      every supported model across xAI, Anthropic, and Gemini; the provider
-      is inferred from the chosen model id.
-    - **model**: Image-generation model used for the cover-art stage
-      (separate from ``text_model``).
+    - **journalist_text_model**: Optional override for which text-LLM
+      provider + model the journalist uses to write article bodies.
+    - **image_model**: Image-generation model used for the cover-art stage.
+    - **snippet_text_model**: Optional text model for artist snippet
+      condensation before image prompting.
     - **sync_to_wordpress**: When ``True``, push newly imaged articles to
       WordPress after generation; when ``False``, skip the sync step.
     """
@@ -86,21 +96,65 @@ async def run_data_pipeline(
             detail="amount must be a positive integer",
         )
     channel_url = channel_url or os.environ.get("DEFAULT_YOUTUBE_CHANNEL_URL", "")
-    artist = Artist.FRA1
     pipeline = deps.pipeline_service
     if not pipeline:
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="Pipeline service not available",
         )
+    if text_model is not None:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=(
+                "The query param 'text_model' is no longer supported on /pipeline/run. "
+                "Use 'journalist_text_model' instead."
+            ),
+        )
+    if model is not None:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=(
+                "The query param 'model' is no longer supported on /pipeline/run. "
+                "Use 'image_model' instead."
+            ),
+        )
+    try:
+        resolve_gemini_text_model(
+            extractor_text_model,
+            field_name="extractor_text_model",
+        )
+    except ValueError as e:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=str(e),
+        )
+    resolved_journalist_text_model = journalist_text_model
+    resolved_image_model = image_model or ImageModel.GPT_IMAGE_1
 
     aggregated = {
         "success": True,
         "message": "Pipeline run complete",
         "amount": amount,
         "queue_mode": queue_mode.value,
+        "model_selection": {
+            "extractor": extractor.value,
+            "artist": artist.value,
+            "extractor_text_model": (
+                extractor_text_model.value if extractor_text_model else None
+            ),
+            "journalist_text_model": (
+                resolved_journalist_text_model.value
+                if resolved_journalist_text_model
+                else None
+            ),
+            "snippet_text_model": (
+                snippet_text_model.value if snippet_text_model else None
+            ),
+            "image_model": resolved_image_model.value,
+        },
         "queue_build": None,
         "transcript_fetch": None,
+        "anchor_extract": None,
         "article_write": None,
         "bullet_points": None,
         "image_generate": None,
@@ -129,6 +183,8 @@ async def run_data_pipeline(
             "transcripts_failed",
             "articles_generated",
             "articles_failed",
+            "anchors_extracted",
+            "anchors_failed",
             "processed",
             "skipped",
             "skipped_existing",
@@ -199,6 +255,21 @@ async def run_data_pipeline(
         return aggregated
 
     try:
+        aggregated["anchor_extract"] = await pipeline.run_bulk_extract_anchors(
+            amount,
+            extractor=extractor,
+            text_model=extractor_text_model,
+            skip_youtube_ids=on_wp_ids or None,
+        )
+        log_step_outcome("anchor_extract", aggregated["anchor_extract"])
+    except Exception as e:
+        aggregated["success"] = False
+        aggregated["anchor_extract"] = {"error": str(e)}
+        logger.error(f"Pipeline anchor extraction failed: {e}")
+        log_step_outcome("anchor_extract", aggregated["anchor_extract"])
+        return aggregated
+
+    try:
         # Write articles for all transcripts that don't have one (1:1). WordPress skip is only when syncing.
         aggregated["article_write"] = await pipeline.run_bulk_write_articles(
             amount,
@@ -206,7 +277,7 @@ async def run_data_pipeline(
             tone,
             article_type,
             skip_youtube_ids=None,
-            text_model=text_model,
+            text_model=resolved_journalist_text_model,
         )
         log_step_outcome("article_write", aggregated["article_write"])
     except Exception as e:
@@ -227,7 +298,12 @@ async def run_data_pipeline(
         return aggregated
 
     try:
-        aggregated["image_generate"] = pipeline.run_image_batch(amount, artist, model)
+        aggregated["image_generate"] = pipeline.run_image_batch(
+            amount,
+            artist,
+            resolved_image_model,
+            snippet_text_model=snippet_text_model,
+        )
         log_step_outcome("image_generate", aggregated["image_generate"])
     except Exception as e:
         aggregated["success"] = False
@@ -291,13 +367,15 @@ async def run_data_pipeline(
         log_step_outcome("wordpress_sync", aggregated["wordpress_sync"])
 
     transcript_result = aggregated.get("transcript_fetch") or {}
+    extract_result = aggregated.get("anchor_extract") or {}
     article_result = aggregated.get("article_write") or {}
     image_result = aggregated.get("image_generate") or {}
     wp_result = aggregated.get("wordpress_sync") or {}
     logger.info(
-        "Pipeline run completed: success=%s transcripts_fetched=%s articles_generated=%s images_generated=%s wp_synced=%s wp_failed=%s",
+        "Pipeline run completed: success=%s transcripts_fetched=%s anchors_extracted=%s articles_generated=%s images_generated=%s wp_synced=%s wp_failed=%s",
         aggregated.get("success", True),
         transcript_result.get("transcripts_fetched", 0),
+        extract_result.get("anchors_extracted", 0),
         article_result.get("articles_generated", 0),
         image_result.get("images_generated", 0),
         wp_result.get("synced", 0),

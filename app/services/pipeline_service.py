@@ -5,7 +5,7 @@ Stages (typical order) are methods on :class:`PipelineService`:
 
 1. **Build queue** — :meth:`run_build_queue`: scrape a YouTube channel; add new IDs to ``video_queue``.
 2. **Fetch transcripts** — :meth:`run_bulk_fetch_transcripts`: captions and/or Whisper; persist to ``transcripts``.
-3. **Write articles** — :meth:`run_bulk_write_articles`: AI journalist + ``transcripts`` → ``articles``.
+3. **Write articles** — :meth:`run_bulk_write_articles`: AI journalist + ``anchors`` (keyed by transcript/youtube_id) → ``articles``.
 4. **Bullet points** — :meth:`run_bullet_points_batch`: summarise bodies missing ``bullet_points``.
 5. **Images** — :meth:`run_image_batch`: AI cover art for rows with bullets but no ``art`` row.
 
@@ -37,11 +37,12 @@ yield ``success: False`` or zero tallies; :meth:`run_image_batch` still returns
 """
 
 import json
+import html
 import logging
 import os
 import time
 from datetime import datetime
-from typing import Any, Dict, Optional, Set
+from typing import Any, Dict, List, Optional, Set
 
 from fastapi.responses import JSONResponse
 
@@ -63,6 +64,7 @@ from app.data.enum_classes import (
     Journalist,
     TextModel,
     Tone,
+    resolve_gemini_text_model,
     resolve_text_model,
 )
 from app.data.journalist_manager import JournalistManager
@@ -84,7 +86,8 @@ class PipelineService:
 
     - :meth:`run_build_queue` — channel scrape → ``video_queue``
     - :meth:`run_bulk_fetch_transcripts` — ``video_queue`` → ``transcripts``
-    - :meth:`run_bulk_write_articles` — ``transcripts`` → ``articles``
+    - :meth:`run_bulk_extract_anchors` — ``transcripts`` → ``anchors``
+    - :meth:`run_bulk_write_articles` — ``anchors`` (via transcript/youtube_id) → ``articles``
     - :meth:`run_bullet_points_batch` — fill ``bullet_points`` on articles
     - :meth:`run_image_batch` — ``articles`` + bullets → ``art`` rows
 
@@ -102,6 +105,51 @@ class PipelineService:
         svc.run_bullet_points_batch(amount=10)
         svc.run_image_batch(amount=10, artist=..., model=...)
     """
+
+    @staticmethod
+    def _timestamp_to_seconds(timestamp: Optional[str]) -> Optional[int]:
+        """Convert HH:MM:SS (or MM:SS) to seconds."""
+        if not timestamp:
+            return None
+        raw = str(timestamp).strip()
+        if not raw:
+            return None
+        parts = raw.split(":")
+        if len(parts) == 2:
+            hours = 0
+            minutes_str, seconds_str = parts
+        elif len(parts) == 3:
+            hours_str, minutes_str, seconds_str = parts
+            if not (hours_str.isdigit() and minutes_str.isdigit() and seconds_str.isdigit()):
+                return None
+            hours = int(hours_str)
+        else:
+            return None
+        if not (minutes_str.isdigit() and seconds_str.isdigit()):
+            return None
+        return (hours * 3600) + (int(minutes_str) * 60) + int(seconds_str)
+
+    @staticmethod
+    def _build_youtube_timestamp_url(youtube_id: str, seconds: Optional[int]) -> Optional[str]:
+        """Build a watch URL pinned to a second offset."""
+        clean_id = (youtube_id or "").strip()
+        if not clean_id or seconds is None or seconds < 0:
+            return None
+        return f"https://www.youtube.com/watch?v={clean_id}&t={int(seconds)}s"
+
+    @staticmethod
+    def format_bullets_as_html_list(bullets: List[str]) -> str:
+        """
+        Convert bullet strings to a semantic HTML list.
+
+        Empty bullets are dropped. Bullet text is HTML-escaped to keep stored
+        summary markup valid and safe.
+        """
+        items = [b.strip() for b in (bullets or []) if isinstance(b, str) and b.strip()]
+        if not items:
+            return ""
+        li_html = "\n".join([f"  <li>{html.escape(item)}</li>" for item in items])
+        return f"<ul>\n{li_html}\n</ul>"
 
     def __init__(
         self,
@@ -139,6 +187,111 @@ class PipelineService:
         self._image_service = image_service
         self._anchor_manager = anchor_manager
         self._gemma_extractor = gemma_extractor
+
+    def _get_latest_anchor_run_id(self, youtube_id: str) -> Optional[str]:
+        """Return most recent anchor run id for a YouTube video."""
+        db = self._database
+        if not db:
+            return None
+        cursor = db.cursor
+        cursor.execute(
+            """
+            SELECT run_id
+            FROM anchors
+            WHERE youtube_id = ?
+            ORDER BY created_at DESC, id DESC
+            LIMIT 1
+            """,
+            (youtube_id,),
+        )
+        row = cursor.fetchone()
+        return row[0] if row else None
+
+    def build_article_context_from_anchors(self, youtube_id: str) -> Optional[str]:
+        """Build journalist-ready context from latest anchor run for a video."""
+        db = self._database
+        if not db:
+            return None
+        run_id = self._get_latest_anchor_run_id(youtube_id)
+        if not run_id:
+            return None
+
+        cursor = db.cursor
+        cursor.execute(
+            """
+            SELECT doc_type, timestamp_string, timestamp_seconds, anchor_headline, anchor_text, has_official_vote, roll_call_type
+            FROM anchors
+            WHERE youtube_id = ? AND run_id = ?
+            ORDER BY CASE WHEN doc_type = 'executive_summary' THEN 0 ELSE 1 END, id ASC
+            """,
+            (youtube_id, run_id),
+        )
+        rows = cursor.fetchall()
+        if not rows:
+            return None
+
+        executive_bullets: list[str] = []
+        factual_lines: list[str] = []
+        for doc_type, timestamp, timestamp_seconds, headline, anchor_text, has_official_vote, roll_call_type in rows:
+            text = (anchor_text or "").strip()
+            if not text:
+                continue
+            if doc_type == "executive_summary":
+                executive_bullets.append(text)
+                continue
+            prefix_parts: list[str] = []
+            if timestamp:
+                prefix_parts.append(f"[{timestamp}]")
+            if headline:
+                prefix_parts.append(headline)
+            prefix = " ".join(prefix_parts).strip()
+            vote_suffix = (
+                f"(official_vote={'yes' if bool(has_official_vote) else 'no'}, "
+                f"roll_call_type={roll_call_type or 'none'})"
+            )
+            effective_seconds = (
+                int(timestamp_seconds)
+                if timestamp_seconds is not None
+                else self._timestamp_to_seconds(timestamp)
+            )
+            source_url = self._build_youtube_timestamp_url(youtube_id, effective_seconds)
+            source_suffix = f" [source_url={source_url}]" if source_url else ""
+            if prefix:
+                factual_lines.append(f"- {prefix}: {text} {vote_suffix}{source_suffix}")
+            else:
+                factual_lines.append(f"- {text} {vote_suffix}{source_suffix}")
+
+        sections: list[str] = []
+        if executive_bullets:
+            sections.append("EXECUTIVE SUMMARY BULLETS:")
+            sections.extend([f"- {bullet}" for bullet in executive_bullets])
+        if factual_lines:
+            if sections:
+                sections.append("")
+            sections.append("FACTUAL ANCHORS:")
+            sections.extend(factual_lines)
+        return "\n".join(sections) if sections else None
+
+    def get_latest_executive_summary_bullets(self, youtube_id: str) -> List[str]:
+        """Return executive-summary bullets from latest anchor run for a video."""
+        db = self._database
+        if not db:
+            return []
+        run_id = self._get_latest_anchor_run_id(youtube_id)
+        if not run_id:
+            return []
+        cursor = db.cursor
+        cursor.execute(
+            """
+            SELECT anchor_text
+            FROM anchors
+            WHERE youtube_id = ? AND run_id = ? AND doc_type = 'executive_summary'
+            ORDER BY id ASC
+            """,
+            (youtube_id, run_id),
+        )
+        rows = cursor.fetchall()
+        return [(row[0] or "").strip() for row in rows if (row[0] or "").strip()]
 
     async def run_build_queue(
         self,
@@ -446,24 +599,16 @@ class PipelineService:
         skip_youtube_ids: Optional[Set[str]] = None,
         text_model: Optional[TextModel] = None,
     ) -> Dict[str, Any]:
-        """Generate articles from stored transcripts using an AI journalist.
+        """Generate articles from extracted anchors using an AI journalist.
 
-        **Async** method (callable with ``await`` from the pipeline); DB and LLM calls inside are synchronous.
+        **Async** method (callable with ``await`` from the pipeline); DB and
+        LLM calls inside are synchronous.
 
         Selects up to ``amount`` transcripts that do not yet have a
-        corresponding article (``LEFT JOIN articles … WHERE a.id IS NULL``),
-        oldest first.  For each transcript the journalist's ``load_context``
-        and ``generate_article`` methods are called, and the resulting article
-        is saved via ``Database.add_article``.
-
-        If the journalist profile doesn't exist in the database yet it is
-        created automatically via ``JournalistManager.upsert_journalist``.
-
-        When no eligible transcripts are found, the method returns a detailed
-        diagnostics block explaining how many transcripts exist without
-        articles and how many were excluded due to the WordPress skip-list,
-        which helps distinguish "nothing to do" from "everything is already
-        published".
+        corresponding article (``LEFT JOIN articles … WHERE a.id IS NULL``)
+        and that already have anchor rows. For each transcript, this stage
+        builds context from the latest anchor run (executive summary + factual
+        anchors) and sends that context to the journalist for article writing.
 
         Args:
             amount: Maximum number of articles to generate in this call.
@@ -493,8 +638,9 @@ class PipelineService:
             - ``results`` (``list[dict]``): Per transcript — ``youtube_id``,
               ``transcript_id``, ``status``, ``title`` or ``error``.
             - ``diagnostics`` (``dict``, optional): When zero rows were eligible:
-              ``transcripts_without_article``, ``excluded_by_wordpress``,
-              ``skip_youtube_ids_count``.
+              ``transcripts_without_article``,
+              ``transcripts_with_anchors_without_article``,
+              ``excluded_by_wordpress``, ``skip_youtube_ids_count``.
 
         Raises:
             ValueError: Unknown ``journalist`` enum, or journalist row could not
@@ -538,32 +684,46 @@ class PipelineService:
         if skip_youtube_ids:
             placeholders = ",".join(["?"] * len(skip_youtube_ids))
             cursor.execute(
-                f"""SELECT t.id, t.committee, t.youtube_id, t.content
+                f"""SELECT t.id, t.committee, t.youtube_id
                    FROM transcripts t
                    LEFT JOIN articles a ON t.id = a.transcript_id
-                   WHERE a.id IS NULL AND (t.youtube_id IS NULL OR t.youtube_id NOT IN ({placeholders}))
+                   WHERE a.id IS NULL
+                     AND EXISTS (
+                        SELECT 1 FROM anchors an WHERE an.youtube_id = t.youtube_id
+                     )
+                     AND (t.youtube_id IS NULL OR t.youtube_id NOT IN ({placeholders}))
                    ORDER BY t.id ASC
                    LIMIT ?""",
                 (*skip_youtube_ids, amount),
             )
         else:
             cursor.execute(
-                """SELECT t.id, t.committee, t.youtube_id, t.content
+                """SELECT t.id, t.committee, t.youtube_id
                    FROM transcripts t
                    LEFT JOIN articles a ON t.id = a.transcript_id
                    WHERE a.id IS NULL
+                     AND EXISTS (
+                        SELECT 1 FROM anchors an WHERE an.youtube_id = t.youtube_id
+                     )
                    ORDER BY t.id ASC
                    LIMIT ?""",
                 (amount,),
             )
         transcripts = cursor.fetchall()
         if not transcripts:
-            # Diagnose why 0: count transcripts without articles, and how many excluded by WordPress
+            # Diagnose why 0: count transcripts without articles, and with anchors available.
             cursor.execute(
                 """SELECT COUNT(*) FROM transcripts t
                    LEFT JOIN articles a ON t.id = a.transcript_id WHERE a.id IS NULL"""
             )
             without_article = cursor.fetchone()[0]
+            cursor.execute(
+                """SELECT COUNT(*) FROM transcripts t
+                   LEFT JOIN articles a ON t.id = a.transcript_id
+                   WHERE a.id IS NULL
+                     AND EXISTS (SELECT 1 FROM anchors an WHERE an.youtube_id = t.youtube_id)"""
+            )
+            with_anchors_without_article = cursor.fetchone()[0]
             excluded_by_wp = 0
             if skip_youtube_ids:
                 cursor.execute(
@@ -576,7 +736,9 @@ class PipelineService:
                 excluded_by_wp = cursor.fetchone()[0]
             excluded_msg = f"; {excluded_by_wp} excluded (already on WordPress)" if excluded_by_wp else ""
             message = (
-                f"No transcripts eligible for article write: {without_article} without articles{excluded_msg}"
+                "No transcripts eligible for article write from anchors: "
+                f"{with_anchors_without_article} with anchors and no article; "
+                f"{without_article} total without articles{excluded_msg}"
                 if without_article or excluded_by_wp else "No transcripts found in database"
             )
             return {
@@ -588,6 +750,7 @@ class PipelineService:
                 "results": [],
                 "diagnostics": {
                     "transcripts_without_article": without_article,
+                    "transcripts_with_anchors_without_article": with_anchors_without_article,
                     "excluded_by_wordpress": excluded_by_wp,
                     "skip_youtube_ids_count": len(skip_youtube_ids) if skip_youtube_ids else 0,
                 },
@@ -606,14 +769,29 @@ class PipelineService:
         else:
             llm_provider, llm_model = None, None
         for row in transcripts:
-            transcript_id, committee, youtube_id, transcript_content = (
-                row[0], row[1], row[2], row[3],
-            )
+            transcript_id, committee, youtube_id = row[0], row[1], row[2]
             try:
+                if not youtube_id:
+                    raise ValueError("Cannot build anchor context: transcript has no youtube_id")
+                anchor_context = self.build_article_context_from_anchors(youtube_id)
+                if not anchor_context:
+                    raise ValueError(
+                        f"No anchor context found for youtube_id={youtube_id}. Run extraction first."
+                    )
                 base_context = journalist_instance.load_context(
                     tone=tone, article_type=article_type
                 )
-                full_context = f"{base_context}\n\nTRANSCRIPT CONTENT TO ANALYZE:\n{transcript_content}"
+                source_link_context = (
+                    "SOURCE LINK METADATA:\n"
+                    f"- youtube_id: {youtube_id}\n"
+                    f"- url_template: https://www.youtube.com/watch?v={youtube_id}&t=<SECONDS>s\n"
+                    "- Use this youtube_id; do not output UNKNOWN.\n"
+                )
+                full_context = (
+                    f"{base_context}\n\n"
+                    f"{source_link_context}\n"
+                    f"ANCHOR CONTEXT TO ANALYZE:\n{anchor_context}"
+                )
                 article_result = journalist_instance.generate_article(
                     full_context,
                     "",
@@ -631,6 +809,12 @@ class PipelineService:
                     tone=tone.value,
                     title=article_result.get("title", "Untitled Article"),
                 )
+                summary_bullets = self.get_latest_executive_summary_bullets(youtube_id)
+                if summary_bullets:
+                    db.update_article_bullet_points(
+                        new_id,
+                        self.format_bullets_as_html_list(summary_bullets),
+                    )
                 articles_generated += 1
                 article_ids.append(new_id)
                 results.append({
@@ -662,6 +846,108 @@ class PipelineService:
             "articles_generated": articles_generated,
             "articles_failed": articles_failed,
             "article_ids": article_ids,
+            "results": results,
+        }
+
+    async def run_bulk_extract_anchors(
+        self,
+        amount: int,
+        *,
+        extractor: Extractor = Extractor.GEMMA_NYE,
+        text_model: Optional[TextModel] = None,
+        skip_youtube_ids: Optional[Set[str]] = None,
+    ) -> Dict[str, Any]:
+        """Extract anchors for transcripts that do not yet have any anchor rows."""
+        db = self._database
+        if not db:
+            return {
+                "success": False,
+                "message": "Database not available",
+                "anchors_extracted": 0,
+                "anchors_failed": 0,
+                "results": [],
+            }
+
+        gemini_model = resolve_gemini_text_model(
+            text_model,
+            field_name="extractor_text_model",
+        )
+        if gemini_model is not None:
+            logger.info(
+                "Pipeline anchor extraction: using extractor=%s model=%s",
+                extractor.value,
+                gemini_model.value,
+            )
+
+        cursor = db.cursor
+        if skip_youtube_ids:
+            placeholders = ",".join(["?"] * len(skip_youtube_ids))
+            cursor.execute(
+                f"""SELECT t.youtube_id
+                   FROM transcripts t
+                   WHERE t.youtube_id IS NOT NULL
+                     AND TRIM(t.youtube_id) != ''
+                     AND t.content IS NOT NULL
+                     AND TRIM(t.content) != ''
+                     AND t.youtube_id NOT IN ({placeholders})
+                     AND NOT EXISTS (
+                       SELECT 1 FROM anchors a WHERE a.youtube_id = t.youtube_id
+                     )
+                   ORDER BY t.id DESC
+                   LIMIT ?""",
+                (*skip_youtube_ids, amount),
+            )
+        else:
+            cursor.execute(
+                """SELECT t.youtube_id
+                   FROM transcripts t
+                   WHERE t.youtube_id IS NOT NULL
+                     AND TRIM(t.youtube_id) != ''
+                     AND t.content IS NOT NULL
+                     AND TRIM(t.content) != ''
+                     AND NOT EXISTS (
+                       SELECT 1 FROM anchors a WHERE a.youtube_id = t.youtube_id
+                     )
+                   ORDER BY t.id DESC
+                   LIMIT ?""",
+                (amount,),
+            )
+
+        transcript_rows = cursor.fetchall()
+        if not transcript_rows:
+            return {
+                "success": True,
+                "message": "No transcripts found that need anchor extraction",
+                "anchors_extracted": 0,
+                "anchors_failed": 0,
+                "results": [],
+            }
+
+        anchors_extracted = 0
+        anchors_failed = 0
+        results: list[dict[str, Any]] = []
+        for row in transcript_rows:
+            youtube_id = (row[0] or "").strip()
+            if not youtube_id:
+                continue
+            extract_result = self.run_extract_anchors(
+                youtube_id,
+                extractor=extractor,
+                text_model=gemini_model,
+            )
+            if extract_result.get("success"):
+                anchors_extracted += 1
+            else:
+                anchors_failed += 1
+            results.append(extract_result)
+
+        return {
+            "success": anchors_failed == 0,
+            "message": (
+                f"Processed {len(results)} transcript(s) for anchor extraction"
+            ),
+            "anchors_extracted": anchors_extracted,
+            "anchors_failed": anchors_failed,
             "results": results,
         }
 
@@ -722,7 +1008,11 @@ class PipelineService:
         return results
 
     def run_image_batch(
-        self, amount: int, artist: Artist, model: ImageModel
+        self,
+        amount: int,
+        artist: Artist,
+        model: ImageModel,
+        snippet_text_model: Optional[TextModel] = None,
     ) -> Dict[str, Any]:
         """Generate AI cover images for articles with bullets but no ``art`` row.
 
@@ -798,6 +1088,16 @@ class PipelineService:
         results = []
         images_generated = 0
         images_failed = 0
+        snippet_provider = None
+        snippet_model = None
+        if snippet_text_model is not None:
+            snippet_provider, snippet_model = resolve_text_model(snippet_text_model)
+            logger.info(
+                "Pipeline image batch: snippet provider=%s snippet_model=%s image_model=%s",
+                snippet_provider.value,
+                snippet_model.value,
+                model.value,
+            )
         for row in articles:
             article_id, title, bullet_points, transcript_id = row[0], row[1], row[2], row[3]
             try:
@@ -810,7 +1110,11 @@ class PipelineService:
                     })
                     continue
                 image_result = artist_instance.generate_image(
-                    title=title, bullet_points=bullet_points, model=model.value
+                    title=title,
+                    bullet_points=bullet_points,
+                    model=model.value,
+                    snippet_provider=snippet_provider,
+                    snippet_model=snippet_model,
                 )
                 if image_result.get("error"):
                     images_failed += 1

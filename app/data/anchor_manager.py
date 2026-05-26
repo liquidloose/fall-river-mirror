@@ -1,7 +1,8 @@
 """
 Persistence for anchor rows — the RAG-ready chunks emitted by extractors
 (e.g. Gemma Nye) into the ``anchors`` table — plus the fact-check audit
-sibling table ``fact_check_removals``.
+sibling table ``fact_check_removals`` and the spelling-corrections audit
+sibling table ``spelling_corrections``.
 
 ANCHORS TABLE
 -------------
@@ -45,13 +46,30 @@ populated only when the model wants a human reviewer to look. Bulk
 error-pattern queries inspect the structural fields (``kind``, originals,
 joined ``anchor_text``); ``audit_note`` is a human-review flag only.
 
+SPELLING-CORRECTIONS AUDIT TABLE (`spelling_corrections`)
+---------------------------------------------------------
+Pass-4 spell-check envelopes carry a ``spelling_corrections`` list — one row
+per canonical-name spelling fix the pass applied to an anchor or bullet.
+Those rows land in the ``spelling_corrections`` table (parallel to
+``fact_check_removals``; never alongside ``anchors``). Each row carries
+``target_kind`` (``'factual_anchor' | 'executive_summary'``) and an
+``anchor_id`` linking to the resulting ``anchors.id`` row — both factual
+and summary rows live in ``anchors``, so the join works for both. The join
+key during insert is ``corrected_anchor_text``: for ``factual_anchor`` it
+matches against the post-pass-4 ``anchor_text`` we just inserted; for
+``executive_summary`` it matches against the bullet string. Multiple
+spelling fixes per anchor produce multiple rows that all link to the same
+``anchor_id``. ``audit_note`` is an uncertainty caveat about the
+CORRECTION (e.g. "ambiguous transcript context; could also be a private
+citizen"), populated only when the model wants a human reviewer to look.
+
 RUN SCOPING
 -----------
 A single extractor invocation writes N anchor rows that all share the same
 ``run_id`` UUID, so the rows are coherent across the table. Re-extracting the
 same transcript later produces a new ``run_id`` and a new set of rows; both
 runs coexist (no overwrite). Audit rows from the same run also share that
-``run_id`` in ``fact_check_removals``.
+``run_id`` in both ``fact_check_removals`` and ``spelling_corrections``.
 
 Foreign key is ``anchors.youtube_id`` -> ``transcripts.youtube_id`` (the
 globally unique YouTube video id), not the SQLite ``transcripts.id`` row, so
@@ -139,6 +157,22 @@ class AnchorManager:
                                 "corrected_anchor_text": "<verbatim copy of new factual_anchor_items[i].anchor_text>",
                                 "audit_note": ""
                             }
+                        ],
+                        "spelling_corrections": [
+                            {
+                                "target_kind": "factual_anchor",
+                                "corrected_anchor_text": "<verbatim copy of post-pass-4 factual_anchor_items[i].anchor_text>",
+                                "original_term": "Kugan",
+                                "corrected_term": "Coogan",
+                                "audit_note": ""
+                            },
+                            {
+                                "target_kind": "executive_summary",
+                                "corrected_anchor_text": "<verbatim copy of post-pass-4 executive_summary_bullets[j]>",
+                                "original_term": "Cumara",
+                                "corrected_term": "Camara",
+                                "audit_note": ""
+                            }
                         ]
                     }
 
@@ -163,15 +197,37 @@ class AnchorManager:
                   with WARN (orphan audit row guard).
                 - ``audit_note`` is stripped and stored as NULL when
                   empty / whitespace.
+
+                ``spelling_corrections`` is present only on pass-4 spell-check
+                envelopes; entries are validated per ``target_kind``:
+
+                - ``target_kind='factual_anchor'`` looks up ``anchor_id`` in
+                  the corrected-text -> ``anchors.id`` map captured during
+                  the factual-anchor insert loop.
+                - ``target_kind='executive_summary'`` looks up ``anchor_id``
+                  in a parallel bullet-text -> ``anchors.id`` map captured
+                  during the bullet insert loop.
+                - Unknown ``target_kind`` values are skipped with WARN.
+                - Entries whose ``corrected_anchor_text`` does not match any
+                  just-inserted anchor / bullet row are skipped with WARN
+                  (orphan audit row guard).
+                - Entries with empty/whitespace ``original_term`` or
+                  ``corrected_term`` are skipped with WARN.
+                - Entries where ``original_term == corrected_term`` (no-op
+                  corrections) are skipped with WARN.
+                - ``audit_note`` is stripped and stored as NULL when
+                  empty / whitespace.
             extractor_name: Name string (e.g. ``"Gemma Nye"``) written to
                 every row's ``extractor_name`` column for provenance.
             model: Provider model id (e.g. ``"gemini-2.0-pro"``); written to
                 every row's ``model`` column. May be ``None``.
 
         Returns:
-            Total number of rows inserted across BOTH tables: factual anchors
-            + summary bullets in ``anchors``, plus audit-entry rows in
-            ``fact_check_removals`` (one per removal/correction/addition).
+            Total number of rows inserted across all three tables: factual
+            anchors + summary bullets in ``anchors``, audit-entry rows in
+            ``fact_check_removals`` (one per removal/correction/addition),
+            and spelling-correction rows in ``spelling_corrections`` (one
+            per fix applied).
 
         Raises:
             Exception: Any DB error during the insert batch triggers a full
@@ -181,6 +237,7 @@ class AnchorManager:
         bullets: List[str] = list(envelope.get("executive_summary_bullets") or [])
         anchors: List[Dict[str, Any]] = list(envelope.get("factual_anchor_items") or [])
         fact_check_audit: List[Dict[str, Any]] = list(envelope.get("fact_check_audit") or [])
+        spelling_corrections: List[Dict[str, Any]] = list(envelope.get("spelling_corrections") or [])
         created_at = datetime.now(timezone.utc).isoformat()
         rows_inserted = 0
 
@@ -217,11 +274,25 @@ class AnchorManager:
             ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         """
 
+        # Spelling-corrections audit insert. One row per canonical-name
+        # spelling fix the pass-4 spell-check applied to an anchor or bullet.
+        # `anchor_id` always links back to `anchors.id` — for both factual
+        # and summary rows, since bullets are persisted as `executive_summary`
+        # rows in the `anchors` table.
+        spelling_corrections_insert_sql = """
+            INSERT INTO spelling_corrections (
+                youtube_id, run_id, anchor_id, target_kind,
+                original_term, corrected_term, audit_note,
+                extractor_name, model, created_at
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        """
+
         # Whitelist for `roll_call_type` — mirrors RollCallType enum values.
         # Anything unrecognized falls back to 'none' so a malformed model
         # response can't corrupt the column with an unknown enum string.
         ALLOWED_ROLL_CALL_TYPES = {"none", "attendance", "voting"}
         ALLOWED_AUDIT_KINDS = {"removed", "corrected", "added"}
+        ALLOWED_SPELLING_TARGET_KINDS = {"factual_anchor", "executive_summary"}
 
         def _coerce_roll_call_type(raw: Any) -> str:
             if isinstance(raw, str) and raw in ALLOWED_ROLL_CALL_TYPES:
@@ -238,11 +309,19 @@ class AnchorManager:
                 )
             return "none"
 
-        # Built during the factual-anchor insert loop; consumed by the audit
-        # loop to fill `anchor_id` for kind='corrected' and kind='added'.
-        # Keyed by `anchor_text` because that's what the LLM emits in
-        # `corrected_anchor_text` as the join handle (LLM has no PKs).
+        # Built during the factual-anchor insert loop; consumed by the
+        # fact-check audit loop (`kind='corrected'`/`'added'`) and the
+        # spelling-corrections loop (`target_kind='factual_anchor'`) to fill
+        # `anchor_id`. Keyed by `anchor_text` because that's what the LLM
+        # emits in `corrected_anchor_text` as the join handle (LLM has no
+        # PKs).
         corrected_text_to_anchor_id: Dict[str, int] = {}
+        # Parallel map built during the bullet insert loop; consumed only by
+        # the spelling-corrections loop (`target_kind='executive_summary'`)
+        # to fill `anchor_id`. Bullets are persisted as `executive_summary`
+        # rows where `anchor_text == bullet_text`, so the bullet string is
+        # the join key.
+        bullet_text_to_anchor_id: Dict[str, int] = {}
 
         try:
             for anchor in anchors:
@@ -310,6 +389,14 @@ class AnchorManager:
                         created_at,
                     ),
                 )
+                # Capture the just-inserted bullet row id so a later
+                # spelling-correction entry whose `corrected_anchor_text`
+                # matches this bullet can fill `anchor_id`. Duplicate bullet
+                # strings (rare; arguably the bullets pass's bug to flag)
+                # mean the last one wins here.
+                lastrowid = self.database.cursor.lastrowid
+                if isinstance(lastrowid, int):
+                    bullet_text_to_anchor_id[bullet_text] = lastrowid
                 rows_inserted += 1
 
             audit_counts = {"removed": 0, "corrected": 0, "added": 0}
@@ -424,16 +511,117 @@ class AnchorManager:
                 audit_counts[kind] += 1
                 rows_inserted += 1
 
+            spelling_inserted = 0
+            for entry in spelling_corrections:
+                raw_target = entry.get("target_kind")
+                target_kind = raw_target if isinstance(raw_target, str) else None
+                if target_kind not in ALLOWED_SPELLING_TARGET_KINDS:
+                    logger.warning(
+                        "AnchorManager: skipping spelling_corrections entry with "
+                        "unknown target_kind=%r (run_id=%s)",
+                        raw_target,
+                        run_id,
+                    )
+                    continue
+
+                raw_corrected_text = entry.get("corrected_anchor_text")
+                corrected_text = (
+                    raw_corrected_text.strip()
+                    if isinstance(raw_corrected_text, str)
+                    else None
+                )
+                if not corrected_text:
+                    logger.warning(
+                        "AnchorManager: skipping spelling_corrections entry with "
+                        "empty corrected_anchor_text (run_id=%s, target_kind=%s)",
+                        run_id,
+                        target_kind,
+                    )
+                    continue
+
+                raw_original = entry.get("original_term")
+                original_term = (
+                    raw_original.strip()
+                    if isinstance(raw_original, str)
+                    else None
+                )
+                raw_corrected = entry.get("corrected_term")
+                corrected_term = (
+                    raw_corrected.strip()
+                    if isinstance(raw_corrected, str)
+                    else None
+                )
+                if not original_term or not corrected_term:
+                    logger.warning(
+                        "AnchorManager: skipping spelling_corrections entry with "
+                        "empty original_term/corrected_term (run_id=%s, "
+                        "target_kind=%s)",
+                        run_id,
+                        target_kind,
+                    )
+                    continue
+                if original_term == corrected_term:
+                    logger.warning(
+                        "AnchorManager: skipping spelling_corrections no-op entry "
+                        "(original_term == corrected_term=%r, run_id=%s)",
+                        original_term,
+                        run_id,
+                    )
+                    continue
+
+                if target_kind == "factual_anchor":
+                    spelling_anchor_id = corrected_text_to_anchor_id.get(corrected_text)
+                else:  # "executive_summary"
+                    spelling_anchor_id = bullet_text_to_anchor_id.get(corrected_text)
+                if spelling_anchor_id is None:
+                    logger.warning(
+                        "AnchorManager: skipping spelling_corrections entry whose "
+                        "corrected_anchor_text did not match any inserted "
+                        "%s row (orphan audit row guard) (run_id=%s, "
+                        "corrected_anchor_text=%r)",
+                        target_kind,
+                        run_id,
+                        corrected_text,
+                    )
+                    continue
+
+                raw_spell_note = entry.get("audit_note")
+                spell_note = (
+                    raw_spell_note.strip()
+                    if isinstance(raw_spell_note, str) and raw_spell_note.strip()
+                    else None
+                )
+
+                self.database.cursor.execute(
+                    spelling_corrections_insert_sql,
+                    (
+                        youtube_id,
+                        run_id,
+                        spelling_anchor_id,
+                        target_kind,
+                        original_term,
+                        corrected_term,
+                        spell_note,
+                        extractor_name,
+                        model,
+                        created_at,
+                    ),
+                )
+                spelling_inserted += 1
+                rows_inserted += 1
+
             audit_total = sum(audit_counts.values())
             self.database.conn.commit()
             logger.info(
-                "AnchorManager: inserted %d anchor row(s) and %d audit row(s) "
-                "(removed=%d corrected=%d added=%d) for youtube_id=%s run_id=%s",
-                rows_inserted - audit_total,
+                "AnchorManager: inserted %d anchor row(s), %d fact-check audit "
+                "row(s) (removed=%d corrected=%d added=%d), and %d "
+                "spelling-correction row(s) for youtube_id=%s run_id=%s",
+                rows_inserted - audit_total - spelling_inserted,
                 audit_total,
                 audit_counts["removed"],
                 audit_counts["corrected"],
                 audit_counts["added"],
+                spelling_inserted,
                 youtube_id,
                 run_id,
             )

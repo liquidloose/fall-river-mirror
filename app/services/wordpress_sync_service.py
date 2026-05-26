@@ -123,6 +123,25 @@ class WordPressSyncService:
         except ValueError:
             return False
 
+    def _is_auth_missing_or_forbidden_response(self, response: requests.Response) -> bool:
+        """
+        Return True for auth failures that should trigger a token refresh.
+
+        This covers common WordPress responses when the process has no JWT in
+        memory yet (e.g. after container restart) or when auth middleware returns
+        a generic REST permission failure instead of jwt_auth_invalid_token.
+        """
+        if response.status_code not in (401, 403):
+            return False
+        text = (response.text or "").strip()
+        if "jwt_auth_no_auth_header" in text or "rest_forbidden" in text:
+            return True
+        try:
+            code = (response.json().get("code") or "").strip()
+            return code in {"jwt_auth_no_auth_header", "rest_forbidden"}
+        except ValueError:
+            return False
+
     def _request_with_jwt_retry(self, request_fn: Callable[[], requests.Response]) -> requests.Response:
         """
         Execute ``request_fn`` (typically a closure over ``requests.get/post``).
@@ -131,9 +150,15 @@ class WordPressSyncService:
         and retries **once**; otherwise returns the first response.
         """
         response = request_fn()
-        if not self._is_jwt_invalid_token_response(response):
+        if not (
+            self._is_jwt_invalid_token_response(response)
+            or self._is_auth_missing_or_forbidden_response(response)
+        ):
             return response
-        logger.info("WordPress returned jwt_auth_invalid_token; refreshing JWT and retrying once.")
+        logger.info(
+            "WordPress auth failed (status=%s); refreshing JWT and retrying once.",
+            response.status_code,
+        )
         refresh = self.refresh_jwt_token()
         if not refresh.get("success"):
             return response
@@ -225,17 +250,22 @@ class WordPressSyncService:
                 "error": body,
             }
 
-    def get_article_youtube_ids(self, base_url: Optional[str] = None) -> Set[str]:
+    def get_article_youtube_ids_result(
+        self, base_url: Optional[str] = None
+    ) -> Dict[str, Any]:
         """
-        GET fr-mirror ``article-youtube-ids`` and return the published YouTube ID set.
+        GET fr-mirror ``article-youtube-ids`` with structured success/error payload.
 
-        Appends ``nocache`` timestamp to avoid stale CDN caches. Uses :meth:`_request_with_jwt_retry`.
-
-        Args:
-            base_url: Optional origin override; defaults to configured ``_base_url``.
+        Unlike :meth:`get_article_youtube_ids`, this preserves the concrete remote
+        error body and status code so callers can propagate the real failure.
 
         Returns:
-            Set of non-empty ``youtube_id`` strings. On any failure logs a warning and returns ``set()``.
+            Dict with:
+            - ``success`` (bool)
+            - ``youtube_ids`` (set[str]) on success
+            - ``http_status`` (int) on failure
+            - ``error`` (str) on failure
+            - ``raw_response`` (str|None) on failure
         """
         url = (base_url or self._base_url) + self._api_path_youtube_ids
         sep = "&" if "?" in url else "?"
@@ -250,8 +280,36 @@ class WordPressSyncService:
                 )
             r.raise_for_status()
             data = r.json()
-            raw = data.get("youtube_ids") or []
-            return set((yid or "").strip() for yid in raw if (yid or "").strip())
+            if not isinstance(data, dict):
+                return {
+                    "success": False,
+                    "youtube_ids": set(),
+                    "http_status": status.HTTP_502_BAD_GATEWAY,
+                    "error": "Unexpected article-youtube-ids response type (expected JSON object).",
+                    "raw_response": (r.text or "")[:2000],
+                }
+            raw = data.get("youtube_ids")
+            if not isinstance(raw, list):
+                # Preserve WordPress/plugin error payload when endpoint does not
+                # return the expected field.
+                wp_message = data.get("message") if isinstance(data.get("message"), str) else None
+                wp_code = data.get("code") if isinstance(data.get("code"), str) else None
+                payload_error = (
+                    f"article-youtube-ids response missing/invalid youtube_ids list"
+                    + (f" (code={wp_code})" if wp_code else "")
+                    + (f": {wp_message}" if wp_message else "")
+                )
+                return {
+                    "success": False,
+                    "youtube_ids": set(),
+                    "http_status": status.HTTP_502_BAD_GATEWAY,
+                    "error": payload_error,
+                    "raw_response": (r.text or "")[:2000],
+                }
+            return {
+                "success": True,
+                "youtube_ids": set((yid or "").strip() for yid in raw if (yid or "").strip()),
+            }
         except Exception as e:
             resp = getattr(e, "response", None)
             logger.warning(
@@ -260,7 +318,30 @@ class WordPressSyncService:
                 resp.status_code if resp is not None else None,
                 (resp.text if resp is not None and resp.text else None),
             )
-            return set()
+            return {
+                "success": False,
+                "youtube_ids": set(),
+                "http_status": (
+                    resp.status_code if resp is not None else status.HTTP_502_BAD_GATEWAY
+                ),
+                "error": str(e),
+                "raw_response": (resp.text if resp is not None and resp.text else None),
+            }
+
+    def get_article_youtube_ids(self, base_url: Optional[str] = None) -> Set[str]:
+        """
+        GET fr-mirror ``article-youtube-ids`` and return the published YouTube ID set.
+
+        Appends ``nocache`` timestamp to avoid stale CDN caches. Uses :meth:`_request_with_jwt_retry`.
+
+        Args:
+            base_url: Optional origin override; defaults to configured ``_base_url``.
+
+        Returns:
+            Set of non-empty ``youtube_id`` strings. On any failure logs a warning and returns ``set()``.
+        """
+        result = self.get_article_youtube_ids_result(base_url=base_url)
+        return result.get("youtube_ids", set()) if result.get("success") else set()
 
     def test_jwt_get(self) -> Dict[str, Any]:
         """
@@ -788,7 +869,22 @@ class WordPressSyncService:
             }
 
         youtube_id = (article.get("youtube_id") or "").strip()
-        existing_on_wp = youtube_id in self.get_article_youtube_ids() if youtube_id else False
+        existing_on_wp = False
+        if youtube_id:
+            youtube_ids_result = self.get_article_youtube_ids_result()
+            if not youtube_ids_result.get("success"):
+                return {
+                    "success": False,
+                    "error": (
+                        "Failed to verify existing WordPress articles before sync: "
+                        + (youtube_ids_result.get("error") or "Unknown error")
+                    ),
+                    "http_status": youtube_ids_result.get(
+                        "http_status", status.HTTP_502_BAD_GATEWAY
+                    ),
+                    "raw_response": youtube_ids_result.get("raw_response"),
+                }
+            existing_on_wp = youtube_id in (youtube_ids_result.get("youtube_ids") or set())
 
         if existing_on_wp:
             # Already on WordPress: skip. We don't create or update; content is already there.
