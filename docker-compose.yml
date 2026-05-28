@@ -140,6 +140,7 @@ services:
     environment:
       - DATABASE_URL
       - YOUTUBE_COOKIES_PATH
+      - APP_LOG_PATH=${APP_LOG_PATH:-/tmp/fr-mirror-app.log}
       # Set UVICORN_RELOAD=1 in .env for local dev only; prod should leave unset or 0
       - UVICORN_RELOAD=${UVICORN_RELOAD:-0}
     env_file:

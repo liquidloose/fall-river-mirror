@@ -45,9 +45,8 @@ from app.routers import (
     extractions,
 )
 
-# Console always; file defaults to repo-local logs/app/app.log
-_project_root = os.path.dirname(os.path.dirname(__file__))
-_default_log_file = os.path.join(_project_root, "logs", "app", "app.log")
+# Console always; default file log stays outside /code to avoid reload churn.
+_default_log_file = "/tmp/fr-mirror-app.log"
 _log_file = os.environ.get("APP_LOG_PATH", _default_log_file)
 _handlers = [logging.StreamHandler()]
 try:

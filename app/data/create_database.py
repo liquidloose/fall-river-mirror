@@ -109,6 +109,99 @@ class Database:
                 f"Failed to add column '{column_name}' to '{table_name}': {str(e)}"
             )
 
+    def _get_table_columns(self, table_name: str) -> List[Tuple]:
+        """Return PRAGMA table_info rows for a table, empty list when unavailable."""
+        try:
+            self.cursor.execute(f"PRAGMA table_info({table_name})")
+            return self.cursor.fetchall() or []
+        except Exception:
+            return []
+
+    def _migrate_fact_check_removals_if_legacy(self) -> None:
+        """Rebuild ``fact_check_removals`` when legacy constraints/columns remain.
+
+        Legacy DBs may carry the old schema where ``removal_reason`` exists and/or
+        ``original_anchor_text`` is NOT NULL. Current audit writes use
+        ``audit_note`` and allow NULL originals for ``kind='added'`` rows.
+        """
+        columns = self._get_table_columns("fact_check_removals")
+        if not columns:
+            return
+
+        col_index = {row[1]: row for row in columns}
+        has_legacy_removal_reason = "removal_reason" in col_index
+        original_anchor_notnull = bool(col_index.get("original_anchor_text", [None, None, None, 0])[3])
+        if not has_legacy_removal_reason and not original_anchor_notnull:
+            return
+
+        self.logger.info(
+            "Migrating legacy fact_check_removals schema "
+            "(has_removal_reason=%s original_anchor_text_notnull=%s)",
+            has_legacy_removal_reason,
+            original_anchor_notnull,
+        )
+
+        legacy_table = "fact_check_removals_legacy"
+        self.cursor.execute(f"DROP TABLE IF EXISTS {legacy_table}")
+        self.cursor.execute(f"ALTER TABLE fact_check_removals RENAME TO {legacy_table}")
+
+        self._create_table(
+            "fact_check_removals",
+            "id INTEGER PRIMARY KEY AUTOINCREMENT, "
+            "youtube_id TEXT NOT NULL, "
+            "run_id TEXT NOT NULL, "
+            "kind TEXT NOT NULL DEFAULT 'removed', "
+            "anchor_id INTEGER, "
+            "original_timestamp_string TEXT, "
+            "original_anchor_headline TEXT, "
+            "original_anchor_text TEXT, "
+            "audit_note TEXT, "
+            "extractor_name TEXT NOT NULL, "
+            "model TEXT, "
+            "created_at TEXT NOT NULL, "
+            "FOREIGN KEY(youtube_id) REFERENCES transcripts(youtube_id), "
+            "FOREIGN KEY(anchor_id) REFERENCES anchors(id)",
+        )
+
+        legacy_cols = {row[1] for row in self._get_table_columns(legacy_table)}
+        run_id_expr = "run_id" if "run_id" in legacy_cols else "''"
+        kind_expr = "kind" if "kind" in legacy_cols else "'removed'"
+        anchor_id_expr = "anchor_id" if "anchor_id" in legacy_cols else "NULL"
+        original_timestamp_expr = (
+            "original_timestamp_string" if "original_timestamp_string" in legacy_cols else "NULL"
+        )
+        original_headline_expr = (
+            "original_anchor_headline" if "original_anchor_headline" in legacy_cols else "NULL"
+        )
+        original_text_expr = "original_anchor_text" if "original_anchor_text" in legacy_cols else "NULL"
+        if "audit_note" in legacy_cols and "removal_reason" in legacy_cols:
+            audit_note_expr = "COALESCE(audit_note, removal_reason)"
+        elif "audit_note" in legacy_cols:
+            audit_note_expr = "audit_note"
+        elif "removal_reason" in legacy_cols:
+            audit_note_expr = "removal_reason"
+        else:
+            audit_note_expr = "NULL"
+        model_expr = "model" if "model" in legacy_cols else "NULL"
+        created_at_expr = "created_at" if "created_at" in legacy_cols else "datetime('now')"
+
+        self.cursor.execute(
+            "INSERT INTO fact_check_removals ("
+            "youtube_id, run_id, kind, anchor_id, "
+            "original_timestamp_string, original_anchor_headline, "
+            "original_anchor_text, audit_note, extractor_name, model, created_at"
+            ") "
+            "SELECT "
+            f"youtube_id, {run_id_expr}, {kind_expr}, {anchor_id_expr}, "
+            f"{original_timestamp_expr}, {original_headline_expr}, "
+            f"{original_text_expr}, {audit_note_expr}, extractor_name, "
+            f"{model_expr}, {created_at_expr} "
+            f"FROM {legacy_table}"
+        )
+        self.cursor.execute(f"DROP TABLE {legacy_table}")
+        self.conn.commit()
+        self.logger.info("fact_check_removals legacy migration completed")
+
     def _backfill_article_view_counts(self) -> None:
         """
         Backfill view_count for existing articles by matching youtube_id with transcripts.
@@ -355,6 +448,7 @@ class Database:
             "FOREIGN KEY(youtube_id) REFERENCES transcripts(youtube_id), "
             "FOREIGN KEY(anchor_id) REFERENCES anchors(id)",
         )
+        self._migrate_fact_check_removals_if_legacy()
         # Migration guard: older DBs may have a partial
         # fact_check_removals schema from the pre-audit-expansion era.
         # Ensure every column used by AnchorManager inserts exists.

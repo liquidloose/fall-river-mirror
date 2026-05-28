@@ -1,9 +1,6 @@
 [
   {
-    "type": "sqlite",
-    "path": "/home/ron/development/rivedge-wordpress/06-research-mirror/app/data/fr-mirror.db"
-  },
-  {
+    "name": "fr-mirror-local",
     "type": "sqlite",
     "path": "/home/ron/development/rivedge-wordpress/04-fr-mirror/app/data/fr-mirror.db"
   }

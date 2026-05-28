@@ -134,7 +134,10 @@ def test_pipeline_run_routes_explicit_models() -> None:
 
     assert response.status_code == 200
     payload = response.json()
-    assert payload["model_selection"]["journalist_text_model"] == TextModel.CLAUDE_HAIKU_4_5.value
+    assert (
+        payload["model_selection"]["journalist_text_model"]
+        == TextModel.CLAUDE_HAIKU_4_5.value
+    )
     assert payload["model_selection"]["image_model"] == ImageModel.GROK.value
     assert stub.write_call["text_model"] == TextModel.CLAUDE_HAIKU_4_5
     assert stub.image_call["model"] == ImageModel.GROK
@@ -142,33 +145,51 @@ def test_pipeline_run_routes_explicit_models() -> None:
     assert stub.extract_call["text_model"] == TextModel.GEMINI_2_5_FLASH
 
 
-def test_pipeline_run_rejects_legacy_journalist_alias() -> None:
-    """Legacy text_model param is rejected with a clear error."""
+def test_pipeline_run_uses_default_models_and_queue_mode() -> None:
+    """Pipeline defaults match the documented endpoint contract."""
     stub = StubPipelineService()
     with _build_test_client(stub) as client:
         response = client.post(
             "/pipeline/run",
             params={
                 "amount": 1,
-                "text_model": TextModel.CLAUDE_HAIKU_4_5.value,
+                "sync_to_wordpress": False,
             },
         )
     _clear_dependency_overrides()
 
-    assert response.status_code == 400
+    assert response.status_code == 200
+    payload = response.json()
+    assert payload["queue_mode"] == "Use Whisper"
+    assert (
+        payload["model_selection"]["extractor_text_model"]
+        == TextModel.GEMINI_2_5_PRO.value
+    )
+    assert (
+        payload["model_selection"]["journalist_text_model"]
+        == TextModel.GEMINI_3_5_FLASH.value
+    )
+    assert (
+        payload["model_selection"]["snippet_text_model"]
+        == TextModel.GEMINI_2_5_FLASH.value
+    )
+    assert payload["model_selection"]["image_model"] == ImageModel.GPT_IMAGE_1.value
+    assert stub.extract_call["text_model"] == TextModel.GEMINI_2_5_PRO
+    assert stub.write_call["text_model"] == TextModel.GEMINI_3_5_FLASH
+    assert stub.image_call["model"] == ImageModel.GPT_IMAGE_1
+    assert stub.image_call["snippet_text_model"] == TextModel.GEMINI_2_5_FLASH
 
 
-def test_pipeline_run_rejects_legacy_image_alias() -> None:
-    """Legacy model param is rejected with a clear error."""
+def test_pipeline_openapi_hides_legacy_model_alias_params() -> None:
+    """OpenAPI no longer documents legacy model aliases."""
     stub = StubPipelineService()
     with _build_test_client(stub) as client:
-        response = client.post(
-            "/pipeline/run",
-            params={
-                "amount": 1,
-                "model": ImageModel.GROK.value,
-            },
-        )
+        response = client.get("/openapi.json")
     _clear_dependency_overrides()
 
-    assert response.status_code == 400
+    assert response.status_code == 200
+    openapi = response.json()
+    params = openapi["paths"]["/pipeline/run"]["post"]["parameters"]
+    param_names = {param["name"] for param in params}
+    assert "text_model" not in param_names
+    assert "model" not in param_names

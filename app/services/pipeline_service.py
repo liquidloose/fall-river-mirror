@@ -1375,6 +1375,22 @@ class PipelineService:
             if _kind in audit_inserted:
                 audit_inserted[_kind] += 1
         audit_inserted["total"] = sum(audit_inserted.values())
+        anchors_with_fact_check_note = sum(
+            1
+            for _anchor in (data.get("factual_anchor_items") or [])
+            if isinstance(_anchor, dict)
+            and isinstance(_anchor.get("fact_check_note"), str)
+            and _anchor.get("fact_check_note").strip()
+        )
+        if audit_inserted["total"] == 0 and anchors_with_fact_check_note > 0:
+            logger.warning(
+                "Pipeline extract_anchors: yt=%s run_id=%s has %d non-empty "
+                "fact_check_note anchor(s) but empty fact_check_audit; "
+                "fact-check likely ran, but no audit rows will be persisted",
+                youtube_id,
+                run_id,
+                anchors_with_fact_check_note,
+            )
         logger.info(
             "Pipeline extract_anchors: complete yt=%s extractor=%s run_id=%s "
             "anchors=%d bullets=%d audit_removed=%d audit_corrected=%d audit_added=%d",
@@ -1398,5 +1414,6 @@ class PipelineService:
             "anchors_inserted": anchors_inserted,
             "bullets_inserted": bullets_inserted,
             "audit_inserted": audit_inserted,
+            "anchors_with_fact_check_note": anchors_with_fact_check_note,
             "primary_committee": data.get("primary_committee"),
         }

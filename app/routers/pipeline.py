@@ -4,7 +4,7 @@ import logging
 import os
 from typing import Any, Dict, Optional
 
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, Query, status
 
 from app.dependencies import AppDependencies
 from app.data.enum_classes import (
@@ -27,19 +27,49 @@ logger = logging.getLogger(__name__)
 async def run_data_pipeline(
     amount: int,
     channel_url: Optional[str] = None,
-    queue_mode: PipelineQueueMode = PipelineQueueMode.SKIP_WHISPER,
-    auto_build: bool = True,
+    queue_mode: PipelineQueueMode = PipelineQueueMode.USE_WHISPER,
+    auto_build: bool = Query(
+        default=True,
+        description=(
+            "Top-up behavior for transcript fetch when queue is short. "
+            "When true and queue_mode is 'Use Whisper', the pipeline auto-builds "
+            "missing queue items up to `amount` before fetching transcripts. "
+            "When false, only already-queued items are fetched."
+        ),
+    ),
     journalist: Journalist = Journalist.FR_J1,
     tone: Tone = Tone.PROFESSIONAL,
     article_type: ArticleType = ArticleType.NEWS,
     extractor: Extractor = Extractor.GEMMA_NYE,
     artist: Artist = Artist.FRA1,
-    extractor_text_model: Optional[TextModel] = None,
-    journalist_text_model: Optional[TextModel] = None,
-    image_model: Optional[ImageModel] = None,
-    snippet_text_model: Optional[TextModel] = None,
-    text_model: Optional[TextModel] = None,
-    model: Optional[ImageModel] = None,
+    extractor_text_model: Optional[TextModel] = Query(
+        default=TextModel.GEMINI_2_5_PRO,
+        description=(
+            "Text model used by the extractor stage when converting transcripts "
+            "into anchor envelopes. Must resolve to a Gemini model for this stage."
+        ),
+    ),
+    journalist_text_model: Optional[TextModel] = Query(
+        default=TextModel.GEMINI_3_5_FLASH,
+        description=(
+            "Text model used by the journalist stage to write article body content "
+            "from extracted anchors."
+        ),
+    ),
+    image_model: Optional[ImageModel] = Query(
+        default=ImageModel.GPT_IMAGE_1,
+        description=(
+            "Image generation model used for article cover images in the "
+            "image-generation stage."
+        ),
+    ),
+    snippet_text_model: Optional[TextModel] = Query(
+        default=TextModel.GEMINI_2_5_FLASH,
+        description=(
+            "Text model used to condense the article context into an image prompt "
+            "snippet before calling the image model."
+        ),
+    ),
     sync_to_wordpress: bool = True,
     deps: AppDependencies = Depends(AppDependencies),
 ) -> Dict[str, Any]:
@@ -56,9 +86,9 @@ async def run_data_pipeline(
     - **channel_url**: YouTube channel to source new videos from. Falls back
       to the ``DEFAULT_YOUTUBE_CHANNEL_URL`` env var when omitted.
     - **queue_mode**:
-      - ``Use Whisper`` — build the queue from the channel, then fetch
+      - ``Use Whisper`` *(default)* — build the queue from the channel, then fetch
         transcripts; use Whisper for videos that lack native captions.
-      - ``Skip Whisper`` *(default)* — do **not** build the queue from the
+      - ``Skip Whisper`` — do **not** build the queue from the
         channel, and only process videos that already have captions
         (Whisper-needed items are excluded for this run).
     - **auto_build**: Top-up safety net for the transcript-fetch stage. When
@@ -83,7 +113,9 @@ async def run_data_pipeline(
     """
     logger.info(
         "Pipeline run started: amount=%s queue_mode=%s sync_to_wordpress=%s",
-        amount, queue_mode.value, sync_to_wordpress,
+        amount,
+        queue_mode.value,
+        sync_to_wordpress,
     )
     if not deps.database:
         raise HTTPException(
@@ -101,22 +133,6 @@ async def run_data_pipeline(
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="Pipeline service not available",
-        )
-    if text_model is not None:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail=(
-                "The query param 'text_model' is no longer supported on /pipeline/run. "
-                "Use 'journalist_text_model' instead."
-            ),
-        )
-    if model is not None:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail=(
-                "The query param 'model' is no longer supported on /pipeline/run. "
-                "Use 'image_model' instead."
-            ),
         )
     try:
         resolve_gemini_text_model(
@@ -164,7 +180,10 @@ async def run_data_pipeline(
     def log_step_outcome(step_name: str, result: Optional[Dict[str, Any]]) -> None:
         """Emit a compact, consistent log line for each pipeline step outcome."""
         if result is None:
-            logger.info("Pipeline step outcome: step=%s status=unknown message=no-result", step_name)
+            logger.info(
+                "Pipeline step outcome: step=%s status=unknown message=no-result",
+                step_name,
+            )
             return
 
         status_value = result.get("success")
@@ -212,11 +231,17 @@ async def run_data_pipeline(
         try:
             on_wp_ids = deps.wordpress_sync_service.get_article_youtube_ids()
         except Exception as e:
-            logger.warning("Pipeline: get_article_youtube_ids failed (proceeding with empty skip set): %s", e)
+            logger.warning(
+                "Pipeline: get_article_youtube_ids failed (proceeding with empty skip set): %s",
+                e,
+            )
 
     skip_queue_build = queue_mode == PipelineQueueMode.SKIP_WHISPER
     if skip_queue_build:
-        aggregated["queue_build"] = {"skipped": True, "message": "Queue build skipped (Skip Whisper mode)"}
+        aggregated["queue_build"] = {
+            "skipped": True,
+            "message": "Queue build skipped (Skip Whisper mode)",
+        }
         log_step_outcome("queue_build", aggregated["queue_build"])
     else:
         try:
@@ -236,7 +261,11 @@ async def run_data_pipeline(
     include_whisper_items = queue_mode == PipelineQueueMode.USE_WHISPER
     try:
         aggregated["transcript_fetch"] = await pipeline.run_bulk_fetch_transcripts(
-            amount, auto_build_for_fetch, channel_url, skip_youtube_ids_on_wp=on_wp_ids, include_whisper_items=include_whisper_items
+            amount,
+            auto_build_for_fetch,
+            channel_url,
+            skip_youtube_ids_on_wp=on_wp_ids,
+            include_whisper_items=include_whisper_items,
         )
         log_step_outcome("transcript_fetch", aggregated["transcript_fetch"])
     except Exception as e:
@@ -315,7 +344,9 @@ async def run_data_pipeline(
     if sync_to_wordpress and deps.database:
         wp_svc = deps.wordpress_sync_service
         if wp_svc:
-            image_results = (aggregated.get("image_generate") or {}).get("results") or []
+            image_results = (aggregated.get("image_generate") or {}).get(
+                "results"
+            ) or []
             article_ids = [
                 r["article_id"]
                 for r in image_results
@@ -327,7 +358,9 @@ async def run_data_pipeline(
             errors = []
             try:
                 if not article_ids:
-                    logger.info("Pipeline WordPress sync skipped: no newly imaged articles to sync")
+                    logger.info(
+                        "Pipeline WordPress sync skipped: no newly imaged articles to sync"
+                    )
                 for aid in article_ids:
                     try:
                         result = wp_svc.sync_one_article(aid)
@@ -339,11 +372,20 @@ async def run_data_pipeline(
                             failed += 1
                             err_msg = result.get("error", "Unknown error")
                             errors.append({"article_id": aid, "error": err_msg})
-                            logger.warning("Pipeline WordPress sync failed for article %s: %s", aid, err_msg)
+                            logger.warning(
+                                "Pipeline WordPress sync failed for article %s: %s",
+                                aid,
+                                err_msg,
+                            )
                     except Exception as e:
                         failed += 1
                         errors.append({"article_id": aid, "error": str(e)})
-                        logger.error("Pipeline WordPress sync raised for article %s: %s", aid, e, exc_info=True)
+                        logger.error(
+                            "Pipeline WordPress sync raised for article %s: %s",
+                            aid,
+                            e,
+                            exc_info=True,
+                        )
                 aggregated["wordpress_sync"] = {
                     "synced": synced,
                     "skipped_existing": skipped_existing,
@@ -363,7 +405,10 @@ async def run_data_pipeline(
                 logger.error("Pipeline WordPress sync failed: %s", e, exc_info=True)
                 log_step_outcome("wordpress_sync", aggregated["wordpress_sync"])
     else:
-        aggregated["wordpress_sync"] = {"skipped": True, "message": "WordPress sync skipped"}
+        aggregated["wordpress_sync"] = {
+            "skipped": True,
+            "message": "WordPress sync skipped",
+        }
         log_step_outcome("wordpress_sync", aggregated["wordpress_sync"])
 
     transcript_result = aggregated.get("transcript_fetch") or {}
