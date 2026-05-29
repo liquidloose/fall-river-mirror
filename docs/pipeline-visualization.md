@@ -211,7 +211,7 @@ flowchart LR
     FAI[factual_anchor_items&lbrack;&rbrack;<br/>timestamp_string, headline, text,<br/>has_official_vote, roll_call_type,<br/>fact_check_note caveat<br/>"empty when confident; appended into text_to_embed when populated",<br/>timestamp_seconds, text_to_embed<br/>"post-pass-4 spelling-clean"]
     ESB[executive_summary_bullets&lbrack;&rbrack;<br/>5–8 strings, post-pass-4 spelling-clean]
     PC[primary_committee<br/>Committee enum value]
-    FCA["fact_check_audit&lbrack;&rbrack;<br/>kind (removed|corrected|added),<br/>originals (null for added),<br/>corrected_anchor_text (null for removed),<br/>audit_note (empty when confident)"]
+    FCA["fact_check_audit&lbrack;&rbrack;<br/>kind (removed|corrected|added|unresolved),<br/>originals (null for added),<br/>corrected_anchor_text (null for removed),<br/>audit_note (REQUIRED issue description)"]
     SCA["spelling_corrections&lbrack;&rbrack;<br/>target_kind (factual_anchor|executive_summary),<br/>corrected_anchor_text (join key for anchor_id),<br/>original_term, corrected_term,<br/>audit_note (empty when confident)"]
   end
 
@@ -220,13 +220,17 @@ flowchart LR
   PC -.->|currently unused on insert| AT
   FCA --> FCR[(fact_check_removals)]
   SCA --> SC[(spelling_corrections)]
-  AT -.->|anchor_id FK for kind=corrected/added| FCR
+  AM[AnchorManager rejections<br/>rejected_anchor / rejected_audit] --> FCR
+  AT -.->|anchor_id FK for kind=corrected/added/unresolved| FCR
   AT -.->|anchor_id FK for every spelling fix| SC
+  FCR -.->|kind=unresolved audit_note| EN[AI Editor's note on article]
 
   AT -. embedded_at NULL .-> VS[future vector store]:::future
 
   classDef future fill:#f2f2f2,color:#666,stroke-dasharray: 4 4
 ```
+
+**`fact_check_removals` kinds**: LLM decisions `removed` (fabricated, anchor not saved), `corrected` (details fixed), `added` (milestone the draft missed), and `unresolved` (kept the anchor but the transcript could neither confirm nor refute it). Every LLM row carries a REQUIRED `audit_note` describing the issue; for `unresolved` that note is also appended to the published article as an "AI Editor's note" and mirrored onto the kept anchor's `fact_check_note` for RAG. Two system-synthesized kinds — `rejected_anchor` (empty anchor/bullet text) and `rejected_audit` (malformed audit entry: unknown kind, missing field, orphan join key, or empty `audit_note`) — are written by `AnchorManager` so persistence failures show up in analysis instead of disappearing into logs.
 
 **`anchors` columns written** (`app/data/anchor_manager.py`):
 `youtube_id, run_id, doc_type, timestamp_string, timestamp_seconds, anchor_headline, anchor_text, has_official_vote, roll_call_type, fact_check_note, text_to_embed, extractor_name, model, created_at`. Spelling in `anchor_headline` / `anchor_text` is canonical-clean (pass-4 output).
@@ -244,7 +248,7 @@ flowchart LR
 | --- | --- | --- |
 | Queue build | YouTube Data API, `transcripts` | `video_queue` |
 | Transcript fetch | `video_queue`, YouTube captions / Whisper | `transcripts`; DELETE `video_queue` |
-| Article write | `transcripts`, `articles`, `journalists` | `articles` |
+| Article write | `transcripts`, `articles`, `journalists`, `anchors`, `fact_check_removals` (unresolved notes for the "AI Editor's note") | `articles` |
 | Bullet points | `articles` | `articles.bullet_points` |
 | Image batch | `articles`, `art` | `art` (binary PNG) |
 | WordPress sync | `articles`, `transcripts`, `art`, `journalists` | WordPress REST (external) |

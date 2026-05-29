@@ -413,35 +413,40 @@ class Database:
         self._add_column_if_not_exists("anchors", "fact_check_note", "TEXT")
 
         # Fact-check audit log. One row per draft anchor the fact-check pass
-        # removed, corrected, or added — distinguished by `kind`. Lives in
-        # its own table (never alongside `anchors`) so the canonical
-        # RAG/vector-store source stays clean of audit metadata. Correlated
-        # with the corresponding anchor run via `run_id` (shared with
-        # `anchors.run_id`); rows for `kind in ('corrected','added')` also
-        # carry `anchor_id` linking to the resulting `anchors.id` row.
+        # removed, corrected, added, or left unresolved — distinguished by
+        # `kind`. Lives in its own table (never alongside `anchors`) so the
+        # canonical RAG/vector-store source stays clean of audit metadata.
+        # Correlated with the corresponding anchor run via `run_id` (shared
+        # with `anchors.run_id`); rows for
+        # `kind in ('corrected','added','unresolved')` also carry `anchor_id`
+        # linking to the resulting `anchors.id` row.
         #
         # Table name kept as `fact_check_removals` to avoid migration churn
         # — the scope is broader than removals now (every fact-check
         # decision audit row lives here).
         #
-        # `audit_note` is an UNCERTAINTY FLAG, not a discrepancy log:
-        # populated only when the model wants to flag self-doubt about the
-        # fact-check decision (e.g. "removal might be wrong; ambiguous
-        # transcript section"). NULL/empty when confident. Bulk error
-        # analysis works by inspecting the structural fields (`kind`,
-        # `original_*`, joined `anchors.anchor_text` via `anchor_id`); the
-        # `audit_note` column is for human-reviewer flags only.
+        # `audit_note` is a REQUIRED DISCREPANCY LOG for LLM-emitted kinds:
+        # it describes what was wrong, missing, or unverifiable about the
+        # draft anchor. For `kind='unresolved'` that note is also surfaced to
+        # readers as an "AI Editor's note" on the published article. Bulk
+        # error analysis inspects the structural fields (`kind`, `original_*`,
+        # joined `anchors.anchor_text` via `anchor_id`) alongside `audit_note`.
+        #
+        # AnchorManager additionally writes two system-synthesized kinds the
+        # LLM never emits — `rejected_anchor` (empty anchor/bullet text) and
+        # `rejected_audit` (malformed audit entry) — whose `audit_note` holds
+        # the rejection reason. A rising count flags prompt/context drift.
         self._create_table(
             "fact_check_removals",
             "id INTEGER PRIMARY KEY AUTOINCREMENT, "
             "youtube_id TEXT NOT NULL, "  # FK to transcripts.youtube_id
             "run_id TEXT NOT NULL, "  # same UUID as the corresponding anchors.run_id
-            "kind TEXT NOT NULL DEFAULT 'removed', "  # 'removed' | 'corrected' | 'added'
-            "anchor_id INTEGER, "  # FK to anchors.id; NULL only for kind='removed'
+            "kind TEXT NOT NULL DEFAULT 'removed', "  # LLM decisions: 'removed' | 'corrected' | 'added' | 'unresolved'; system rejections: 'rejected_anchor' | 'rejected_audit'
+            "anchor_id INTEGER, "  # FK to anchors.id; NULL for kind='removed' and the rejected_* kinds
             "original_timestamp_string TEXT, "  # whatever the draft anchor claimed; NULL for kind='added'
             "original_anchor_headline TEXT, "  # NULL for kind='added'
             "original_anchor_text TEXT, "  # NULL for kind='added'
-            "audit_note TEXT, "  # uncertainty caveat about the fact-check decision; NULL/empty when confident
+            "audit_note TEXT, "  # REQUIRED issue description for LLM kinds (surfaced to readers for 'unresolved'); system-generated rejection reason for rejected_* kinds
             "extractor_name TEXT NOT NULL, "
             "model TEXT, "  # provider model id of the fact-check pass
             "created_at TEXT NOT NULL, "

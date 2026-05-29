@@ -20,6 +20,7 @@ from app.data.enum_classes import (
 from app.agent_kit.agents.journalists.aurelius_stone import AureliusStone
 from app.agent_kit.agents.journalists.base_journalist import ArticleGenerationError
 from app.agent_kit.agents.journalists.fr_j1 import FRJ1
+from app.agent_kit.utility_classes.video_jump_links import repair_video_jump_links
 
 router = APIRouter(tags=["articles"])
 logger = logging.getLogger(__name__)
@@ -411,11 +412,15 @@ def generate_article_from_strings(
         journalist_id = journalist_data["id"]
         transcript_id = transcript_data[0]
         committee = transcript_data[1]
+        article_content = pipeline.append_ai_editors_note(
+            repair_video_jump_links(article_result["content"]),
+            pipeline.get_unresolved_audit_notes(youtube_id),
+        )
         new_article_id = db.add_article(
             committee=committee,
             youtube_id=youtube_id,
             journalist_id=journalist_id,
-            content=article_result["content"],
+            content=article_content,
             transcript_id=transcript_id,
             date=datetime.now().isoformat(),
             article_type=article_type.value,
@@ -444,7 +449,7 @@ def generate_article_from_strings(
             "article_id": new_article_id,
             "context": full_context,
             "title": article_result.get("title", "Untitled Article") if isinstance(article_result, dict) else "Untitled Article",
-            "content": article_result.get("content", article_result) if isinstance(article_result, dict) else article_result,
+            "content": article_content,
             "transcript_id": transcript_id,
             "youtube_id": youtube_id,
             "anchor_context_length": len(anchor_context),
@@ -476,6 +481,9 @@ def generate_article(
 ) -> Dict[str, Any]:
     """Generate an article from anchors without writing to the database (preview)."""
     try:
+        pipeline = deps.pipeline_service
+        if not pipeline:
+            raise HTTPException(status_code=500, detail="Pipeline service not available")
         transcript_data, anchor_context, summary_bullets = _build_anchor_context_for_youtube_id(
             deps, youtube_id
         )
@@ -510,6 +518,14 @@ def generate_article(
             provider=llm_provider,
             model=llm_model,
         )
+        article_content = (
+            pipeline.append_ai_editors_note(
+                repair_video_jump_links(article_result["content"]),
+                pipeline.get_unresolved_audit_notes(youtube_id),
+            )
+            if isinstance(article_result, dict)
+            else article_result
+        )
         logger.info(
             "Article generated successfully by %s using youtube_id %s",
             journalist_instance.NAME,
@@ -519,7 +535,7 @@ def generate_article(
             "journalist": journalist_instance.NAME,
             "context": full_context,
             "article_title": article_result.get("title", "Untitled Article") if isinstance(article_result, dict) else "Untitled Article",
-            "article_content": article_result.get("content", article_result) if isinstance(article_result, dict) else article_result,
+            "article_content": article_content,
             "transcript_id": transcript_data[0],
             "youtube_id": youtube_id,
             "anchor_context_length": len(anchor_context),

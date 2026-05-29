@@ -67,6 +67,8 @@ from app.data.enum_classes import (
     resolve_gemini_text_model,
     resolve_text_model,
 )
+from app.agent_kit.utility_classes.prompt_utilities import format_bracket_timestamp
+from app.agent_kit.utility_classes.video_jump_links import repair_video_jump_links
 from app.data.journalist_manager import JournalistManager
 from app.data.video_queue_manager import VideoQueueManager
 from app.services.image_service import ImageService
@@ -240,19 +242,22 @@ class PipelineService:
                 executive_bullets.append(text)
                 continue
             prefix_parts: list[str] = []
-            if timestamp:
-                prefix_parts.append(f"[{timestamp}]")
+            effective_seconds = (
+                int(timestamp_seconds)
+                if timestamp_seconds is not None
+                else self._timestamp_to_seconds(timestamp)
+            )
+            if effective_seconds is not None:
+                prefix_parts.append(format_bracket_timestamp(effective_seconds))
+            elif timestamp:
+                label = timestamp if str(timestamp).startswith("[") else f"[{timestamp}]"
+                prefix_parts.append(label)
             if headline:
                 prefix_parts.append(headline)
             prefix = " ".join(prefix_parts).strip()
             vote_suffix = (
                 f"(official_vote={'yes' if bool(has_official_vote) else 'no'}, "
                 f"roll_call_type={roll_call_type or 'none'})"
-            )
-            effective_seconds = (
-                int(timestamp_seconds)
-                if timestamp_seconds is not None
-                else self._timestamp_to_seconds(timestamp)
             )
             source_url = self._build_youtube_timestamp_url(youtube_id, effective_seconds)
             source_suffix = f" [source_url={source_url}]" if source_url else ""
@@ -292,6 +297,67 @@ class PipelineService:
         )
         rows = cursor.fetchall()
         return [(row[0] or "").strip() for row in rows if (row[0] or "").strip()]
+
+    def get_unresolved_audit_notes(self, youtube_id: str) -> List[str]:
+        """Return ``audit_note`` text for ``unresolved`` fact-check rows.
+
+        Pulls the latest anchor run for the video and returns every non-empty
+        ``audit_note`` from ``fact_check_removals`` rows with
+        ``kind='unresolved'`` — the caveats the fact-check pass could neither
+        confirm nor refute. These become the "AI Editor's note" appended to
+        the published article. Returns an empty list when there is no run or
+        no unresolved rows.
+        """
+        db = self._database
+        if not db:
+            return []
+        run_id = self._get_latest_anchor_run_id(youtube_id)
+        if not run_id:
+            return []
+        cursor = db.cursor
+        cursor.execute(
+            """
+            SELECT audit_note
+            FROM fact_check_removals
+            WHERE youtube_id = ? AND run_id = ? AND kind = 'unresolved'
+              AND audit_note IS NOT NULL
+            ORDER BY id ASC
+            """,
+            (youtube_id, run_id),
+        )
+        rows = cursor.fetchall()
+        return [(row[0] or "").strip() for row in rows if (row[0] or "").strip()]
+
+    @staticmethod
+    def append_ai_editors_note(html_content: str, notes: List[str]) -> str:
+        """Append an "AI Editor's note" section listing unresolved caveats.
+
+        ``notes`` are the ``audit_note`` strings for ``unresolved`` fact-check
+        rows. When empty, ``html_content`` is returned unchanged. Otherwise a
+        ``<section class="ai-editors-note">`` block (heading plus a bullet per
+        note) is appended; if the content is wrapped in a closing
+        ``</article>`` tag the section is inserted just before it so it stays
+        inside the semantic article, otherwise it is appended at the end.
+        """
+        clean_notes = [n.strip() for n in notes if isinstance(n, str) and n.strip()]
+        if not clean_notes:
+            return html_content
+        items = "\n".join(
+            f"    <li>{html.escape(note)}</li>" for note in clean_notes
+        )
+        section = (
+            '<section class="ai-editors-note">\n'
+            "  <h2>AI Editor's note</h2>\n"
+            "  <ul>\n"
+            f"{items}\n"
+            "  </ul>\n"
+            "</section>"
+        )
+        closing_tag = "</article>"
+        if closing_tag in html_content:
+            head, _, tail = html_content.rpartition(closing_tag)
+            return f"{head}{section}\n{closing_tag}{tail}"
+        return f"{html_content}\n{section}"
 
     async def run_build_queue(
         self,
@@ -798,11 +864,15 @@ class PipelineService:
                     provider=llm_provider,
                     model=llm_model,
                 )
+                article_content = self.append_ai_editors_note(
+                    repair_video_jump_links(article_result["content"]),
+                    self.get_unresolved_audit_notes(youtube_id),
+                )
                 new_id = db.add_article(
                     committee=committee,
                     youtube_id=youtube_id,
                     journalist_id=journalist_id,
-                    content=article_result["content"],
+                    content=article_content,
                     transcript_id=transcript_id,
                     date=datetime.now().isoformat(),
                     article_type=article_type.value,
@@ -1207,10 +1277,14 @@ class PipelineService:
               the ``anchors`` table. Excludes summary-bullet rows.
             - ``bullets_inserted`` (``int``): Executive-summary bullet rows
               written to the ``anchors`` table (one row per bullet).
-            - ``audit_inserted`` (``dict``): Per-kind audit-row counts written
-              to ``fact_check_removals``, with keys ``removed``,
-              ``corrected``, ``added``, and ``total``. All zeros when the
-              fact-check pass left every draft unchanged.
+            - ``audit_inserted`` (``dict``): Per-kind audit-row counts derived
+              from the envelope, with keys ``removed``, ``corrected``,
+              ``added``, ``unresolved``, and ``total``. The keys
+              ``rejected_anchor`` and ``rejected_audit`` are also present but
+              always 0 here (those rows are synthesized inside
+              :class:`~app.data.anchor_manager.AnchorManager` and reported via
+              its log, not the envelope). All zeros when the fact-check pass
+              left every draft unchanged.
             - ``primary_committee`` (``str``, optional): Committee enum value
               the extractor classified the meeting under.
             - ``error`` (``str``, optional): Present when ``success`` is
@@ -1369,12 +1443,19 @@ class PipelineService:
         # since those skips are warning-logged at insert time and represent
         # malformed model output, not normal flow.
         audit_entries = data.get("fact_check_audit") or []
-        audit_inserted = {"removed": 0, "corrected": 0, "added": 0}
+        audit_inserted = {"removed": 0, "corrected": 0, "added": 0, "unresolved": 0}
         for _entry in audit_entries:
             _kind = _entry.get("kind") if isinstance(_entry, dict) else None
             if _kind in audit_inserted:
                 audit_inserted[_kind] += 1
         audit_inserted["total"] = sum(audit_inserted.values())
+        # `rejected_anchor` / `rejected_audit` are synthesized inside
+        # AnchorManager when persistence rejects malformed output; they are
+        # never present in the envelope, so they are reported as 0 here and
+        # surfaced through AnchorManager's INFO log instead. Keys are included
+        # for a stable response shape and excluded from `total`.
+        audit_inserted["rejected_anchor"] = 0
+        audit_inserted["rejected_audit"] = 0
         anchors_with_fact_check_note = sum(
             1
             for _anchor in (data.get("factual_anchor_items") or [])
@@ -1393,7 +1474,8 @@ class PipelineService:
             )
         logger.info(
             "Pipeline extract_anchors: complete yt=%s extractor=%s run_id=%s "
-            "anchors=%d bullets=%d audit_removed=%d audit_corrected=%d audit_added=%d",
+            "anchors=%d bullets=%d audit_removed=%d audit_corrected=%d "
+            "audit_added=%d audit_unresolved=%d",
             youtube_id,
             extractor.value,
             run_id,
@@ -1402,6 +1484,7 @@ class PipelineService:
             audit_inserted["removed"],
             audit_inserted["corrected"],
             audit_inserted["added"],
+            audit_inserted["unresolved"],
         )
         return {
             "success": True,

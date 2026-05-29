@@ -33,18 +33,26 @@ by ``doc_type``:
 FACT-CHECK AUDIT TABLE (`fact_check_removals`)
 ---------------------------------------------
 Fact-check envelopes may also carry a ``fact_check_audit`` list — every draft
-the fact-check pass removed, corrected, or added. Those rows are written to
-the ``fact_check_removals`` table (kept under that name even though the
-scope is broader than removals now) — NEVER to ``anchors`` — so the
-canonical RAG/vector-store source stays clean of audit metadata. Each row
-is correlated with its extractor run via ``run_id`` (shared with
-``anchors.run_id``); rows with ``kind in ('corrected','added')`` additionally
-carry ``anchor_id`` linking to the resulting ``anchors.id`` row. The
-``audit_note`` column is an uncertainty caveat about the fact-check
-DECISION (e.g. "removal might be wrong; ambiguous transcript section") —
-populated only when the model wants a human reviewer to look. Bulk
-error-pattern queries inspect the structural fields (``kind``, originals,
-joined ``anchor_text``); ``audit_note`` is a human-review flag only.
+the fact-check pass removed, corrected, added, or left unresolved. Those
+rows are written to the ``fact_check_removals`` table (kept under that name
+even though the scope is broader than removals now) — NEVER to ``anchors`` —
+so the canonical RAG/vector-store source stays clean of audit metadata. Each
+row is correlated with its extractor run via ``run_id`` (shared with
+``anchors.run_id``); rows with ``kind in ('corrected','added','unresolved')``
+additionally carry ``anchor_id`` linking to the resulting ``anchors.id`` row.
+The ``audit_note`` column is REQUIRED on every LLM-emitted entry and
+describes the issue found (what was wrong, missing, or unverifiable); for
+``kind='unresolved'`` that same note is later surfaced to readers as an
+"AI Editor's note". Bulk error-pattern queries inspect the structural fields
+(``kind``, originals, joined ``anchor_text``) alongside ``audit_note``.
+
+This method ALSO writes two system-synthesized kinds that the LLM never
+emits: ``rejected_anchor`` (a factual anchor or bullet was dropped for empty
+text) and ``rejected_audit`` (a ``fact_check_audit`` entry failed validation
+— unknown kind, missing required field, orphan ``corrected_anchor_text``, or
+empty ``audit_note``). Their ``audit_note`` carries a system-generated reason
+and a JSON snippet of the offending entry, so a rising rejection count is a
+direct signal of prompt/context drift. ``anchor_id`` is always NULL for these.
 
 SPELLING-CORRECTIONS AUDIT TABLE (`spelling_corrections`)
 ---------------------------------------------------------
@@ -76,6 +84,7 @@ globally unique YouTube video id), not the SQLite ``transcripts.id`` row, so
 rows survive a transcripts table rebuild without orphaning.
 """
 
+import json
 import logging
 from datetime import datetime, timezone
 from typing import Any, Dict, List, Optional
@@ -83,6 +92,39 @@ from typing import Any, Dict, List, Optional
 from .create_database import Database
 
 logger = logging.getLogger(__name__)
+
+
+def _normalize_anchor_text(text: str) -> str:
+    return " ".join(text.split())
+
+
+def _lookup_anchor_id_for_audit(
+    *,
+    kind: str,
+    entry: Dict[str, Any],
+    corrected_text: Optional[str],
+    corrected_text_to_anchor_id: Dict[str, int],
+    anchor_ids_by_index: List[Optional[int]],
+) -> Optional[int]:
+    """Resolve ``anchor_id`` for corrected / added / unresolved audit rows."""
+    if kind not in ("corrected", "unresolved", "added"):
+        return None
+    raw_idx = entry.get("factual_anchor_index")
+    if isinstance(raw_idx, int) and not isinstance(raw_idx, bool):
+        if 0 <= raw_idx < len(anchor_ids_by_index):
+            anchor_id = anchor_ids_by_index[raw_idx]
+            if anchor_id is not None:
+                return anchor_id
+    if not corrected_text:
+        return None
+    anchor_id = corrected_text_to_anchor_id.get(corrected_text)
+    if anchor_id is not None:
+        return anchor_id
+    norm = _normalize_anchor_text(corrected_text)
+    for text, candidate_id in corrected_text_to_anchor_id.items():
+        if _normalize_anchor_text(text) == norm:
+            return candidate_id
+    return None
 
 
 class AnchorManager:
@@ -97,6 +139,29 @@ class AnchorManager:
 
     def __init__(self, database: Database):
         self.database = database
+
+    def _sync_unresolved_anchor_caveat(self, anchor_id: int, audit_note: str) -> None:
+        """Copy ``audit_note`` onto the anchor when ``fact_check_note`` was left empty."""
+        cursor = self.database.cursor
+        cursor.execute(
+            "SELECT fact_check_note, text_to_embed FROM anchors WHERE id = ?",
+            (anchor_id,),
+        )
+        row = cursor.fetchone()
+        if not row:
+            return
+        existing_note, text_to_embed = row[0], row[1] or ""
+        note_empty = not existing_note or not str(existing_note).strip()
+        if note_empty:
+            cursor.execute(
+                "UPDATE anchors SET fact_check_note = ? WHERE id = ?",
+                (audit_note, anchor_id),
+            )
+        if audit_note and "| Caveat:" not in text_to_embed:
+            cursor.execute(
+                "UPDATE anchors SET text_to_embed = ? WHERE id = ?",
+                (f"{text_to_embed} | Caveat: {audit_note}", anchor_id),
+            )
 
     def insert_from_envelope(
         self,
@@ -139,7 +204,7 @@ class AnchorManager:
                                 "original_anchor_headline": "...",
                                 "original_anchor_text": "...",
                                 "corrected_anchor_text": null,
-                                "audit_note": ""
+                                "audit_note": "No corresponding event anywhere in the transcript."
                             },
                             {
                                 "kind": "corrected",
@@ -147,7 +212,7 @@ class AnchorManager:
                                 "original_anchor_headline": "...",
                                 "original_anchor_text": "...",
                                 "corrected_anchor_text": "<verbatim copy of corrected factual_anchor_items[i].anchor_text>",
-                                "audit_note": ""
+                                "audit_note": "Draft claimed a 5-4 vote; transcript records 6-3."
                             },
                             {
                                 "kind": "added",
@@ -155,7 +220,15 @@ class AnchorManager:
                                 "original_anchor_headline": null,
                                 "original_anchor_text": null,
                                 "corrected_anchor_text": "<verbatim copy of new factual_anchor_items[i].anchor_text>",
-                                "audit_note": ""
+                                "audit_note": "Transcript records a budget transfer the draft omitted."
+                            },
+                            {
+                                "kind": "unresolved",
+                                "original_timestamp_string": "00:52:40",
+                                "original_anchor_headline": "...",
+                                "original_anchor_text": "...",
+                                "corrected_anchor_text": "<verbatim copy of the kept factual_anchor_items[i].anchor_text>",
+                                "audit_note": "The vote count could not be verified; audio was unclear at this point."
                             }
                         ],
                         "spelling_corrections": [
@@ -184,19 +257,20 @@ class AnchorManager:
 
                 - ``kind='removed'`` requires non-empty
                   ``original_anchor_text``; ``anchor_id`` is left NULL.
-                - ``kind='corrected'`` requires non-empty
-                  ``original_anchor_text`` AND non-empty
-                  ``corrected_anchor_text``. ``anchor_id`` is looked up
-                  from the corrected-text -> ``anchors.id`` map captured
-                  during this call's factual-anchor insert loop.
-                - ``kind='added'`` requires non-empty
-                  ``corrected_anchor_text``; originals are stored as NULL.
-                - Unknown ``kind`` values are skipped with WARN.
-                - Corrected/added entries whose ``corrected_anchor_text``
-                  does not match any just-inserted anchor are skipped
-                  with WARN (orphan audit row guard).
-                - ``audit_note`` is stripped and stored as NULL when
-                  empty / whitespace.
+                - ``kind='corrected'`` and ``kind='unresolved'`` require
+                  non-empty ``original_anchor_text``. ``anchor_id`` is resolved
+                  via ``factual_anchor_index`` (preferred), then
+                  ``corrected_anchor_text`` exact/normalized match.
+                - ``kind='added'`` links via the same index/text lookup;
+                  originals are stored as NULL.
+                - ``audit_note`` is REQUIRED on every entry. Empty / missing
+                  notes, unknown ``kind`` values, missing required fields,
+                  and orphan ``corrected_anchor_text`` (not matching any
+                  just-inserted anchor) do NOT silently drop: each is recorded
+                  as a ``rejected_audit`` row whose ``audit_note`` explains the
+                  rejection and embeds a JSON snippet of the offending entry.
+                - Factual anchors / bullets with empty text are recorded as
+                  ``rejected_anchor`` rows (instead of being silently skipped).
 
                 ``spelling_corrections`` is present only on pass-4 spell-check
                 envelopes; entries are validated per ``target_kind``:
@@ -291,8 +365,68 @@ class AnchorManager:
         # Anything unrecognized falls back to 'none' so a malformed model
         # response can't corrupt the column with an unknown enum string.
         ALLOWED_ROLL_CALL_TYPES = {"none", "attendance", "voting"}
-        ALLOWED_AUDIT_KINDS = {"removed", "corrected", "added"}
+        # LLM-emitted fact-check decisions. `unresolved` keeps the anchor but
+        # records that the transcript could neither confirm nor refute it.
+        ALLOWED_AUDIT_KINDS = {"removed", "corrected", "added", "unresolved"}
         ALLOWED_SPELLING_TARGET_KINDS = {"factual_anchor", "executive_summary"}
+        # System-synthesized audit kinds (never emitted by the LLM). Written
+        # by this method when persistence rejects malformed output, so a
+        # rising count signals prompt/context drift worth investigating.
+        REJECTED_ANCHOR_KIND = "rejected_anchor"  # bad factual anchor / bullet
+        REJECTED_AUDIT_KIND = "rejected_audit"  # bad fact_check_audit entry
+
+        # Per-kind tally covering LLM decisions plus rejections. Defined here
+        # (before the insert loops) so the anchor loop can record rejections
+        # for empty anchors before the audit loop runs.
+        audit_counts = {
+            "removed": 0,
+            "corrected": 0,
+            "added": 0,
+            "unresolved": 0,
+            REJECTED_ANCHOR_KIND: 0,
+            REJECTED_AUDIT_KIND: 0,
+        }
+
+        def _insert_rejection(
+            rejection_kind: str,
+            note: str,
+            *,
+            timestamp: Optional[str] = None,
+            headline: Optional[str] = None,
+            original_text: Optional[str] = None,
+        ) -> None:
+            """Record a persistence rejection as a ``fact_check_removals`` row.
+
+            ``anchor_id`` is always NULL (nothing was successfully saved).
+            ``audit_note`` carries a system-generated reason describing which
+            validation rule rejected the row.
+            """
+            nonlocal rows_inserted
+            self.database.cursor.execute(
+                audit_insert_sql,
+                (
+                    youtube_id,
+                    run_id,
+                    rejection_kind,
+                    None,
+                    timestamp,
+                    headline,
+                    original_text,
+                    note,
+                    extractor_name,
+                    model,
+                    created_at,
+                ),
+            )
+            audit_counts[rejection_kind] += 1
+            rows_inserted += 1
+
+        def _entry_snippet(entry: Dict[str, Any]) -> str:
+            """Compact, length-capped JSON snapshot of a rejected entry."""
+            try:
+                return json.dumps(entry, default=str)[:500]
+            except Exception:
+                return repr(entry)[:500]
 
         def _coerce_roll_call_type(raw: Any) -> str:
             if isinstance(raw, str) and raw in ALLOWED_ROLL_CALL_TYPES:
@@ -309,13 +443,12 @@ class AnchorManager:
                 )
             return "none"
 
-        # Built during the factual-anchor insert loop; consumed by the
-        # fact-check audit loop (`kind='corrected'`/`'added'`) and the
-        # spelling-corrections loop (`target_kind='factual_anchor'`) to fill
-        # `anchor_id`. Keyed by `anchor_text` because that's what the LLM
-        # emits in `corrected_anchor_text` as the join handle (LLM has no
-        # PKs).
+        # Built during the factual-anchor insert loop. `anchor_ids_by_index`
+        # aligns with envelope `factual_anchor_items` order (None when a row
+        # was skipped). `corrected_text_to_anchor_id` is a fallback join on
+        # `corrected_anchor_text` when `factual_anchor_index` is missing.
         corrected_text_to_anchor_id: Dict[str, int] = {}
+        anchor_ids_by_index: List[Optional[int]] = []
         # Parallel map built during the bullet insert loop; consumed only by
         # the spelling-corrections loop (`target_kind='executive_summary'`)
         # to fill `anchor_id`. Bullets are persisted as `executive_summary`
@@ -329,11 +462,22 @@ class AnchorManager:
                 text_to_embed = anchor.get("text_to_embed") or anchor_text
                 if not anchor_text or not text_to_embed:
                     logger.warning(
-                        "AnchorManager: skipping factual_anchor with empty "
+                        "AnchorManager: rejecting factual_anchor with empty "
                         "anchor_text/text_to_embed (run_id=%s, headline=%r)",
                         run_id,
                         anchor.get("anchor_headline"),
                     )
+                    _insert_rejection(
+                        REJECTED_ANCHOR_KIND,
+                        "Persistence rejected factual anchor: empty "
+                        "anchor_text/text_to_embed.",
+                        timestamp=anchor.get("timestamp_string"),
+                        headline=anchor.get("anchor_headline"),
+                        original_text=(
+                            anchor_text if isinstance(anchor_text, str) else None
+                        ),
+                    )
+                    anchor_ids_by_index.append(None)
                     continue
                 raw_note = anchor.get("fact_check_note")
                 fact_check_note = raw_note.strip() if isinstance(raw_note, str) and raw_note.strip() else None
@@ -362,13 +506,25 @@ class AnchorManager:
                 # values (rare; arguably its own bug to flag), the last one
                 # wins here — the audit row will link to the last instance.
                 lastrowid = self.database.cursor.lastrowid
-                if isinstance(lastrowid, int):
-                    corrected_text_to_anchor_id[anchor_text] = lastrowid
+                anchor_id_inserted = lastrowid if isinstance(lastrowid, int) else None
+                anchor_ids_by_index.append(anchor_id_inserted)
+                if anchor_id_inserted is not None:
+                    corrected_text_to_anchor_id[anchor_text] = anchor_id_inserted
                 rows_inserted += 1
 
             for bullet in bullets:
                 bullet_text = (bullet or "").strip() if isinstance(bullet, str) else ""
                 if not bullet_text:
+                    logger.warning(
+                        "AnchorManager: rejecting empty executive_summary "
+                        "bullet (run_id=%s)",
+                        run_id,
+                    )
+                    _insert_rejection(
+                        REJECTED_ANCHOR_KIND,
+                        "Persistence rejected executive_summary bullet: "
+                        "empty bullet text.",
+                    )
                     continue
                 self.database.cursor.execute(
                     insert_sql,
@@ -399,16 +555,20 @@ class AnchorManager:
                     bullet_text_to_anchor_id[bullet_text] = lastrowid
                 rows_inserted += 1
 
-            audit_counts = {"removed": 0, "corrected": 0, "added": 0}
             for entry in fact_check_audit:
                 raw_kind = entry.get("kind")
                 kind = raw_kind if isinstance(raw_kind, str) else None
                 if kind not in ALLOWED_AUDIT_KINDS:
                     logger.warning(
-                        "AnchorManager: skipping fact_check_audit entry with "
+                        "AnchorManager: rejecting fact_check_audit entry with "
                         "unknown kind=%r (run_id=%s)",
                         raw_kind,
                         run_id,
+                    )
+                    _insert_rejection(
+                        REJECTED_AUDIT_KIND,
+                        f"Fact-check audit entry had unknown kind={raw_kind!r}. "
+                        f"Entry: {_entry_snippet(entry)}",
                     )
                     continue
 
@@ -421,58 +581,81 @@ class AnchorManager:
                 if kind == "removed":
                     if not original_text:
                         logger.warning(
-                            "AnchorManager: skipping fact_check_audit kind=removed "
-                            "with empty original_anchor_text (run_id=%s, "
-                            "original_timestamp_string=%r)",
-                            run_id,
-                            entry.get("original_timestamp_string"),
-                        )
-                        continue
-                elif kind == "corrected":
-                    if not original_text:
-                        logger.warning(
-                            "AnchorManager: skipping fact_check_audit kind=corrected "
+                            "AnchorManager: rejecting fact_check_audit kind=removed "
                             "with empty original_anchor_text (run_id=%s)",
                             run_id,
                         )
-                        continue
-                    if not corrected_text:
-                        logger.warning(
-                            "AnchorManager: skipping fact_check_audit kind=corrected "
-                            "with empty corrected_anchor_text (run_id=%s, "
-                            "original_anchor_text=%r)",
-                            run_id,
-                            original_text,
+                        _insert_rejection(
+                            REJECTED_AUDIT_KIND,
+                            "Fact-check audit kind=removed had empty "
+                            f"original_anchor_text. Entry: {_entry_snippet(entry)}",
+                            timestamp=entry.get("original_timestamp_string"),
+                            headline=entry.get("original_anchor_headline"),
                         )
                         continue
-                    anchor_id = corrected_text_to_anchor_id.get(corrected_text)
+                elif kind in ("corrected", "unresolved"):
+                    # `unresolved` keeps the anchor unchanged but still links to
+                    # it, so structurally it validates exactly like `corrected`.
+                    if not original_text:
+                        logger.warning(
+                            "AnchorManager: rejecting fact_check_audit kind=%s "
+                            "with empty original_anchor_text (run_id=%s)",
+                            kind,
+                            run_id,
+                        )
+                        _insert_rejection(
+                            REJECTED_AUDIT_KIND,
+                            f"Fact-check audit kind={kind} had empty "
+                            f"original_anchor_text. Entry: {_entry_snippet(entry)}",
+                            timestamp=entry.get("original_timestamp_string"),
+                            headline=entry.get("original_anchor_headline"),
+                        )
+                        continue
+                    anchor_id = _lookup_anchor_id_for_audit(
+                        kind=kind,
+                        entry=entry,
+                        corrected_text=corrected_text,
+                        corrected_text_to_anchor_id=corrected_text_to_anchor_id,
+                        anchor_ids_by_index=anchor_ids_by_index,
+                    )
                     if anchor_id is None:
                         logger.warning(
-                            "AnchorManager: skipping fact_check_audit kind=corrected "
-                            "with corrected_anchor_text not found among inserted "
-                            "anchors (orphan audit row guard) (run_id=%s, "
-                            "corrected_anchor_text=%r)",
+                            "AnchorManager: rejecting fact_check_audit kind=%s "
+                            "with no matching anchor (index/text lookup failed) "
+                            "(run_id=%s)",
+                            kind,
                             run_id,
-                            corrected_text,
+                        )
+                        _insert_rejection(
+                            REJECTED_AUDIT_KIND,
+                            f"Fact-check audit kind={kind} could not be linked to "
+                            "an inserted anchor (orphan guard). "
+                            f"Entry: {_entry_snippet(entry)}",
+                            timestamp=entry.get("original_timestamp_string"),
+                            headline=entry.get("original_anchor_headline"),
+                            original_text=original_text,
                         )
                         continue
                 else:  # kind == "added"
-                    if not corrected_text:
-                        logger.warning(
-                            "AnchorManager: skipping fact_check_audit kind=added "
-                            "with empty corrected_anchor_text (run_id=%s)",
-                            run_id,
-                        )
-                        continue
-                    anchor_id = corrected_text_to_anchor_id.get(corrected_text)
+                    anchor_id = _lookup_anchor_id_for_audit(
+                        kind=kind,
+                        entry=entry,
+                        corrected_text=corrected_text,
+                        corrected_text_to_anchor_id=corrected_text_to_anchor_id,
+                        anchor_ids_by_index=anchor_ids_by_index,
+                    )
                     if anchor_id is None:
                         logger.warning(
-                            "AnchorManager: skipping fact_check_audit kind=added "
-                            "with corrected_anchor_text not found among inserted "
-                            "anchors (orphan audit row guard) (run_id=%s, "
-                            "corrected_anchor_text=%r)",
+                            "AnchorManager: rejecting fact_check_audit kind=added "
+                            "with no matching anchor (index/text lookup failed) "
+                            "(run_id=%s)",
                             run_id,
-                            corrected_text,
+                        )
+                        _insert_rejection(
+                            REJECTED_AUDIT_KIND,
+                            "Fact-check audit kind=added could not be linked to "
+                            "an inserted anchor (orphan guard). "
+                            f"Entry: {_entry_snippet(entry)}",
                         )
                         continue
                     # Originals are intentionally NULL for added rows.
@@ -484,6 +667,26 @@ class AnchorManager:
                     if isinstance(raw_audit_note, str) and raw_audit_note.strip()
                     else None
                 )
+                if not audit_note:
+                    # Every audit entry must describe the issue it found. A
+                    # missing note is malformed output, recorded as a rejection
+                    # rather than a silent drop so drift shows up in analysis.
+                    logger.warning(
+                        "AnchorManager: rejecting fact_check_audit kind=%s with "
+                        "empty audit_note (run_id=%s)",
+                        kind,
+                        run_id,
+                    )
+                    _insert_rejection(
+                        REJECTED_AUDIT_KIND,
+                        f"Fact-check audit kind={kind} had empty audit_note "
+                        "(every audit entry must describe the issue found). "
+                        f"Entry: {_entry_snippet(entry)}",
+                        timestamp=entry.get("original_timestamp_string"),
+                        headline=entry.get("original_anchor_headline"),
+                        original_text=original_text,
+                    )
+                    continue
 
                 original_timestamp = (
                     entry.get("original_timestamp_string") if kind != "added" else None
@@ -510,6 +713,9 @@ class AnchorManager:
                 )
                 audit_counts[kind] += 1
                 rows_inserted += 1
+
+                if kind == "unresolved" and anchor_id is not None:
+                    self._sync_unresolved_anchor_caveat(anchor_id, audit_note)
 
             spelling_inserted = 0
             for entry in spelling_corrections:
@@ -614,13 +820,17 @@ class AnchorManager:
             self.database.conn.commit()
             logger.info(
                 "AnchorManager: inserted %d anchor row(s), %d fact-check audit "
-                "row(s) (removed=%d corrected=%d added=%d), and %d "
+                "row(s) (removed=%d corrected=%d added=%d unresolved=%d "
+                "rejected_anchor=%d rejected_audit=%d), and %d "
                 "spelling-correction row(s) for youtube_id=%s run_id=%s",
                 rows_inserted - audit_total - spelling_inserted,
                 audit_total,
                 audit_counts["removed"],
                 audit_counts["corrected"],
                 audit_counts["added"],
+                audit_counts["unresolved"],
+                audit_counts[REJECTED_ANCHOR_KIND],
+                audit_counts[REJECTED_AUDIT_KIND],
                 spelling_inserted,
                 youtube_id,
                 run_id,

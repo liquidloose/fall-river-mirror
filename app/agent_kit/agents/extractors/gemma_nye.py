@@ -27,7 +27,8 @@ flow only through the user message: pass 2 sees pass 1's draft anchors;
 pass 4 sees both pass 2's corrected anchors and pass 3's bullets. None
 of that traffic relies on Gemini remembering anything.
 
-After pass 4, we stitch in ``timestamp_seconds`` (parsed from each anchor's
+After pass 4, we stitch in ``timestamp_seconds`` (aligned to YouTube snippet
+``start`` values when the transcript is JSON, otherwise parsed from the model's
 timestamp string) and ``text_to_embed`` (a one-line formatted summary
 suitable for downstream vector indexing) locally — these are deterministic
 transformations that don't need an LLM. When a fact-check ``fact_check_note``
@@ -55,6 +56,9 @@ from app.agent_kit.agents.extractors.schemas import (
     SpellCheckEnvelope,
 )
 from app.agent_kit.utility_classes.llm_text_query import ModelEnum
+from app.agent_kit.utility_classes.transcript_timestamps import (
+    resolve_anchor_timestamp_seconds,
+)
 from app.data.enum_classes import (
     Committee,
     GeminiModel,
@@ -301,7 +305,7 @@ class GemmaNye(BaseExtractor):
         # rides the spelling-clean wording into the vector store, not the
         # pre-spell-check version.
         stitched_anchors = [
-            self._stitch_anchor(a, meeting_date, committee_str)
+            self._stitch_anchor(a, meeting_date, committee_str, transcript)
             for a in spell_checked["data"]["factual_anchor_items"]
         ]
 
@@ -646,7 +650,12 @@ class GemmaNye(BaseExtractor):
         """
         if not ts or not isinstance(ts, str):
             return None
-        parts = ts.strip().split(":")
+        raw = ts.strip()
+        if raw.isdigit():
+            return int(raw)
+        if raw.endswith("s") and raw[:-1].isdigit():
+            return int(raw[:-1])
+        parts = raw.split(":")
         if not all(re.fullmatch(r"\d+", p) for p in parts):
             return None
         try:
@@ -685,15 +694,26 @@ class GemmaNye(BaseExtractor):
         return f"{base} | Caveat: {note}" if note else base
 
     def _stitch_anchor(
-        self, raw: Dict[str, Any], meeting_date: str, committee: str
+        self,
+        raw: Dict[str, Any],
+        meeting_date: str,
+        committee: str,
+        transcript: str,
     ) -> Dict[str, Any]:
         """Combine raw LLM-emitted anchor with locally-computed fields."""
-        ts_seconds = self._timestamp_string_to_seconds(raw.get("timestamp_string"))
-        return {
+        ts_seconds, from_snippets = resolve_anchor_timestamp_seconds(
+            raw,
+            transcript,
+            parse_clock_timestamp=self._timestamp_string_to_seconds,
+        )
+        stitched: Dict[str, Any] = {
             **raw,
             "timestamp_seconds": ts_seconds,
             "text_to_embed": self._build_text_to_embed(raw, meeting_date, committee),
         }
+        if from_snippets and ts_seconds is not None:
+            stitched["timestamp_string"] = str(ts_seconds)
+        return stitched
 
     def _failure_envelope(
         self, run_id: str, message: str, *, model: Optional[ModelEnum] = None

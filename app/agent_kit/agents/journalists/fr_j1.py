@@ -17,8 +17,8 @@ class FRJ1(BaseJournalist):
     LAST_NAME = "J1"
     FULL_NAME = f"{FIRST_NAME} {LAST_NAME}"
     NAME = FULL_NAME
-    SLANT = "unbiased"
-    STYLE = "journalistic"
+    SLANT = ""
+    STYLE = ""
 
     # Journalist-specific defaults
     DEFAULT_TONE = Tone.ANALYTICAL
@@ -27,6 +27,8 @@ class FRJ1(BaseJournalist):
     def get_guidelines(self) -> str:
         """Return FRJ1's specific article guidelines."""
         guidelines = [
+            "- Write an informative news article about the Fall River City Council meeting.",
+            "- Don't mention that the meeting took place in Fall River, people know that.",
             "- Treat ANCHOR CONTEXT as pre-vetted factual source material; do not re-litigate or speculate beyond those facts.",
             "- Write from the provided facts only, synthesizing them into a coherent article with a strong lead and clear body progression.",
             "- Prioritize substantive decisions, impacts, debates, votes, and outcomes; minimize routine procedural housekeeping unless it materially affects the story.",
