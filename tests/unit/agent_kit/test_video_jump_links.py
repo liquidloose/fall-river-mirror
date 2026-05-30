@@ -20,8 +20,8 @@ def test_repair_moves_word_wrapped_link_to_sentence_end():
 
 def test_repair_leaves_correct_bracket_link_untouched():
     html = (
-        '<p>The board approved the motion '
+        "<p>The board approved the motion "
         '<a class="video-jump-link" href="https://www.youtube.com/watch?v=abc&t=96s" '
-        'aria-label="Jump to video at 01:36">[01:36]</a>.</p>'
+        'aria-label="Jump to video at 01:36"> [01:36]</a>.</p>'
     )
     assert repair_video_jump_links(html) == html

@@ -167,7 +167,7 @@ def test_pipeline_run_uses_default_models_and_queue_mode() -> None:
     )
     assert (
         payload["model_selection"]["journalist_text_model"]
-        == TextModel.GEMINI_3_5_FLASH.value
+        == TextModel.GEMINI_2_5_PRO.value
     )
     assert (
         payload["model_selection"]["snippet_text_model"]
@@ -175,7 +175,7 @@ def test_pipeline_run_uses_default_models_and_queue_mode() -> None:
     )
     assert payload["model_selection"]["image_model"] == ImageModel.GPT_IMAGE_1.value
     assert stub.extract_call["text_model"] == TextModel.GEMINI_2_5_PRO
-    assert stub.write_call["text_model"] == TextModel.GEMINI_3_5_FLASH
+    assert stub.write_call["text_model"] == TextModel.GEMINI_2_5_PRO
     assert stub.image_call["model"] == ImageModel.GPT_IMAGE_1
     assert stub.image_call["snippet_text_model"] == TextModel.GEMINI_2_5_FLASH
 

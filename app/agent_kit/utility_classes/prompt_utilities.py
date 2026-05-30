@@ -32,6 +32,7 @@ def inline_timestamp_link_prompt_lines() -> List[str]:
     return [
         "- For every factual anchor you use, include exactly one YouTube deep-link in that same sentence.",
         "- Each factual anchor line in ANCHOR CONTEXT includes a bracket timestamp (e.g. `[01:36]`) and a source_url= with the full watch URL.",
+        "- Copy the href from the **same anchor line** whose facts that sentence cites — never borrow a source_url from a different anchor.",
         "- Copy the href from source_url exactly. The link's ONLY visible text is the bracket timestamp — never a word from the sentence.",
         f"- Link shape: `{link_shape}`.",
         f'- The visible link text must be the bracket timestamp from that anchor (e.g. `{example_label}`) — never "watch", never a name, never a number from the prose.',
@@ -47,5 +48,5 @@ def inline_timestamp_link_prompt_lines() -> List[str]:
         "- Do not put timestamp links in headings, bullet lists, or a Summary section — only in `<p>` body paragraphs.",
         "- NEVER output `UNKNOWN` in a YouTube URL. Use the provided `youtube_id` from context metadata.",
         "- Do not emit bare bracket timestamps outside of a link; bracket times appear only inside `<a class=\"video-jump-link\">`.",
-        "- Use one video jump link per unique source_url; reuse the same link when citing that anchor again.",
+        "- Use one video jump link per anchor cited; reuse the same link only when the same anchor is cited again in a later sentence.",
     ]

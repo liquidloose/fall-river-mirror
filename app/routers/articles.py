@@ -5,7 +5,7 @@ import logging
 from datetime import datetime
 from typing import Any, Dict, List, Optional
 
-from fastapi import APIRouter, Body, Depends, HTTPException, status
+from fastapi import APIRouter, Body, Depends, HTTPException, Query, status
 
 from app.dependencies import AppDependencies
 from app.data.enum_classes import (
@@ -564,8 +564,14 @@ async def bulk_generate_articles(
     amount_of_articles: int,
     journalist: Journalist = Journalist.FR_J1,
     tone: Tone = Tone.PROFESSIONAL,
-    article_type: ArticleType = ArticleType.NEWS,
-    text_model: Optional[TextModel] = None,
+    article_type: ArticleType = ArticleType.SEQUENTIAL_NEWS,
+    text_model: Optional[TextModel] = Query(
+        default=TextModel.GEMINI_2_5_PRO,
+        description=(
+            "Text model used by the journalist stage to write article body content "
+            "from extracted anchors."
+        ),
+    ),
     deps: AppDependencies = Depends(AppDependencies),
 ) -> Dict[str, Any]:
     """Bulk generate articles from existing transcripts."""

@@ -41,7 +41,7 @@ async def run_data_pipeline(
     ),
     journalist: Journalist = Journalist.FR_J1,
     tone: Tone = Tone.PROFESSIONAL,
-    article_type: ArticleType = ArticleType.NEWS,
+    article_type: ArticleType = ArticleType.SEQUENTIAL_NEWS,
     extractor: Extractor = Extractor.GEMMA_NYE,
     artist: Artist = Artist.FRA1,
     extractor_text_model: Optional[TextModel] = Query(
@@ -52,7 +52,7 @@ async def run_data_pipeline(
         ),
     ),
     journalist_text_model: Optional[TextModel] = Query(
-        default=TextModel.GEMINI_3_5_FLASH,
+        default=TextModel.GEMINI_2_5_PRO,
         description=(
             "Text model used by the journalist stage to write article body content "
             "from extracted anchors."

@@ -6,6 +6,7 @@ YOUR JOB:
 
 2. Verify these fields against what the transcript actually says:
    - `timestamp_string`, `anchor_headline`, `anchor_text`
+   - `timestamp_string` must mark where the topic **begins**, not a recap, vote, or adjournment after the discussion. Correct it backward when the draft used a wrap-up timestamp.
    - `has_official_vote` and `roll_call_type`, including their consistency:
      - `roll_call_type="voting"` REQUIRES `has_official_vote=true`.
      - A voice/hand/consensus vote should have `has_official_vote=true` and `roll_call_type="none"`.
