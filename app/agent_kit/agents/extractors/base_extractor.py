@@ -38,6 +38,7 @@ import json
 import logging
 import os
 import re
+import time
 import uuid
 from datetime import datetime, timezone
 from pathlib import Path
@@ -46,6 +47,7 @@ from typing import Any, ClassVar, Dict, Optional
 from fastapi.responses import JSONResponse
 from pydantic import BaseModel
 
+from app.agent_kit.utility_classes import run_logging
 from app.agent_kit.utility_classes.llm_text_query import LLMTextQuery, ModelEnum
 from app.data.enum_classes import TextLLMProvider
 
@@ -220,8 +222,6 @@ class BaseExtractor(BaseCreator):
             template = template.replace(placeholder, rendered_value)
         return template
 
-    EXTRACTION_LOG_DIR: ClassVar[Path] = Path("logs") / "extractions"
-
     # Default TTL (seconds) for transcripts uploaded via
     # :meth:`_create_extraction_cache`. 900s comfortably covers a multi-pass
     # extraction. If real-world runs ever brush against this, the follow-up
@@ -293,6 +293,7 @@ class BaseExtractor(BaseCreator):
         raw_response: Any = None
         raw_text: Optional[str] = None
 
+        perf_start = time.perf_counter()
         try:
             raw = llm.get_raw_response(system_instruction, user_message)
         except Exception as e:
@@ -338,6 +339,8 @@ class BaseExtractor(BaseCreator):
                         result_message = "Extraction complete"
                         result_data = data
 
+        elapsed_seconds = round(time.perf_counter() - perf_start, 3)
+        token_usage = dict(llm.usage_total)
         completed_at = datetime.now(timezone.utc).isoformat()
 
         # On parse_error we still want the raw text in the log so it can be
@@ -352,6 +355,8 @@ class BaseExtractor(BaseCreator):
                 "model": meta.get("model"),
                 "started_at": started_at,
                 "completed_at": completed_at,
+                "elapsed_seconds": elapsed_seconds,
+                "token_usage": token_usage,
                 "pass_label": pass_label,
                 "system_instruction": system_instruction,
                 "user_message": user_message,
@@ -359,6 +364,16 @@ class BaseExtractor(BaseCreator):
                 "parse_status": parse_status,
                 "error": error,
             }
+        )
+        self._record_pass_metric(
+            youtube_video_id=youtube_video_id,
+            run_id=run_id,
+            pass_label=pass_label,
+            model=meta.get("model"),
+            elapsed_seconds=elapsed_seconds,
+            token_usage=token_usage,
+            started_at=started_at,
+            completed_at=completed_at,
         )
 
         if result_success and isinstance(result_data, dict):
@@ -381,25 +396,25 @@ class BaseExtractor(BaseCreator):
             "success": result_success,
             "message": result_message,
             "data": result_data,
+            "elapsed_seconds": elapsed_seconds,
+            "token_usage": token_usage,
         }
 
     def _write_extraction_log(self, payload: Dict[str, Any]) -> Optional[Path]:
         """
-        Write a per-call JSON debug log under :attr:`EXTRACTION_LOG_DIR`.
+        Write a per-call JSON debug log into the video's folder.
 
-        Filename pattern:
-        ``{utc_iso_ts}_yt{youtube_video_id}_r{run_id}_p{pass_label}.json``
-        where ``:`` characters in the timestamp are replaced with ``-`` for
-        cross-platform filesystem safety. When ``youtube_video_id`` is
-        missing, the literal string ``"unknown"`` is used; when
-        ``pass_label`` is missing the literal ``"main"`` is used so
+        Delegates to :func:`run_logging.write_call_log`, which lands the file
+        at ``logs/<youtube_id>/<utc_iso_ts>_extract_<pass_label>_r<run_id>.json``
+        (``:`` in the timestamp replaced with ``-`` for cross-platform safety).
+        When ``youtube_video_id`` is missing the folder/filename use
+        ``"unknown"``; when ``pass_label`` is missing ``"main"`` is used so
         single-pass extractor calls have stable filenames.
 
         The log payload captures both inputs (system instruction, user
         message) and outputs (raw Gemini response, parse status, error
-        message) so an entire call is reconstructable from one file —
-        useful for diffing two prompt revisions on the same transcript or
-        pasting back into Gemini chat to debug a malformed response.
+        message, elapsed time, token usage) so an entire call is
+        reconstructable from one file.
 
         Failure to write the log is logged at WARN level but never raised:
         debug logging must not break extraction.
@@ -411,20 +426,49 @@ class BaseExtractor(BaseCreator):
         run_id = payload.get("run_id", "unknown")
         youtube_video_id = payload.get("youtube_video_id") or "unknown"
         pass_label = payload.get("pass_label") or "main"
-        ts = payload.get("started_at") or datetime.now(timezone.utc).isoformat()
-        safe_ts = ts.replace(":", "-")
-        filename = f"{safe_ts}_yt{youtube_video_id}_r{run_id}_p{pass_label}.json"
-        path = self.EXTRACTION_LOG_DIR / filename
-        try:
-            self.EXTRACTION_LOG_DIR.mkdir(parents=True, exist_ok=True)
-            with open(path, "w", encoding="utf-8") as f:
-                json.dump(payload, f, ensure_ascii=False, indent=2, default=str)
-            return path
-        except Exception as e:
-            logger.warning(
-                f"{self.FULL_NAME}: failed to write extraction log {path}: {e}"
-            )
-            return None
+        started_at = payload.get("started_at")
+        return run_logging.write_call_log(
+            youtube_video_id,
+            "extract",
+            f"{pass_label}_r{run_id}",
+            started_at,
+            payload,
+        )
+
+    def _record_pass_metric(
+        self,
+        *,
+        youtube_video_id: Optional[str],
+        run_id: str,
+        pass_label: str,
+        model: Optional[str],
+        elapsed_seconds: float,
+        token_usage: Dict[str, int],
+        started_at: str,
+        completed_at: str,
+    ) -> None:
+        """Append this pass's timing + tokens into the video's metrics.json.
+
+        Cache-create/-only passes carry no token usage; they are still logged
+        for traceability but skipped here so totals reflect real LLM passes.
+        """
+        run_logging.append_metric(
+            youtube_video_id,
+            "extraction",
+            {
+                "pass": pass_label,
+                "model": model,
+                "elapsed_seconds": elapsed_seconds,
+                "tokens": token_usage,
+                "started_at": started_at,
+                "completed_at": completed_at,
+            },
+            section_meta={
+                "run_id": run_id,
+                "extractor": self.FULL_NAME,
+                "provider": self.PROVIDER.value,
+            },
+        )
 
     # ------------------------------------------------------------------
     # Multi-pass cached-content helpers (Gemini-only)
@@ -606,6 +650,7 @@ class BaseExtractor(BaseCreator):
         raw_response: Any = None
         raw_text: Optional[str] = None
 
+        perf_start = time.perf_counter()
         try:
             raw = llm.gemini_generate_with_cache(
                 cache_name,
@@ -663,6 +708,8 @@ class BaseExtractor(BaseCreator):
                         result_message = "Extraction complete"
                         result_data = data
 
+        elapsed_seconds = round(time.perf_counter() - perf_start, 3)
+        token_usage = dict(llm.usage_total)
         completed_at = datetime.now(timezone.utc).isoformat()
         log_raw = raw_response if raw_response is not None else raw_text
         self._write_extraction_log(
@@ -674,6 +721,8 @@ class BaseExtractor(BaseCreator):
                 "model": meta.get("model"),
                 "started_at": started_at,
                 "completed_at": completed_at,
+                "elapsed_seconds": elapsed_seconds,
+                "token_usage": token_usage,
                 "pass_label": pass_label,
                 "cache_name": cache_name,
                 "response_schema": response_schema.__name__ if response_schema else None,
@@ -684,6 +733,16 @@ class BaseExtractor(BaseCreator):
                 "error": error,
             }
         )
+        self._record_pass_metric(
+            youtube_video_id=youtube_video_id,
+            run_id=run_id,
+            pass_label=pass_label,
+            model=meta.get("model"),
+            elapsed_seconds=elapsed_seconds,
+            token_usage=token_usage,
+            started_at=started_at,
+            completed_at=completed_at,
+        )
 
         return {
             **meta,
@@ -691,4 +750,6 @@ class BaseExtractor(BaseCreator):
             "success": result_success,
             "message": result_message,
             "data": result_data,
+            "elapsed_seconds": elapsed_seconds,
+            "token_usage": token_usage,
         }

@@ -117,7 +117,9 @@ different concerns:
   API quirks (e.g. "Gemini rejects `system_instruction` on generate when
   `cached_content` is set").
 - **`BaseExtractor`** — generic logged-call envelope. UUID `run_id`, JSON
-  parse, per-pass log file under `logs/extractions/`, error-envelope
+  parse, per-pass log file under `logs/{youtube_id}/` (plus per-pass timing
+  and token usage merged into `logs/{youtube_id}/metrics.json`, both via
+  `app/agent_kit/utility_classes/run_logging.py`), error-envelope
   normalization. Reusable across any Gemini-based extractor.
 - **`GemmaNye`** — agent-specific four-pass orchestration. Knows the
   *meaning* of "extract → fact-check → bullets-and-committee →

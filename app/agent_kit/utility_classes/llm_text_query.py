@@ -21,6 +21,13 @@ from app.data.enum_classes import (
 )
 
 from .context_manager import ContextManager
+from .run_logging import (
+    add_usage,
+    empty_usage,
+    normalize_anthropic_usage,
+    normalize_gemini_usage,
+    normalize_xai_usage,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -76,12 +83,29 @@ class LLMTextQuery:
         self._gemini_api_key = os.getenv("GEMINI_API_KEY")
 
         self.model_id: str = self._model.value
+
+        # Token-usage accounting for this instance. ``last_usage`` is the most
+        # recent generate call; ``usage_total`` accumulates across every API
+        # call made on this instance (so a single article step that fires a
+        # body + headline completion reports their combined tokens).
+        self.last_usage: dict[str, int] | None = None
+        self.usage_total: dict[str, int] = empty_usage()
+        self.usage_call_count: int = 0
+
         logger.info(
             f"LLMTextQuery init provider={provider.value} model={self.model_id} "
             f"xai_key_set={bool(self._xai_api_key)} "
             f"anthropic_key_set={bool(self._anthropic_api_key)} "
             f"gemini_key_set={bool(self._gemini_api_key)}"
         )
+
+    def _record_usage(self, usage: dict[str, int] | None) -> None:
+        """Fold a normalized token-usage dict into this instance's tallies."""
+        if not usage:
+            return
+        self.last_usage = usage
+        self.usage_total = add_usage(self.usage_total, usage)
+        self.usage_call_count += 1
 
     @property
     def provider(self) -> TextLLMProvider:
@@ -120,6 +144,7 @@ class LLMTextQuery:
             chat.append(xai_system(context))
             chat.append(xai_user(message))
             response = chat.sample()
+            self._record_usage(normalize_xai_usage(response))
             text = response.content or ""
             if not (text.strip()):
                 logger.warning("xAI returned empty completion text")
@@ -169,6 +194,7 @@ class LLMTextQuery:
                 system=context,
                 messages=[{"role": "user", "content": message}],
             )
+            self._record_usage(normalize_anthropic_usage(msg))
             out = self._anthropic_concat_text(msg)
             if not out:
                 logger.warning(
@@ -241,6 +267,7 @@ class LLMTextQuery:
                     system_instruction=context or None,
                 ),
             )
+            self._record_usage(normalize_gemini_usage(response))
             text = (getattr(response, "text", None) or "").strip()
             if not text:
                 logger.warning("Gemini returned empty completion text")
@@ -429,6 +456,7 @@ class LLMTextQuery:
                 contents=turn_contents,
                 config=types.GenerateContentConfig(**cfg_kwargs),
             )
+            self._record_usage(normalize_gemini_usage(response))
             if response_schema is not None:
                 parsed = getattr(response, "parsed", None)
                 if parsed is None:

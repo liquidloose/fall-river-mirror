@@ -396,6 +396,7 @@ def generate_article_from_strings(
             "",
             provider=llm_provider,
             model=llm_model,
+            youtube_id=youtube_id,
         )
         journalist_data = jm.get_journalist(journalist_instance.FULL_NAME)
         if not journalist_data:
@@ -517,6 +518,7 @@ def generate_article(
             additional_context,
             provider=llm_provider,
             model=llm_model,
+            youtube_id=youtube_id,
         )
         article_content = (
             pipeline.append_ai_editors_note(
@@ -733,7 +735,9 @@ def generate_article_bullet_points(
             detail=f"Article {article_id} not found",
         )
     journalist = AureliusStone()
-    result = journalist.generate_bullet_points(article["content"])
+    result = journalist.generate_bullet_points(
+        article["content"], youtube_id=article.get("youtube_id")
+    )
     if result.get("error"):
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,

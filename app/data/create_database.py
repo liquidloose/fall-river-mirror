@@ -1248,6 +1248,72 @@ class Database:
             )
             return False
 
+    def update_transcript_committee(self, youtube_id: str, committee: str) -> bool:
+        """
+        Overwrite the committee on a transcript row.
+
+        Used after extraction so the article's committee/category comes from the
+        extractor's enum-validated ``primary_committee`` rather than the raw,
+        title-derived value seeded at fetch time. The original title remains in
+        ``transcripts.video_title``.
+
+        Args:
+            youtube_id: The YouTube video id of the transcript to update.
+            committee: The canonical committee value (a ``Committee`` enum string).
+
+        Returns:
+            True if a row was updated and verified, False otherwise.
+        """
+        youtube_id = (youtube_id or "").strip()
+        committee = (committee or "").strip()
+        if not youtube_id or not committee:
+            self.logger.warning(
+                "update_transcript_committee: skipped (youtube_id=%r, committee=%r)",
+                youtube_id,
+                committee,
+            )
+            return False
+        try:
+            self._log_operation(
+                "update_transcript_committee",
+                {"youtube_id": youtube_id, "committee": committee},
+            )
+            self.cursor.execute(
+                "UPDATE transcripts SET committee = ? WHERE youtube_id = ?",
+                (committee, youtube_id),
+            )
+            self.conn.commit()
+            self.cursor.execute(
+                "SELECT committee FROM transcripts WHERE youtube_id = ?",
+                (youtube_id,),
+            )
+            row = self.cursor.fetchone()
+            if row is not None and row[0] == committee:
+                self.logger.info(
+                    "update_transcript_committee: verified youtube_id=%s committee=%r",
+                    youtube_id,
+                    committee,
+                )
+                return True
+            self.logger.warning(
+                "update_transcript_committee: no matching/verified row for youtube_id=%s",
+                youtube_id,
+            )
+            return False
+        except Exception as e:
+            self.logger.exception(
+                "update_transcript_committee failed: youtube_id=%s committee=%r - %s",
+                youtube_id,
+                committee,
+                e,
+            )
+            self._log_error(
+                "update_transcript_committee",
+                e,
+                {"youtube_id": youtube_id, "committee": committee},
+            )
+            return False
+
     def update_article_title(self, article_id: int, title: str) -> bool:
         """
         Update title for an existing article.

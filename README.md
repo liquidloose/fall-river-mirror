@@ -540,7 +540,8 @@ Extends BaseCreator with article-specific functionality.
 
 **Key methods**:
 
-- `generate_article(context, user_content)` — Generate article via xAI
+- `generate_article(context, user_content, ..., youtube_id=None)` — Generate article via the configured text LLM. Pass `youtube_id` to route the per-call debug log and timing/token metrics into `logs/{youtube_id}/`.
+- `generate_bullet_points(article_content, youtube_id=None)` — Summarize an article; same per-video logging when `youtube_id` is supplied.
 - `get_guidelines()` — Override for journalist-specific rules
 - `get_system_prompt(context)` — Build AI system prompt
 
@@ -754,6 +755,27 @@ curl -X POST "http://localhost:3004/article/create/manually?youtube_id=VjaU4DAxP
 uvicorn app.main:app --host 0.0.0.0 --port 80 --reload --log-level debug \
   --reload-exclude "logs/*" --reload-exclude "*.log"
 ```
+
+### Per-video pipeline logs & metrics
+
+Extraction passes and article-creation steps write per-call debug JSON into a
+single folder per video, keyed by YouTube id:
+
+```text
+logs/{youtube_id}/
+  {ts}_extract_{pass}_r{run_id}.json   # one per extractor pass (4-pass Gemma Nye run)
+  {ts}_article_{step}.json             # article_body, bullet_points
+  metrics.json                         # elapsed time + token usage breakdown
+```
+
+`metrics.json` records, for every LLM pass/step, its `elapsed_seconds` and a
+token breakdown (`prompt`, `cached`, `output`, `total`) plus per-section
+totals. The `cached` field is the slice of prompt tokens served from Gemini
+cached content (the bulk of each extraction pass). Re-running extraction
+(fresh `run_id`) replaces the `extraction` section; re-writing an article
+replaces the matching `article` step. All of this logging is best-effort and
+never blocks the pipeline. Implemented in
+`app/agent_kit/utility_classes/run_logging.py`.
 
 ### Log levels
 

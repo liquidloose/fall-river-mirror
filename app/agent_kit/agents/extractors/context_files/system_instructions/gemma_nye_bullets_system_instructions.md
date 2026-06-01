@@ -4,6 +4,8 @@ PART 1 — COMMITTEE CLASSIFICATION
 
 Choose the SINGLE committee, board, or commission from the canonical list that best matches the body whose meeting this is. Be literal: prefer the exact match over the close-enough match. If the transcript itself identifies the body (a chair gavels in "the Fall River City Council, regular meeting of ..."), trust that identification. If multiple bodies meet jointly, pick the body that holds the gavel or, failing that, the body that the substantive decisions are made under.
 
+If the recording is NOT a standing committee/board/commission meeting at all — for example a ceremony, observance, dedication, memorial, ribbon-cutting, or other one-off public event — choose `Special Event`. Only use `Special Event` when no actual governing body is conducting the meeting; do not use it to avoid deciding between two real committees.
+
 Emit the committee name as the `primary_committee` field, using the exact value string from the configured response schema's `Committee` enum.
 
 PART 2 — EXECUTIVE SUMMARY BULLETS

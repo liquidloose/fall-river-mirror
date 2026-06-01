@@ -290,6 +290,10 @@ class Committee(str, Enum):
     WATUPPA_WATER_BOARD = "Watuppa Water Board"
     ZONING_BOARD_OF_APPEALS = "Zoning Board of Appeals"
 
+    # Catch-all for one-off gatherings (ceremonies, observances, dedications)
+    # that are not meetings of a standing committee, board, or commission.
+    SPECIAL_EVENT = "Special Event"
+
 
 def committee_list_for_prompt() -> str:
     """Render the :class:`Committee` enum as a markdown bullet list.

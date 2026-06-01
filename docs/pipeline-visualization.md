@@ -201,7 +201,7 @@ sequenceDiagram
   AM-->>R: counts + run_id
 ```
 
-Each pass writes a debug JSON to `logs/extractions/{ts}_yt{id}_r{run_id}_p{pass_label}.json` (`app/agent_kit/agents/extractors/base_extractor.py` ~L381). Re-extraction does **not** overwrite — it gets a fresh `run_id` UUID and appends.
+Each pass writes a debug JSON into the video's folder: `logs/{youtube_id}/{ts}_extract_{pass_label}_r{run_id}.json` (`app/agent_kit/agents/extractors/base_extractor.py`, via `app/agent_kit/utility_classes/run_logging.py`). Each pass also records its elapsed time and token usage (prompt / cached / output / total) into `logs/{youtube_id}/metrics.json` under the `extraction` section. Re-extraction gets a fresh `run_id` UUID; the new run **replaces** the prior `extraction` metrics section (per-call debug JSONs are still distinct files). Article creation writes to the same per-video folder (`{ts}_article_{step}.json`) and appends its own timing/tokens under the `article` section of `metrics.json`.
 
 ### 3c. Output shape and persistence
 

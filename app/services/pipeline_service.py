@@ -863,6 +863,7 @@ class PipelineService:
                     "",
                     provider=llm_provider,
                     model=llm_model,
+                    youtube_id=youtube_id,
                 )
                 article_content = self.append_ai_editors_note(
                     repair_video_jump_links(article_result["content"]),
@@ -1064,7 +1065,9 @@ class PipelineService:
             if results["processed"] >= amount:
                 break
             try:
-                result = journalist.generate_bullet_points(article["content"])
+                result = journalist.generate_bullet_points(
+                    article["content"], youtube_id=article.get("youtube_id")
+                )
             except Exception as e:
                 results["errors"].append({"id": article["id"], "error": str(e)})
                 logger.warning("Pipeline bullet points failed for article id=%s: %s", article["id"], e)
@@ -1486,6 +1489,12 @@ class PipelineService:
             audit_inserted["added"],
             audit_inserted["unresolved"],
         )
+        # Persist the enum-validated committee onto the transcript so the
+        # downstream article inherits it (instead of the raw, title-derived
+        # value seeded at fetch time). The original title stays in video_title.
+        primary_committee = data.get("primary_committee")
+        if isinstance(primary_committee, str) and primary_committee.strip():
+            db.update_transcript_committee(youtube_id, primary_committee.strip())
         return {
             "success": True,
             "message": "Extraction complete",
