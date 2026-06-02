@@ -67,9 +67,9 @@ def fact_check_article_by_youtube(
     return result
 
 
-@router.post("/article/{article_id}/swap-to-wordpress")
+@router.post("/article/by-youtube/{youtube_id}/swap-to-wordpress")
 def swap_article_to_wordpress(
-    article_id: int,
+    youtube_id: str,
     deps: AppDependencies = Depends(AppDependencies),
 ) -> Dict[str, Any]:
     """Send this article's current title and content from the database to WordPress (update only; no slug change, no delete)."""
@@ -84,10 +84,36 @@ def swap_article_to_wordpress(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="WordPress sync service not available",
         )
-    result = svc.update_article_title_and_content(article_id)
+    result = svc.update_article_title_and_content(youtube_id)
     if not result["success"]:
         raise HTTPException(
             status_code=result.get("http_status", status.HTTP_500_INTERNAL_SERVER_ERROR),
             detail=result.get("error", "Swap to WordPress failed"),
+        )
+    return result
+
+
+@router.post("/article/by-youtube/{youtube_id}/sync-body-to-wordpress")
+def sync_article_body_to_wordpress(
+    youtube_id: str,
+    deps: AppDependencies = Depends(AppDependencies),
+) -> Dict[str, Any]:
+    """Send this article's body content and bullet points to WordPress (no title or slug change)."""
+    if not deps.database:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Database not available",
+        )
+    svc = deps.wordpress_sync_service
+    if not svc:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="WordPress sync service not available",
+        )
+    result = svc.update_article_body_on_wordpress(youtube_id)
+    if not result["success"]:
+        raise HTTPException(
+            status_code=result.get("http_status", status.HTTP_500_INTERNAL_SERVER_ERROR),
+            detail=result.get("error", "Sync body to WordPress failed"),
         )
     return result

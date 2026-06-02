@@ -766,6 +766,57 @@ class PipelineService:
             }
         return response
 
+    def _resolve_journalist_instance(self, journalist: Journalist):
+        """Return (journalist_instance, journalist_id). Raises ValueError if unknown."""
+        journalist_mgr = self._journalist_manager
+        if not journalist_mgr:
+            raise ValueError("Journalist manager not available")
+        journalist_classes = {
+            Journalist.AURELIUS_STONE: AureliusStone,
+            Journalist.FR_J1: FRJ1,
+        }
+        journalist_class = journalist_classes.get(journalist)
+        if not journalist_class:
+            raise ValueError(f"Journalist '{journalist.value}' not implemented")
+        journalist_instance = journalist_class()
+        journalist_data = journalist_mgr.get_journalist(journalist_instance.FULL_NAME)
+        if not journalist_data:
+            journalist_mgr.upsert_journalist(
+                full_name=journalist_instance.FULL_NAME,
+                first_name=journalist_instance.FIRST_NAME,
+                last_name=journalist_instance.LAST_NAME,
+                bio=journalist_instance.get_bio(),
+                description=journalist_instance.get_description(),
+            )
+            journalist_data = journalist_mgr.get_journalist(journalist_instance.FULL_NAME)
+        if not journalist_data:
+            raise ValueError(
+                f"Failed to create or retrieve journalist {journalist_instance.FULL_NAME}"
+            )
+        return journalist_instance, journalist_data["id"]
+
+    @staticmethod
+    def _build_journalist_full_context(
+        *,
+        youtube_id: str,
+        anchor_context: str,
+        journalist_instance,
+        tone: Tone,
+        article_type: ArticleType,
+    ) -> str:
+        base_context = journalist_instance.load_context(tone=tone, article_type=article_type)
+        source_link_context = (
+            "SOURCE LINK METADATA:\n"
+            f"- youtube_id: {youtube_id}\n"
+            f"- url_template: https://www.youtube.com/watch?v={youtube_id}&t=<SECONDS>s\n"
+            "- Use this youtube_id; do not output UNKNOWN.\n"
+        )
+        return (
+            f"{base_context}\n\n"
+            f"{source_link_context}\n"
+            f"ANCHOR CONTEXT TO ANALYZE:\n{anchor_context}"
+        )
+
     async def run_bulk_write_articles(
         self,
         amount: int,
@@ -833,29 +884,10 @@ class PipelineService:
                 "article_ids": [],
                 "results": [],
             }
-        journalist_classes = {
-            Journalist.AURELIUS_STONE: AureliusStone,
-            Journalist.FR_J1: FRJ1,
-        }
-        journalist_class = journalist_classes.get(journalist)
-        if not journalist_class:
-            raise ValueError(f"Journalist '{journalist.value}' not implemented")
-        journalist_instance = journalist_class()
-        journalist_data = journalist_mgr.get_journalist(journalist_instance.FULL_NAME)
-        if not journalist_data:
-            journalist_mgr.upsert_journalist(
-                full_name=journalist_instance.FULL_NAME,
-                first_name=journalist_instance.FIRST_NAME,
-                last_name=journalist_instance.LAST_NAME,
-                bio=journalist_instance.get_bio(),
-                description=journalist_instance.get_description(),
-            )
-            journalist_data = journalist_mgr.get_journalist(journalist_instance.FULL_NAME)
-        if not journalist_data:
-            raise ValueError(
-                f"Failed to create or retrieve journalist {journalist_instance.FULL_NAME}"
-            )
-        journalist_id = journalist_data["id"]
+        try:
+            journalist_instance, journalist_id = self._resolve_journalist_instance(journalist)
+        except ValueError as e:
+            raise ValueError(str(e)) from e
         cursor = db.cursor
         if skip_youtube_ids:
             placeholders = ",".join(["?"] * len(skip_youtube_ids))
@@ -954,19 +986,12 @@ class PipelineService:
                     raise ValueError(
                         f"No anchor context found for youtube_id={youtube_id}. Run extraction first."
                     )
-                base_context = journalist_instance.load_context(
-                    tone=tone, article_type=article_type
-                )
-                source_link_context = (
-                    "SOURCE LINK METADATA:\n"
-                    f"- youtube_id: {youtube_id}\n"
-                    f"- url_template: https://www.youtube.com/watch?v={youtube_id}&t=<SECONDS>s\n"
-                    "- Use this youtube_id; do not output UNKNOWN.\n"
-                )
-                full_context = (
-                    f"{base_context}\n\n"
-                    f"{source_link_context}\n"
-                    f"ANCHOR CONTEXT TO ANALYZE:\n{anchor_context}"
+                full_context = self._build_journalist_full_context(
+                    youtube_id=youtube_id,
+                    anchor_context=anchor_context,
+                    journalist_instance=journalist_instance,
+                    tone=tone,
+                    article_type=article_type,
                 )
                 article_result = journalist_instance.generate_article(
                     full_context,
@@ -1044,6 +1069,9 @@ class PipelineService:
             return {
                 "success": False,
                 "message": "Database not available",
+                "requested": amount,
+                "found_without_anchors": 0,
+                "processed": 0,
                 "anchors_extracted": 0,
                 "anchors_failed": 0,
                 "results": [],
@@ -1063,6 +1091,18 @@ class PipelineService:
         cursor = db.cursor
         if skip_youtube_ids:
             placeholders = ",".join(["?"] * len(skip_youtube_ids))
+            count_sql = f"""SELECT COUNT(*)
+                   FROM transcripts t
+                   WHERE t.youtube_id IS NOT NULL
+                     AND TRIM(t.youtube_id) != ''
+                     AND t.content IS NOT NULL
+                     AND TRIM(t.content) != ''
+                     AND t.youtube_id NOT IN ({placeholders})
+                     AND NOT EXISTS (
+                       SELECT 1 FROM anchors a WHERE a.youtube_id = t.youtube_id
+                     )"""
+            cursor.execute(count_sql, tuple(skip_youtube_ids))
+            found_without_anchors = cursor.fetchone()[0]
             cursor.execute(
                 f"""SELECT t.youtube_id
                    FROM transcripts t
@@ -1079,6 +1119,18 @@ class PipelineService:
                 (*skip_youtube_ids, amount),
             )
         else:
+            cursor.execute(
+                """SELECT COUNT(*)
+                   FROM transcripts t
+                   WHERE t.youtube_id IS NOT NULL
+                     AND TRIM(t.youtube_id) != ''
+                     AND t.content IS NOT NULL
+                     AND TRIM(t.content) != ''
+                     AND NOT EXISTS (
+                       SELECT 1 FROM anchors a WHERE a.youtube_id = t.youtube_id
+                     )"""
+            )
+            found_without_anchors = cursor.fetchone()[0]
             cursor.execute(
                 """SELECT t.youtube_id
                    FROM transcripts t
@@ -1098,7 +1150,12 @@ class PipelineService:
         if not transcript_rows:
             return {
                 "success": True,
-                "message": "No transcripts found that need anchor extraction",
+                "message": (
+                    f"Requested {amount} transcripts without anchors; found 0; processed 0."
+                ),
+                "requested": amount,
+                "found_without_anchors": found_without_anchors,
+                "processed": 0,
                 "anchors_extracted": 0,
                 "anchors_failed": 0,
                 "results": [],
@@ -1122,14 +1179,183 @@ class PipelineService:
                 anchors_failed += 1
             results.append(extract_result)
 
+        processed = len(results)
+        if found_without_anchors < amount:
+            message = (
+                f"Requested {amount} transcripts without anchors; "
+                f"found {found_without_anchors}; processed {processed}."
+            )
+        else:
+            message = f"Processed {processed} transcript(s) for anchor extraction"
+
         return {
             "success": anchors_failed == 0,
-            "message": (
-                f"Processed {len(results)} transcript(s) for anchor extraction"
-            ),
+            "message": message,
+            "requested": amount,
+            "found_without_anchors": found_without_anchors,
+            "processed": processed,
             "anchors_extracted": anchors_extracted,
             "anchors_failed": anchors_failed,
             "results": results,
+        }
+
+    def regenerate_article_from_anchors(
+        self,
+        youtube_id: str,
+        *,
+        journalist: Journalist,
+        tone: Tone,
+        article_type: ArticleType,
+        text_model: Optional[TextModel] = None,
+    ) -> Dict[str, Any]:
+        """Write or refresh article body and bullet points from anchors.
+
+        When a local ``articles`` row exists, updates content and bullets in place
+        without changing ``title``. When a transcript exists but no article row,
+        inserts a new article (including LLM-generated title).
+        """
+        db = self._database
+        youtube_id = (youtube_id or "").strip()
+        if not db:
+            return {
+                "success": False,
+                "error": "Database not available",
+                "youtube_id": youtube_id,
+            }
+        if not youtube_id:
+            return {
+                "success": False,
+                "error": "youtube_id is required",
+                "youtube_id": youtube_id,
+            }
+
+        article = db.get_article_by_youtube_id(youtube_id)
+        created = article is None
+        transcript_id: Optional[int] = None
+        committee = "Unknown"
+
+        if created:
+            transcript_data = db.get_transcript_by_youtube_id(youtube_id)
+            if not transcript_data:
+                return {
+                    "success": False,
+                    "error": f"No transcript found for youtube_id={youtube_id}",
+                    "youtube_id": youtube_id,
+                }
+            transcript_id = transcript_data[0]
+            committee = (transcript_data[1] or "Unknown") if len(transcript_data) > 1 else "Unknown"
+
+        article_id = article["id"] if article else None
+        anchor_context = self.build_article_context_from_anchors(youtube_id)
+        if not anchor_context:
+            return {
+                "success": False,
+                "error": f"No anchor context found for youtube_id={youtube_id}",
+                "youtube_id": youtube_id,
+                "article_id": article_id,
+            }
+
+        summary_bullets = self.get_latest_executive_summary_bullets(youtube_id)
+
+        try:
+            journalist_instance, journalist_id = self._resolve_journalist_instance(journalist)
+        except ValueError as e:
+            return {
+                "success": False,
+                "error": str(e),
+                "youtube_id": youtube_id,
+                "article_id": article_id,
+            }
+
+        llm_provider, llm_model = None, None
+        if text_model is not None:
+            llm_provider, llm_model = resolve_text_model(text_model)
+            logger.info(
+                "Pipeline article regenerate: using provider=%s model=%s",
+                llm_provider.value,
+                llm_model.value,
+            )
+
+        full_context = self._build_journalist_full_context(
+            youtube_id=youtube_id,
+            anchor_context=anchor_context,
+            journalist_instance=journalist_instance,
+            tone=tone,
+            article_type=article_type,
+        )
+
+        try:
+            article_result = journalist_instance.generate_article(
+                full_context,
+                "",
+                provider=llm_provider,
+                model=llm_model,
+                youtube_id=youtube_id,
+            )
+        except ArticleGenerationError as e:
+            logger.warning(
+                "Pipeline article regenerate failed (generation rejected) youtube_id=%s: %s",
+                youtube_id,
+                e,
+            )
+            return {
+                "success": False,
+                "error": str(e),
+                "youtube_id": youtube_id,
+                "article_id": article_id,
+            }
+
+        article_content = self.append_ai_editors_note(
+            repair_video_jump_links(article_result["content"]),
+            self.get_unresolved_audit_notes(youtube_id),
+        )
+
+        if created:
+            article_id = db.add_article(
+                committee=committee,
+                youtube_id=youtube_id,
+                journalist_id=journalist_id,
+                content=article_content,
+                transcript_id=transcript_id,
+                date=datetime.now().isoformat(),
+                article_type=article_type.value,
+                tone=tone.value,
+                title=article_result.get("title", "Untitled Article"),
+            )
+            mode = "created"
+        else:
+            if not db.update_article_content(article_id, article_content):
+                return {
+                    "success": False,
+                    "error": f"Failed to update article content for article_id={article_id}",
+                    "youtube_id": youtube_id,
+                    "article_id": article_id,
+                }
+            mode = "updated"
+
+        bullets_count = 0
+        if summary_bullets:
+            db.update_article_bullet_points(
+                article_id,
+                self.format_bullets_as_html_list(summary_bullets),
+            )
+            bullets_count = len(summary_bullets)
+
+        logger.info(
+            "Article %s from anchors youtube_id=%s article_id=%s content_len=%d bullets=%d",
+            mode,
+            youtube_id,
+            article_id,
+            len(article_content),
+            bullets_count,
+        )
+        return {
+            "success": True,
+            "mode": mode,
+            "article_id": article_id,
+            "youtube_id": youtube_id,
+            "content_len": len(article_content),
+            "bullets_count": bullets_count,
         }
 
     def run_bullet_points_batch(self, amount: int) -> Dict[str, Any]:

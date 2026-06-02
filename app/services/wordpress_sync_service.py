@@ -22,7 +22,7 @@ Uses ``WORDPRESS_JWT_TOKEN`` in the ``Authorization: Bearer`` header when set. O
 - ``WORDPRESS_JWT_TOKEN`` — optional until first protected call; refreshed in-process on success.
 - ``WORDPRESS_JWT_USER``, ``WORDPRESS_JWT_PASSWORD`` — for :meth:`~WordPressSyncService.refresh_jwt_token`.
 - ``WORDPRESS_API_PATH_CREATE_ARTICLE``, ``WORDPRESS_API_PATH_UPDATE_ARTICLE``,
-  ``WORDPRESS_API_PATH_ARTICLE_YOUTUBE_IDS`` — optional path overrides.
+  ``WORDPRESS_API_PATH_UPDATE_ARTICLE_BODY``, ``WORDPRESS_API_PATH_ARTICLE_YOUTUBE_IDS`` — optional path overrides.
 
 **Return conventions**
 
@@ -49,6 +49,7 @@ logger = logging.getLogger(__name__)
 # fr-mirror REST API paths (under WORDPRESS_BASE_URL). Override with WORDPRESS_API_PATH_* env vars.
 DEFAULT_API_PATH_CREATE = "/wp-json/fr-mirror/v2/create-article"
 DEFAULT_API_PATH_UPDATE = "/wp-json/fr-mirror/v2/update-article"
+DEFAULT_API_PATH_UPDATE_BODY = "/wp-json/fr-mirror/v2/update-article-body"
 DEFAULT_API_PATH_YOUTUBE_IDS = "/wp-json/fr-mirror/v2/article-youtube-ids"
 
 
@@ -71,6 +72,7 @@ class WordPressSyncService:
 
     - :meth:`sync_one_article` — DB article → create-article (draft), requires content, bullets, art
     - :meth:`update_article_title_and_content` — partial update endpoint
+    - :meth:`update_article_body_on_wordpress` — body + bullet points only (no title)
     - :meth:`repair_article_featured_image` — featured image only by ``youtube_id``
     - :meth:`repair_missing_featured_images` — scan WP posts and repair broken/missing featured_media
 
@@ -84,6 +86,7 @@ class WordPressSyncService:
         base_url: Optional[str] = None,
         api_path_create: Optional[str] = None,
         api_path_update: Optional[str] = None,
+        api_path_update_body: Optional[str] = None,
         api_path_youtube_ids: Optional[str] = None,
     ) -> None:
         """
@@ -93,6 +96,8 @@ class WordPressSyncService:
             api_path_create: Defaults to env ``WORDPRESS_API_PATH_CREATE_ARTICLE`` or
                 :data:`DEFAULT_API_PATH_CREATE`.
             api_path_update: Env ``WORDPRESS_API_PATH_UPDATE_ARTICLE`` or :data:`DEFAULT_API_PATH_UPDATE`.
+            api_path_update_body: Env ``WORDPRESS_API_PATH_UPDATE_ARTICLE_BODY`` or
+                :data:`DEFAULT_API_PATH_UPDATE_BODY`.
             api_path_youtube_ids: Env ``WORDPRESS_API_PATH_ARTICLE_YOUTUBE_IDS`` or
                 :data:`DEFAULT_API_PATH_YOUTUBE_IDS`.
         """
@@ -100,6 +105,7 @@ class WordPressSyncService:
         self._base_url = (base_url if base_url is not None else os.environ.get("WORDPRESS_BASE_URL", "")).strip().rstrip("/")
         self._api_path_create = api_path_create or os.environ.get("WORDPRESS_API_PATH_CREATE_ARTICLE") or DEFAULT_API_PATH_CREATE
         self._api_path_update = api_path_update or os.environ.get("WORDPRESS_API_PATH_UPDATE_ARTICLE") or DEFAULT_API_PATH_UPDATE
+        self._api_path_update_body = api_path_update_body or os.environ.get("WORDPRESS_API_PATH_UPDATE_ARTICLE_BODY") or DEFAULT_API_PATH_UPDATE_BODY
         self._api_path_youtube_ids = api_path_youtube_ids or os.environ.get("WORDPRESS_API_PATH_ARTICLE_YOUTUBE_IDS") or DEFAULT_API_PATH_YOUTUBE_IDS
 
     def _headers(self) -> Dict[str, str]:
@@ -975,16 +981,16 @@ class WordPressSyncService:
                 "http_status": status.HTTP_500_INTERNAL_SERVER_ERROR,
             }
 
-    def update_article_title_and_content(self, article_id: int) -> Dict[str, Any]:
+    def update_article_title_and_content(self, youtube_id: str) -> Dict[str, Any]:
         """
         POST current DB **title** and **content** to the fr-mirror **update-article** endpoint.
 
-        Payload includes local ``article_id`` and ``youtube_id`` for WP to locate the post. Does not
-        change slug or delete the post (WordPress plugin contract).
+        Looks up the local article by ``youtube_id``. Payload sends ``youtube_id`` for WP to locate
+        the post. Does not change slug or delete the post (WordPress plugin contract).
 
         Returns:
-            ``success``, ``article_id``, ``wordpress_response`` on 2xx; otherwise ``success: False``,
-            ``error``, ``http_status``, ``raw_response``.
+            ``success``, ``article_id``, ``youtube_id``, ``wordpress_response`` on 2xx; otherwise
+            ``success: False``, ``error``, ``http_status``, ``raw_response``.
         """
         db = self._database
         if not db:
@@ -993,16 +999,23 @@ class WordPressSyncService:
                 "error": "Database not available",
                 "http_status": status.HTTP_500_INTERNAL_SERVER_ERROR,
             }
-        article = db.get_article_by_id(article_id)
+        youtube_id = (youtube_id or "").strip()
+        if not youtube_id:
+            return {
+                "success": False,
+                "error": "youtube_id is required",
+                "http_status": status.HTTP_400_BAD_REQUEST,
+            }
+        article = db.get_article_by_youtube_id(youtube_id)
         if not article:
             return {
                 "success": False,
-                "error": f"Article with ID {article_id} not found",
+                "error": f"No article found for youtube_id={youtube_id!r}",
                 "http_status": status.HTTP_404_NOT_FOUND,
             }
+        article_id = article["id"]
         payload = {
-            "article_id": article_id,
-            "youtube_id": (article.get("youtube_id") or "").strip(),
+            "youtube_id": youtube_id,
             "title": article.get("title") or "",
             "content": article.get("content") or "",
         }
@@ -1023,10 +1036,15 @@ class WordPressSyncService:
                     url,
                 )
             response.raise_for_status()
-            logger.info("Successfully sent title/content update for article_id=%s to WordPress", article_id)
+            logger.info(
+                "Successfully sent title/content update for youtube_id=%s article_id=%s to WordPress",
+                youtube_id,
+                article_id,
+            )
             return {
                 "success": True,
                 "article_id": article_id,
+                "youtube_id": youtube_id,
                 "wordpress_response": response.json() if response.content else None,
             }
         except requests.exceptions.RequestException as e:
@@ -1045,6 +1063,124 @@ class WordPressSyncService:
                 "http_status": status_code,
                 "raw_response": body or None,
             }
+
+    def update_article_body_on_wordpress(self, youtube_id: str) -> Dict[str, Any]:
+        """
+        POST current DB **content** and **bullet_points** to the fr-mirror **update-article-body** endpoint.
+
+        Looks up the local article by ``youtube_id``. Does not send or change title.
+
+        Returns:
+            ``success``, ``article_id``, ``youtube_id``, ``wordpress_response`` on 2xx; otherwise
+            ``success: False``, ``error``, ``http_status``, ``raw_response``.
+        """
+        db = self._database
+        if not db:
+            return {
+                "success": False,
+                "error": "Database not available",
+                "http_status": status.HTTP_500_INTERNAL_SERVER_ERROR,
+            }
+        youtube_id = (youtube_id or "").strip()
+        if not youtube_id:
+            return {
+                "success": False,
+                "error": "youtube_id is required",
+                "http_status": status.HTTP_400_BAD_REQUEST,
+            }
+        article = db.get_article_by_youtube_id(youtube_id)
+        if not article:
+            return {
+                "success": False,
+                "error": f"No article found for youtube_id={youtube_id!r}",
+                "http_status": status.HTTP_404_NOT_FOUND,
+            }
+        article_id = article["id"]
+        payload = {
+            "youtube_id": youtube_id,
+            "content": article.get("content") or "",
+            "bullet_points": article.get("bullet_points") or "",
+        }
+        url = self._base_url + self._api_path_update_body
+        try:
+            response = self._request_with_jwt_retry(
+                lambda: requests.post(
+                    url,
+                    json=payload,
+                    headers=self._headers(),
+                    timeout=30,
+                )
+            )
+            if response.status_code in (401, 403):
+                logger.warning(
+                    "WordPress returned %s for update-article-body: %s",
+                    response.status_code,
+                    url,
+                )
+            response.raise_for_status()
+            logger.info(
+                "Successfully sent body/bullet update for youtube_id=%s article_id=%s to WordPress",
+                youtube_id,
+                article_id,
+            )
+            return {
+                "success": True,
+                "article_id": article_id,
+                "youtube_id": youtube_id,
+                "wordpress_response": response.json() if response.content else None,
+            }
+        except requests.exceptions.RequestException as e:
+            resp = getattr(e, "response", None)
+            status_code = resp.status_code if resp is not None else status.HTTP_502_BAD_GATEWAY
+            body = (resp.text if resp is not None and resp.text else None) or ""
+            logger.error(
+                "update_article_body_on_wordpress POST to WordPress failed: %s | response: status=%s body=%s",
+                repr(e),
+                status_code,
+                body,
+            )
+            return {
+                "success": False,
+                "error": body if body else str(e),
+                "http_status": status_code,
+                "raw_response": body or None,
+            }
+
+    def sync_regenerated_article_to_wordpress(
+        self,
+        youtube_id: str,
+        *,
+        created: bool,
+    ) -> Dict[str, Any]:
+        """Push a post-regeneration article to WordPress.
+
+        For **updated** local rows, uses ``update-article-body``. For **created** rows,
+        uses ``update-article-body`` when the ``youtube_id`` is already on WordPress;
+        otherwise attempts ``create-article`` via :meth:`sync_one_article`.
+        """
+        youtube_id = (youtube_id or "").strip()
+        if not created:
+            return self.update_article_body_on_wordpress(youtube_id)
+
+        on_wp = youtube_id in self.get_article_youtube_ids()
+        if on_wp:
+            return self.update_article_body_on_wordpress(youtube_id)
+
+        db = self._database
+        if not db:
+            return {
+                "success": False,
+                "error": "Database not available",
+                "http_status": status.HTTP_500_INTERNAL_SERVER_ERROR,
+            }
+        article = db.get_article_by_youtube_id(youtube_id)
+        if not article:
+            return {
+                "success": False,
+                "error": f"No article found for youtube_id={youtube_id!r}",
+                "http_status": status.HTTP_404_NOT_FOUND,
+            }
+        return self.sync_one_article(article["id"])
 
     def repair_article_featured_image(self, youtube_id: str) -> Dict[str, Any]:
         """

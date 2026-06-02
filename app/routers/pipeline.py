@@ -538,3 +538,157 @@ async def run_data_pipeline(
         return aggregated
     finally:
         aggregated["profiler"] = profiler.finish(aggregated.get("success", True))
+
+
+@router.post("/pipeline/regenerate/{amount}")
+async def regenerate_articles_from_anchors(
+    amount: int,
+    journalist: Journalist = Journalist.FR_J1,
+    tone: Tone = Tone.PROFESSIONAL,
+    article_type: ArticleType = ArticleType.SEQUENTIAL_NEWS,
+    extractor: Extractor = Extractor.GEMMA_NYE,
+    extractor_text_model: Optional[TextModel] = Query(
+        default=TextModel.GEMINI_2_5_PRO,
+        description=(
+            "Text model used by the extractor stage when converting transcripts "
+            "into anchor envelopes. Must resolve to a Gemini model for this stage."
+        ),
+    ),
+    journalist_text_model: Optional[TextModel] = Query(
+        default=TextModel.GEMINI_2_5_PRO,
+        description=(
+            "Text model used by the journalist stage to regenerate article body content "
+            "from extracted anchors."
+        ),
+    ),
+    sync_to_wordpress: bool = True,
+    deps: AppDependencies = Depends(AppDependencies),
+) -> Dict[str, Any]:
+    """Batch extract anchors and write or refresh articles (body + bullets).
+
+    For each transcript without anchors (up to ``amount``):
+
+    1. Run anchor extraction via :meth:`~app.services.pipeline_service.PipelineService.run_bulk_extract_anchors`.
+    2. For each successful extraction, generate article content from anchors. When a local
+       SQLite article row already exists, content and bullets are updated in place (title
+       unchanged). When only a transcript exists, a new ``articles`` row is inserted.
+    3. Optionally sync to WordPress: ``update-article-body`` for existing WP posts;
+       ``create-article`` for newly created local rows not yet on the site.
+
+    When fewer eligible transcripts exist than ``amount``, the response ``message`` reports
+    ``requested``, ``found_without_anchors``, and how many were processed.
+    """
+    if not deps.database:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Database not available",
+        )
+    if amount <= 0:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="amount must be a positive integer",
+        )
+    pipeline = deps.pipeline_service
+    if not pipeline:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Pipeline service not available",
+        )
+    if sync_to_wordpress and not deps.wordpress_sync_service:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="WordPress sync service not available",
+        )
+    try:
+        resolve_gemini_text_model(
+            extractor_text_model,
+            field_name="extractor_text_model",
+        )
+    except ValueError as e:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=str(e),
+        )
+
+    wp_svc = deps.wordpress_sync_service
+
+    extract_batch = await pipeline.run_bulk_extract_anchors(
+        amount,
+        extractor=extractor,
+        text_model=extractor_text_model,
+    )
+
+    requested = extract_batch.get("requested", amount)
+    found_without_anchors = extract_batch.get("found_without_anchors", 0)
+    anchors_extracted = extract_batch.get("anchors_extracted", 0)
+    anchors_failed = extract_batch.get("anchors_failed", 0)
+
+    articles_regenerated = 0
+    articles_failed = 0
+    wordpress_synced = 0
+    wordpress_failed = 0
+    results: list[Dict[str, Any]] = []
+
+    for extract_result in extract_batch.get("results", []):
+        youtube_id = (extract_result.get("youtube_id") or "").strip()
+        item: Dict[str, Any] = {
+            "youtube_id": youtube_id,
+            "article_id": None,
+            "extract": extract_result,
+            "regenerate": None,
+            "wordpress": None,
+        }
+
+        if not extract_result.get("success"):
+            results.append(item)
+            continue
+
+        regenerate_result = pipeline.regenerate_article_from_anchors(
+            youtube_id,
+            journalist=journalist,
+            tone=tone,
+            article_type=article_type,
+            text_model=journalist_text_model,
+        )
+        item["regenerate"] = regenerate_result
+        if regenerate_result.get("article_id") is not None:
+            item["article_id"] = regenerate_result["article_id"]
+
+        if regenerate_result.get("success"):
+            articles_regenerated += 1
+            if sync_to_wordpress and wp_svc:
+                wp_result = wp_svc.sync_regenerated_article_to_wordpress(
+                    youtube_id,
+                    created=regenerate_result.get("mode") == "created",
+                )
+                item["wordpress"] = wp_result
+                if wp_result.get("success"):
+                    wordpress_synced += 1
+                else:
+                    wordpress_failed += 1
+        else:
+            articles_failed += 1
+
+        results.append(item)
+
+    if found_without_anchors < requested:
+        message = (
+            f"Requested {requested} transcripts without anchors; "
+            f"found {found_without_anchors}; processed {len(extract_batch.get('results', []))}."
+        )
+    else:
+        message = extract_batch.get("message", f"Processed {len(results)} item(s)")
+
+    return {
+        "success": True,
+        "requested": requested,
+        "found_without_anchors": found_without_anchors,
+        "anchors_extracted": anchors_extracted,
+        "anchors_failed": anchors_failed,
+        "articles_regenerated": articles_regenerated,
+        "articles_failed": articles_failed,
+        "wordpress_synced": wordpress_synced,
+        "wordpress_failed": wordpress_failed,
+        "results": results,
+        "message": message,
+    }
