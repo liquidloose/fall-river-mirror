@@ -2,6 +2,7 @@
 
 import logging
 import os
+import time
 import uuid
 from typing import Any, Dict, Optional
 
@@ -20,6 +21,7 @@ from app.data.enum_classes import (
     resolve_gemini_text_model,
 )
 from app.services.pipeline_profiler import PipelineProfiler
+from app.agent_kit.utility_classes import run_logging
 
 router = APIRouter(tags=["pipeline"])
 logger = logging.getLogger(__name__)
@@ -34,9 +36,11 @@ async def run_data_pipeline(
         default=True,
         description=(
             "Top-up behavior for transcript fetch when queue is short. "
-            "When true and queue_mode is 'Use Whisper', the pipeline auto-builds "
-            "missing queue items up to `amount` before fetching transcripts. "
-            "When false, only already-queued items are fetched."
+            "When true and the queue holds fewer caption-eligible videos than "
+            "`amount`, the pipeline auto-builds missing queue items up to `amount` "
+            "before fetching transcripts. When false, only already-queued items "
+            "are fetched. Under Skip Whisper, the initial queue build is still "
+            "skipped, but auto_build may top up caption-eligible items during fetch."
         ),
     ),
     journalist: Journalist = Journalist.FR_J1,
@@ -94,12 +98,12 @@ async def run_data_pipeline(
         channel, and only process videos that already have captions
         (Whisper-needed items are excluded for this run).
     - **auto_build**: Top-up safety net for the transcript-fetch stage. When
-      ``True`` *and* ``queue_mode == Use Whisper`` *and* the queue holds
-      fewer videos than ``amount``, the pipeline scrapes ``channel_url`` to
-      add the shortfall before fetching. When ``False`` (or under ``Skip
-      Whisper``), only the videos already in the queue are processed — you
-      get exactly what's queued, no automatic top-up. Has no effect under
-      ``Skip Whisper`` regardless of value.
+      ``True`` and the queue holds fewer caption-eligible videos than
+      ``amount``, the pipeline scrapes ``channel_url`` to add the shortfall
+      before fetching (newly queued items still respect caption availability).
+      When ``False``, only videos already in the queue are processed. Under
+      ``Skip Whisper``, the initial queue build is still skipped, but
+      ``auto_build`` may still top up caption-eligible items during fetch.
     - **extractor / extractor_text_model**: Extractor persona and optional
       unified text model override used for anchor extraction. The extractor
       stage only accepts Gemini-backed model values.
@@ -287,8 +291,9 @@ async def run_data_pipeline(
                 )
                 return aggregated
 
-        # When Skip Whisper, do not auto-build queue and only process videos that have captions (exclude Whisper-needed)
-        auto_build_for_fetch = auto_build and not skip_queue_build
+        # Skip Whisper: no initial queue build; fetch skips Whisper-required items and
+        # may still auto-build caption-eligible queue items when auto_build=True.
+        auto_build_for_fetch = auto_build
         include_whisper_items = queue_mode == PipelineQueueMode.USE_WHISPER
         profiler.mark_ready()
         profiler.begin_stage("transcript_fetch")
@@ -431,7 +436,25 @@ async def run_data_pipeline(
                         )
                     for aid in article_ids:
                         try:
+                            _wp_perf = time.perf_counter()
                             result = wp_svc.sync_one_article(aid)
+                            _wp_youtube_id = None
+                            try:
+                                deps.database.cursor.execute(
+                                    "SELECT youtube_id FROM articles WHERE id = ? LIMIT 1",
+                                    (aid,),
+                                )
+                                _wp_row = deps.database.cursor.fetchone()
+                                if _wp_row:
+                                    _wp_youtube_id = _wp_row[0]
+                            except Exception:
+                                _wp_youtube_id = None
+                            run_logging.record_stage(
+                                _wp_youtube_id,
+                                "wordpress_sync",
+                                "WordPress publish",
+                                time.perf_counter() - _wp_perf,
+                            )
                             if result.get("success") and result.get("skipped"):
                                 skipped_existing += 1
                             elif result.get("success"):

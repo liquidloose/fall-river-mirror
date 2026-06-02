@@ -765,17 +765,37 @@ single folder per video, keyed by YouTube id:
 logs/{youtube_id}/
   {ts}_extract_{pass}_r{run_id}.json   # one per extractor pass (4-pass Gemma Nye run)
   {ts}_article_{step}.json             # article_body, bullet_points
-  metrics.json                         # elapsed time + token usage breakdown
+  metrics.json                         # whole-pipeline timing + token breakdown
 ```
 
-`metrics.json` records, for every LLM pass/step, its `elapsed_seconds` and a
-token breakdown (`prompt`, `cached`, `output`, `total`) plus per-section
-totals. The `cached` field is the slice of prompt tokens served from Gemini
-cached content (the bulk of each extraction pass). Re-running extraction
-(fresh `run_id`) replaces the `extraction` section; re-writing an article
-replaces the matching `article` step. All of this logging is best-effort and
-never blocks the pipeline. Implemented in
-`app/agent_kit/utility_classes/run_logging.py`.
+`metrics.json` covers the **whole** pipeline as a labeled `stages` map, in
+pipeline order:
+
+| stage key          | label                                  | timing source                                   |
+| ------------------ | -------------------------------------- | ----------------------------------------------- |
+| `transcript_fetch` | Transcript fetch (Whisper/captions)    | transcript download + Whisper transcribe        |
+| `extraction`       | Anchor extraction (Gemma Nye, 4-pass)  | full 4-pass wall time (incl. Gemini cache I/O)  |
+| `article_writing`  | Article body                           | FR J1 body generation                           |
+| `bullet_points`    | Bullet-point summary                   | bullet generation                               |
+| `image_generation` | Cover image                            | `gpt-image-1` generation                        |
+| `wordpress_sync`   | WordPress publish                      | one publish round-trip                          |
+
+Each stage carries a human `duration` (`MM:SS`, auto `HH:MM:SS` past an hour)
+and a numeric `elapsed_seconds` (kept so `totals` stay exact). Stages that hit
+an LLM also carry a token breakdown (`prompt`, `cached`, `output`, `total`);
+`cached` is the slice of prompt tokens served from Gemini cached content (the
+bulk of each extraction pass). The `extraction` stage's `elapsed_seconds` is
+the full wall time of the four-pass run, while nested `passes[]` keep each
+generate call's own time + tokens — the gap between them is the cache-upload
+overhead. A top-level `totals` block sums duration and tokens across all
+stages.
+
+Re-running extraction (fresh `run_id`) replaces the `extraction` stage's
+passes; re-running any single-shot stage replaces that stage entry. All of
+this logging is best-effort and never blocks the pipeline. Per-video stage
+timers live in `app/services/pipeline_service.py` (transcript, extraction,
+image) and `app/routers/pipeline.py` (WordPress sync); the schema + writers
+are in `app/agent_kit/utility_classes/run_logging.py`.
 
 ### Log levels
 

@@ -210,20 +210,61 @@ class WhisperProcessor:
                         f"Failed to cleanup temporary directory: {cleanup_error}"
                     )
 
+    @staticmethod
+    def _format_offset(seconds: float) -> str:
+        """Render an absolute offset as a ``[HH:MM:SS]`` marker.
+
+        Matches the ``HH:MM:SS`` shape the extractor expects in
+        ``timestamp_string`` so segment markers read as real anchor times.
+        """
+        total = int(seconds) if seconds and seconds > 0 else 0
+        hours, rem = divmod(total, 3600)
+        minutes, secs = divmod(rem, 60)
+        return f"[{hours:02d}:{minutes:02d}:{secs:02d}]"
+
+    def _transcribe_file_segments(
+        self, audio_path: str, video_id: str, offset_seconds: float = 0.0
+    ) -> str:
+        """Transcribe one audio file into a timestamped transcript string.
+
+        Requests ``verbose_json`` with segment granularity so each segment
+        keeps its start time, then prefixes every segment with a
+        ``[HH:MM:SS]`` marker. ``offset_seconds`` is added to every start —
+        used by the chunked path, where Whisper's per-chunk times are
+        relative to the chunk, not the whole meeting. Falls back to plain
+        text (no markers) if the API returns no segments.
+        """
+        with open(audio_path, "rb") as audio_file:
+            response = self.client.audio.transcriptions.create(
+                model="whisper-1",
+                file=audio_file,
+                response_format="verbose_json",
+                timestamp_granularities=["segment"],
+            )
+
+        segments = getattr(response, "segments", None) or []
+        if not segments:
+            return (getattr(response, "text", "") or "").strip()
+
+        lines = []
+        for seg in segments:
+            start = float(getattr(seg, "start", 0.0) or 0.0) + offset_seconds
+            text = (getattr(seg, "text", "") or "").strip()
+            if text:
+                lines.append(f"{self._format_offset(start)} {text}")
+        return "\n".join(lines)
+
     def _transcribe_single_file(self, audio_path: str, video_id: str) -> str:
-        """Transcribe a single audio file using OpenAI Whisper."""
+        """Transcribe a single audio file using OpenAI Whisper (timestamped)."""
         logger.info(f"Transcribing audio using OpenAI Whisper for video: {video_id}")
 
         try:
-            with open(audio_path, "rb") as audio_file:
-                transcript_response = self.client.audio.transcriptions.create(
-                    model="whisper-1", file=audio_file, response_format="text"
-                )
+            transcript_text = self._transcribe_file_segments(audio_path, video_id)
 
             logger.info(
                 f"Successfully transcribed video {video_id} using OpenAI Whisper"
             )
-            return transcript_response
+            return transcript_text
 
         except Exception as e:
             # Check if this is a timeout error
@@ -245,21 +286,23 @@ class WhisperProcessor:
         try:
             chunks = self._split_audio_file(audio_path, video_id, temp_dir)
 
-            # Transcribe each chunk
+            # Transcribe each chunk. Whisper timestamps are relative to each
+            # chunk, so shift them by the chunk's start offset to get absolute
+            # meeting time (chunk i begins at i * chunk_duration seconds).
             all_transcripts = []
             for i, chunk_path in enumerate(chunks):
                 logger.info(f"Transcribing chunk {i + 1}/{len(chunks)}")
 
-                with open(chunk_path, "rb") as audio_file:
-                    transcript_response = self.client.audio.transcriptions.create(
-                        model="whisper-1", file=audio_file, response_format="text"
+                offset_seconds = i * self.chunk_duration
+                all_transcripts.append(
+                    self._transcribe_file_segments(
+                        chunk_path, video_id, offset_seconds=offset_seconds
                     )
-
-                all_transcripts.append(transcript_response)
+                )
                 logger.info(f"Completed chunk {i + 1}/{len(chunks)}")
 
-            # Combine all transcripts
-            full_transcript = " ".join(all_transcripts)
+            # Combine all chunk transcripts (each already timestamped absolutely)
+            full_transcript = "\n".join(t for t in all_transcripts if t)
             logger.info(
                 f"Successfully transcribed {len(chunks)} chunks for video {video_id}"
             )

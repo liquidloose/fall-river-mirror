@@ -56,6 +56,7 @@ from app.agent_kit.agents.extractors.schemas import (
     SpellCheckEnvelope,
 )
 from app.agent_kit.utility_classes.llm_text_query import ModelEnum
+from app.agent_kit.utility_classes.prompt_utilities import format_bracket_timestamp
 from app.data.enum_classes import (
     Committee,
     GeminiModel,
@@ -638,16 +639,23 @@ class GemmaNye(BaseExtractor):
     # ------------------------------------------------------------------
 
     @staticmethod
-    def _timestamp_string_to_seconds(ts: Optional[str]) -> Optional[int]:
-        """Parse ``'HH:MM:SS'`` or ``'MM:SS'`` into a total seconds integer.
+    def parse_timestamp_to_seconds(ts: Optional[str]) -> Optional[int]:
+        """Parse a transcript timestamp marker into whole seconds.
 
-        Returns ``None`` when the input is empty or doesn't match either
-        format — anchors without parseable timestamps still persist; only
-        the ``timestamp_seconds`` column ends up NULL.
+        Accepts decimal floats from YouTube caption JSON (truncated toward
+        zero), plain integers, ``Ns`` suffixes, and ``MM:SS`` / ``HH:MM:SS``.
+        Returns ``None`` when the input is empty or unparseable.
         """
         if not ts or not isinstance(ts, str):
             return None
         raw = ts.strip()
+        if not raw:
+            return None
+        if re.fullmatch(r"\d+\.\d+", raw):
+            try:
+                return int(float(raw))
+            except ValueError:
+                return None
         if raw.isdigit():
             return int(raw)
         if raw.endswith("s") and raw[:-1].isdigit():
@@ -665,6 +673,21 @@ class GemmaNye(BaseExtractor):
         except ValueError:
             return None
         return None
+
+    @staticmethod
+    def format_timestamp_colon(seconds: int) -> str:
+        """Zero-padded ``MM:SS`` or ``HH:MM:SS`` for stored ``timestamp_string``."""
+        total = max(0, int(seconds))
+        hours, rem = divmod(total, 3600)
+        minutes, secs = divmod(rem, 60)
+        if hours:
+            return f"{hours}:{minutes:02d}:{secs:02d}"
+        return f"{minutes:02d}:{secs:02d}"
+
+    @staticmethod
+    def format_timestamp_bracket(seconds: int) -> str:
+        """Bracketed video jump label, e.g. ``[00:12]`` or ``[01:08:44]``."""
+        return format_bracket_timestamp(seconds)
 
     @staticmethod
     def _build_text_to_embed(
@@ -703,9 +726,15 @@ class GemmaNye(BaseExtractor):
         marker at the start of the topic. No transcript re-alignment happens
         here.
         """
-        ts_seconds = self._timestamp_string_to_seconds(raw.get("timestamp_string"))
+        ts_seconds = self.parse_timestamp_to_seconds(raw.get("timestamp_string"))
+        normalized_ts = (
+            self.format_timestamp_colon(ts_seconds)
+            if ts_seconds is not None
+            else raw.get("timestamp_string")
+        )
         return {
             **raw,
+            "timestamp_string": normalized_ts,
             "timestamp_seconds": ts_seconds,
             "text_to_embed": self._build_text_to_embed(raw, meeting_date, committee),
         }

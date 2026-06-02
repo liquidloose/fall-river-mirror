@@ -576,11 +576,13 @@ class BaseJournalist(BaseCreator):
     ) -> None:
         """Write a full article-creation call log + metrics entry.
 
-        Mirrors the extractor's per-pass logging: a full debug payload lands
-        in ``logs/<youtube_id>/`` and a timing/token entry is merged into that
-        video's ``metrics.json`` under the ``article`` section. Token usage is
-        taken from ``llm.usage_total`` so a step that fires multiple completions
-        (e.g. body + headline) reports their combined tokens. Best-effort.
+        Mirrors the extractor's logging: a full debug payload lands in
+        ``logs/<youtube_id>/`` and a timing/token entry is recorded into that
+        video's ``metrics.json`` as a labeled pipeline stage
+        (``article_writing`` for the body, ``bullet_points`` for the summary).
+        Token usage is taken from ``llm.usage_total`` so a step that fires
+        multiple completions (e.g. body + headline) reports their combined
+        tokens. Best-effort.
         """
         elapsed_seconds = round(time.perf_counter() - perf_start, 3)
         token_usage = dict(llm.usage_total)
@@ -609,16 +611,20 @@ class BaseJournalist(BaseCreator):
                 "error": error,
             },
         )
-        run_logging.append_metric(
+        if step == "bullet_points":
+            stage_key, label = "bullet_points", "Bullet-point summary"
+        else:
+            stage_key, label = "article_writing", "Article body"
+        run_logging.record_stage(
             youtube_id,
-            "article",
-            {
-                "step": step,
-                "model": meta.get("model"),
-                "elapsed_seconds": elapsed_seconds,
-                "tokens": token_usage,
+            stage_key,
+            label,
+            elapsed_seconds,
+            model=meta.get("model"),
+            tokens=token_usage,
+            extra={
+                "journalist": journalist,
                 "started_at": started_at,
                 "completed_at": completed_at,
             },
-            section_meta={"journalist": journalist},
         )

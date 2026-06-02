@@ -126,12 +126,16 @@ class FactCheckAuditEntry(BaseModel):
     Invariants the prompt enforces:
 
     - ``kind="removed"`` → originals required (verbatim from the draft);
-      ``corrected_anchor_text`` MUST be null (no replacement).
+      ``corrected_anchor_text`` and ``corrected_timestamp_string`` MUST be null
+      (no replacement).
     - ``kind="corrected"`` → originals required (verbatim from the draft);
       ``corrected_anchor_text`` MUST equal the corrected anchor's ``anchor_text``
-      (verbatim — used by persistence as the join key to fill ``anchor_id``).
+      (verbatim — used by persistence as the join key to fill ``anchor_id``), and
+      ``corrected_timestamp_string`` MUST equal its ``timestamp_string`` so
+      timestamp-only fixes (identical text) are still visible in the audit log.
     - ``kind="added"`` → originals MUST be null (no draft existed);
-      ``corrected_anchor_text`` MUST equal the new anchor's ``anchor_text``.
+      ``corrected_anchor_text`` MUST equal the new anchor's ``anchor_text`` and
+      ``corrected_timestamp_string`` its ``timestamp_string``.
 
     ``audit_note`` is silent when the model is confident in the decision.
     """
@@ -167,6 +171,15 @@ class FactCheckAuditEntry(BaseModel):
         "`factual_anchor_items[i].anchor_text` string. Set for "
         "`kind='corrected'` and `kind='added'`. MUST be null for "
         "`kind='removed'` (no replacement anchor exists).",
+    )
+    corrected_timestamp_string: Optional[str] = Field(
+        default=None,
+        description="The `timestamp_string` of the resulting anchor in "
+        "`factual_anchor_items` — i.e. the corrected time. Set for "
+        "`kind='corrected'` and `kind='added'` so a reviewer can see the "
+        "time change at a glance (compare against `original_timestamp_string`); "
+        "this matters because many corrections are timestamp-only and leave "
+        "`anchor_text` unchanged. MUST be null for `kind='removed'`.",
     )
     audit_note: str = Field(
         default="",

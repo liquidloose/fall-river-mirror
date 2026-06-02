@@ -67,6 +67,8 @@ from app.data.enum_classes import (
     resolve_gemini_text_model,
     resolve_text_model,
 )
+from app.agent_kit.agents.extractors.gemma_nye import GemmaNye
+from app.agent_kit.utility_classes import run_logging
 from app.agent_kit.utility_classes.prompt_utilities import format_bracket_timestamp
 from app.agent_kit.utility_classes.video_jump_links import repair_video_jump_links
 from app.data.journalist_manager import JournalistManager
@@ -110,26 +112,21 @@ class PipelineService:
 
     @staticmethod
     def _timestamp_to_seconds(timestamp: Optional[str]) -> Optional[int]:
-        """Convert HH:MM:SS (or MM:SS) to seconds."""
-        if not timestamp:
-            return None
-        raw = str(timestamp).strip()
-        if not raw:
-            return None
-        parts = raw.split(":")
-        if len(parts) == 2:
-            hours = 0
-            minutes_str, seconds_str = parts
-        elif len(parts) == 3:
-            hours_str, minutes_str, seconds_str = parts
-            if not (hours_str.isdigit() and minutes_str.isdigit() and seconds_str.isdigit()):
-                return None
-            hours = int(hours_str)
-        else:
-            return None
-        if not (minutes_str.isdigit() and seconds_str.isdigit()):
-            return None
-        return (hours * 3600) + (int(minutes_str) * 60) + int(seconds_str)
+        """Convert a timestamp marker to seconds via GemmaNye's shared parser."""
+        return GemmaNye.parse_timestamp_to_seconds(timestamp)
+
+    @staticmethod
+    def _is_whisper_required_error(exc: Exception) -> bool:
+        """True when a transcript fetch failed because Whisper would be required."""
+        msg = str(exc).lower()
+        whisper_markers = (
+            "whisper fallback disabled",
+            "transcriptsdisabled",
+            "no transcript found",
+            "couldnotretrievetranscript",
+            "video unavailable",
+        )
+        return any(marker in msg for marker in whisper_markers)
 
     @staticmethod
     def _build_youtube_timestamp_url(youtube_id: str, seconds: Optional[int]) -> Optional[str]:
@@ -209,32 +206,50 @@ class PipelineService:
         row = cursor.fetchone()
         return row[0] if row else None
 
-    def build_article_context_from_anchors(self, youtube_id: str) -> Optional[str]:
-        """Build journalist-ready context from latest anchor run for a video."""
-        db = self._database
-        if not db:
-            return None
-        run_id = self._get_latest_anchor_run_id(youtube_id)
-        if not run_id:
-            return None
+    @staticmethod
+    def _anchor_rows_from_extraction_envelope(
+        envelope_data: Dict[str, Any],
+    ) -> List[tuple]:
+        """Map extractor envelope data to the same row shape as the anchors SELECT."""
+        rows: list[tuple] = []
+        for bullet in envelope_data.get("executive_summary_bullets") or []:
+            if isinstance(bullet, str) and bullet.strip():
+                rows.append(
+                    ("executive_summary", None, None, None, bullet.strip(), 0, "none")
+                )
+        for anchor in envelope_data.get("factual_anchor_items") or []:
+            if not isinstance(anchor, dict):
+                continue
+            text = (anchor.get("anchor_text") or "").strip()
+            if not text:
+                continue
+            rows.append(
+                (
+                    "factual_anchor",
+                    anchor.get("timestamp_string"),
+                    anchor.get("timestamp_seconds"),
+                    anchor.get("anchor_headline"),
+                    text,
+                    anchor.get("has_official_vote"),
+                    anchor.get("roll_call_type") or "none",
+                )
+            )
+        return rows
 
-        cursor = db.cursor
-        cursor.execute(
-            """
-            SELECT doc_type, timestamp_string, timestamp_seconds, anchor_headline, anchor_text, has_official_vote, roll_call_type
-            FROM anchors
-            WHERE youtube_id = ? AND run_id = ?
-            ORDER BY CASE WHEN doc_type = 'executive_summary' THEN 0 ELSE 1 END, id ASC
-            """,
-            (youtube_id, run_id),
-        )
-        rows = cursor.fetchall()
-        if not rows:
-            return None
-
+    def _compose_article_context_from_anchor_rows(
+        self, youtube_id: str, rows: List[tuple]
+    ) -> Optional[str]:
         executive_bullets: list[str] = []
         factual_lines: list[str] = []
-        for doc_type, timestamp, timestamp_seconds, headline, anchor_text, has_official_vote, roll_call_type in rows:
+        for (
+            doc_type,
+            timestamp,
+            timestamp_seconds,
+            headline,
+            anchor_text,
+            has_official_vote,
+            roll_call_type,
+        ) in rows:
             text = (anchor_text or "").strip()
             if not text:
                 continue
@@ -242,18 +257,20 @@ class PipelineService:
                 executive_bullets.append(text)
                 continue
             prefix_parts: list[str] = []
-            effective_seconds = (
-                int(timestamp_seconds)
-                if timestamp_seconds is not None
-                else self._timestamp_to_seconds(timestamp)
-            )
+            if timestamp_seconds is not None:
+                try:
+                    effective_seconds: Optional[int] = int(timestamp_seconds)
+                except (TypeError, ValueError):
+                    effective_seconds = self._timestamp_to_seconds(timestamp)
+            else:
+                effective_seconds = self._timestamp_to_seconds(timestamp)
             if effective_seconds is not None:
                 prefix_parts.append(format_bracket_timestamp(effective_seconds))
             elif timestamp:
                 label = timestamp if str(timestamp).startswith("[") else f"[{timestamp}]"
                 prefix_parts.append(label)
             if headline:
-                prefix_parts.append(headline)
+                prefix_parts.append(str(headline))
             prefix = " ".join(prefix_parts).strip()
             vote_suffix = (
                 f"(official_vote={'yes' if bool(has_official_vote) else 'no'}, "
@@ -277,6 +294,30 @@ class PipelineService:
             sections.extend(factual_lines)
         return "\n".join(sections) if sections else None
 
+    def build_article_context_from_anchors(self, youtube_id: str) -> Optional[str]:
+        """Build journalist-ready context from latest anchor run for a video."""
+        db = self._database
+        if not db:
+            return None
+        run_id = self._get_latest_anchor_run_id(youtube_id)
+        if not run_id:
+            return None
+
+        cursor = db.cursor
+        cursor.execute(
+            """
+            SELECT doc_type, timestamp_string, timestamp_seconds, anchor_headline, anchor_text, has_official_vote, roll_call_type
+            FROM anchors
+            WHERE youtube_id = ? AND run_id = ?
+            ORDER BY CASE WHEN doc_type = 'executive_summary' THEN 0 ELSE 1 END, id ASC
+            """,
+            (youtube_id, run_id),
+        )
+        rows = cursor.fetchall()
+        if not rows:
+            return None
+        return self._compose_article_context_from_anchor_rows(youtube_id, rows)
+
     def get_latest_executive_summary_bullets(self, youtube_id: str) -> List[str]:
         """Return executive-summary bullets from latest anchor run for a video."""
         db = self._database
@@ -297,6 +338,17 @@ class PipelineService:
         )
         rows = cursor.fetchall()
         return [(row[0] or "").strip() for row in rows if (row[0] or "").strip()]
+
+    @staticmethod
+    def _unresolved_audit_notes_from_envelope(envelope_data: Dict[str, Any]) -> List[str]:
+        notes: list[str] = []
+        for entry in envelope_data.get("fact_check_audit") or []:
+            if not isinstance(entry, dict) or entry.get("kind") != "unresolved":
+                continue
+            note = (entry.get("audit_note") or "").strip()
+            if note:
+                notes.append(note)
+        return notes
 
     def get_unresolved_audit_notes(self, youtube_id: str) -> List[str]:
         """Return ``audit_note`` text for ``unresolved`` fact-check rows.
@@ -483,13 +535,13 @@ class PipelineService:
         on_wp = skip_youtube_ids_on_wp or set()
         channel_url = channel_url or os.getenv("DEFAULT_YOUTUBE_CHANNEL_URL")
         cursor = db.cursor
-        caption_only_clause = "" if include_whisper_items else " AND T1.transcript_available = 1"
+        caption_eligible_clause = "" if include_whisper_items else " AND T1.transcript_available = 1"
         cursor.execute(
             """SELECT COUNT(*)
                FROM video_queue AS T1
                LEFT JOIN transcripts AS T2 ON T1.youtube_id = T2.youtube_id
                WHERE T2.youtube_id IS NULL"""
-            + caption_only_clause
+            + caption_eligible_clause
         )
         available_count = cursor.fetchone()[0]
         auto_build_triggered = False
@@ -510,10 +562,11 @@ class PipelineService:
         results = []
         transcripts_fetched = 0
         transcripts_failed = 0
+        skipped_whisper = 0
         attempts = 0
         RATE_LIMIT_MS = 5000
-        # Track IDs that failed this run so we skip them in subsequent iterations
-        # without removing them from the queue (they stay for the next run).
+        # Track IDs that failed or were skipped this run so we skip them in subsequent
+        # iterations without removing them from the queue (they stay for the next run).
         failed_this_run: Set[str] = set()
 
         def _pop_next_queue_row():
@@ -528,7 +581,6 @@ class PipelineService:
                    FROM video_queue AS T1
                    LEFT JOIN transcripts AS T2 ON T1.youtube_id = T2.youtube_id
                    WHERE T2.youtube_id IS NULL"""
-                + caption_only_clause
                 + exclude_clause
                 + """
                    ORDER BY T1.id ASC
@@ -553,8 +605,22 @@ class PipelineService:
                 db.conn.commit()
                 logger.info("Skipping %s - already on WordPress (removed from queue)", yid)
                 continue
+            if not include_whisper_items and not transcript_available:
+                skipped_whisper += 1
+                failed_this_run.add(yid)
+                results.append({
+                    "youtube_id": yid,
+                    "status": "skipped_requires_whisper",
+                    "message": "Skipped: video requires Whisper (Skip Whisper mode)",
+                })
+                logger.info(
+                    "Skip Whisper: skipping %s (transcript_available=0, Whisper required)",
+                    yid,
+                )
+                continue
             attempts += 1
             try:
+                _fetch_perf = time.perf_counter()
                 transcript_result = transcript_mgr.get_transcript(
                     youtube_id, allow_whisper_fallback=include_whisper_items
                 )
@@ -565,6 +631,16 @@ class PipelineService:
                     )
                 transcripts_fetched += 1
                 from_cache = transcript_result.get("source") == "database_cache"
+                run_logging.record_stage(
+                    yid,
+                    "transcript_fetch",
+                    "Transcript fetch (Whisper/captions)",
+                    time.perf_counter() - _fetch_perf,
+                    extra={
+                        "source": transcript_result.get("source"),
+                        "from_cache": from_cache,
+                    },
+                )
                 # Verify new transcripts are actually in DB so we don't report success without persist
                 if not from_cache:
                     cursor.execute(
@@ -598,8 +674,26 @@ class PipelineService:
                 )
                 db.conn.commit()
             except Exception as e:
-                transcripts_failed += 1
                 failed_this_run.add(yid)
+                if not include_whisper_items and self._is_whisper_required_error(e):
+                    skipped_whisper += 1
+                    results.append({
+                        "youtube_id": youtube_id,
+                        "status": "skipped_requires_whisper",
+                        "error": str(e),
+                    })
+                    cursor.execute(
+                        "UPDATE video_queue SET transcript_available = 0 WHERE youtube_id = ?",
+                        (yid,),
+                    )
+                    db.conn.commit()
+                    logger.info(
+                        "Skip Whisper: skipping %s (requires Whisper): %s",
+                        youtube_id,
+                        e,
+                    )
+                    continue
+                transcripts_failed += 1
                 results.append({
                     "youtube_id": youtube_id,
                     "status": "failed",
@@ -620,15 +714,28 @@ class PipelineService:
             time.sleep(RATE_LIMIT_MS / 1000.0)
 
         if transcripts_fetched == 0:
-            payload = {
-                "success": False,
-                "message": (
+            if not include_whisper_items and skipped_whisper > 0 and attempts == 0:
+                message = (
+                    f"Skipped {skipped_whisper} Whisper-required video(s); "
+                    "no caption-eligible videos remain in queue"
+                )
+            elif not include_whisper_items and skipped_whisper > 0:
+                message = (
+                    f"Skipped {skipped_whisper} Whisper-required video(s); "
+                    f"all {attempts} caption fetch attempt(s) failed"
+                )
+            else:
+                message = (
                     "No videos in queue without a transcript"
                     if attempts == 0
                     else f"All {attempts} transcript fetch attempt(s) failed; no transcripts fetched this run"
-                ),
+                )
+            payload = {
+                "success": False,
+                "message": message,
                 "transcripts_fetched": 0,
                 "transcripts_failed": transcripts_failed,
+                "skipped_whisper": skipped_whisper,
                 "results": results,
             }
             if not include_whisper_items:
@@ -641,11 +748,14 @@ class PipelineService:
         message = (
             f"Processed {attempts} attempt(s); fetched {transcripts_fetched} (requested up to {amount})"
         )
+        if skipped_whisper:
+            message += f"; skipped {skipped_whisper} Whisper-required video(s)"
         response = {
             "success": True,
             "message": message,
             "transcripts_fetched": transcripts_fetched,
             "transcripts_failed": transcripts_failed,
+            "skipped_whisper": skipped_whisper,
             "results": results,
         }
         if auto_build_triggered:
@@ -1141,7 +1251,7 @@ class PipelineService:
         artist_instance = artist_class()
         cursor = db.cursor
         cursor.execute(
-            """SELECT a.id, a.title, a.bullet_points, a.transcript_id
+            """SELECT a.id, a.title, a.bullet_points, a.transcript_id, a.youtube_id
                FROM articles a
                LEFT JOIN art ON a.id = art.article_id
                WHERE a.bullet_points IS NOT NULL AND a.bullet_points != '' AND art.id IS NULL
@@ -1173,6 +1283,7 @@ class PipelineService:
             )
         for row in articles:
             article_id, title, bullet_points, transcript_id = row[0], row[1], row[2], row[3]
+            article_youtube_id = row[4] if len(row) > 4 else None
             try:
                 cursor.execute("SELECT id FROM art WHERE article_id = ?", (article_id,))
                 if cursor.fetchone():
@@ -1182,6 +1293,7 @@ class PipelineService:
                         "reason": "Art exists",
                     })
                     continue
+                _image_perf = time.perf_counter()
                 image_result = artist_instance.generate_image(
                     title=title,
                     bullet_points=bullet_points,
@@ -1197,6 +1309,13 @@ class PipelineService:
                         "error": image_result["error"],
                     })
                     continue
+                run_logging.record_stage(
+                    article_youtube_id,
+                    "image_generation",
+                    "Cover image",
+                    time.perf_counter() - _image_perf,
+                    model=model.value,
+                )
                 if image_result.get("image_url"):
                     image_data = image_svc.decode_url(image_result["image_url"])
                     art_id = db.add_art(
@@ -1244,6 +1363,7 @@ class PipelineService:
         *,
         extractor: Extractor = Extractor.GEMMA_NYE,
         text_model: Optional[GeminiModel] = None,
+        persist: bool = True,
     ) -> Dict[str, Any]:
         """Run a selected extractor over a stored transcript.
 
@@ -1262,6 +1382,11 @@ class PipelineService:
                 passes. When omitted, the extractor's class default applies
                 (``GEMINI_3_PRO_PREVIEW`` for Gemma). Use a Flash variant
                 when billing is off or quotas are tight.
+            persist: When ``True`` (default), write anchors and audit rows to
+                the database and update the transcript committee. When
+                ``False``, skip persistence and include ``article_context``,
+                ``summary_bullets``, and ``unresolved_audit_notes`` on the
+                response for preview flows.
 
         Returns:
             Dict with:
@@ -1302,7 +1427,7 @@ class PipelineService:
                 "youtube_id": youtube_id,
                 "error": "Database not initialized",
             }
-        if not anchor_manager:
+        if persist and not anchor_manager:
             return {
                 "success": False,
                 "message": "AnchorManager not wired into PipelineService",
@@ -1372,6 +1497,7 @@ class PipelineService:
             len(transcript_content),
             meeting_date,
         )
+        _extract_perf = time.perf_counter()
         try:
             envelope = gemma.extract(
                 transcript=transcript_content,
@@ -1393,6 +1519,15 @@ class PipelineService:
                 "error": str(e),
             }
 
+        # Record full 4-pass wall time (includes Gemini cache create/delete
+        # overhead the per-pass timings don't capture).
+        run_logging.set_stage_duration(
+            youtube_id,
+            "extraction",
+            "Anchor extraction (Gemma Nye, 4-pass)",
+            time.perf_counter() - _extract_perf,
+        )
+
         if not envelope.get("success"):
             logger.warning(
                 "Pipeline extract_anchors: %s returned success=False yt=%s msg=%s",
@@ -1413,30 +1548,31 @@ class PipelineService:
 
         data = envelope.get("data") or {}
         run_id = envelope.get("run_id")
-        try:
-            anchor_manager.insert_from_envelope(
-                youtube_id=youtube_id,
-                run_id=run_id,
-                envelope=data,
-                extractor_name=gemma.FULL_NAME,
-                model=envelope.get("model"),
-            )
-        except Exception as e:
-            logger.exception(
-                "Pipeline extract_anchors: AnchorManager insert raised yt=%s run_id=%s",
-                youtube_id,
-                run_id,
-            )
-            return {
-                "success": False,
-                "message": f"AnchorManager insert raised (anchors NOT persisted): {e}",
-                "youtube_id": youtube_id,
-                "extractor": extractor.value,
-                "run_id": run_id,
-                "provider": envelope.get("provider"),
-                "model": envelope.get("model"),
-                "error": str(e),
-            }
+        if persist:
+            try:
+                anchor_manager.insert_from_envelope(
+                    youtube_id=youtube_id,
+                    run_id=run_id,
+                    envelope=data,
+                    extractor_name=gemma.FULL_NAME,
+                    model=envelope.get("model"),
+                )
+            except Exception as e:
+                logger.exception(
+                    "Pipeline extract_anchors: AnchorManager insert raised yt=%s run_id=%s",
+                    youtube_id,
+                    run_id,
+                )
+                return {
+                    "success": False,
+                    "message": f"AnchorManager insert raised (anchors NOT persisted): {e}",
+                    "youtube_id": youtube_id,
+                    "extractor": extractor.value,
+                    "run_id": run_id,
+                    "provider": envelope.get("provider"),
+                    "model": envelope.get("model"),
+                    "error": str(e),
+                }
 
         anchors_inserted = len(data.get("factual_anchor_items") or [])
         bullets_inserted = len(data.get("executive_summary_bullets") or [])
@@ -1493,11 +1629,11 @@ class PipelineService:
         # downstream article inherits it (instead of the raw, title-derived
         # value seeded at fetch time). The original title stays in video_title.
         primary_committee = data.get("primary_committee")
-        if isinstance(primary_committee, str) and primary_committee.strip():
+        if persist and isinstance(primary_committee, str) and primary_committee.strip():
             db.update_transcript_committee(youtube_id, primary_committee.strip())
-        return {
+        result: Dict[str, Any] = {
             "success": True,
-            "message": "Extraction complete",
+            "message": "Extraction complete" if persist else "Extraction complete (not persisted)",
             "youtube_id": youtube_id,
             "extractor": extractor.value,
             "run_id": run_id,
@@ -1506,6 +1642,21 @@ class PipelineService:
             "anchors_inserted": anchors_inserted,
             "bullets_inserted": bullets_inserted,
             "audit_inserted": audit_inserted,
+            "persisted": persist,
             "anchors_with_fact_check_note": anchors_with_fact_check_note,
             "primary_committee": data.get("primary_committee"),
         }
+        if not persist:
+            rows = self._anchor_rows_from_extraction_envelope(data)
+            result["article_context"] = self._compose_article_context_from_anchor_rows(
+                youtube_id, rows
+            )
+            result["summary_bullets"] = [
+                b.strip()
+                for b in (data.get("executive_summary_bullets") or [])
+                if isinstance(b, str) and b.strip()
+            ]
+            result["unresolved_audit_notes"] = self._unresolved_audit_notes_from_envelope(
+                data
+            )
+        return result

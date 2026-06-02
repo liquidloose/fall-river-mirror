@@ -179,84 +179,208 @@ def write_call_log(
         return None
 
 
-def append_metric(
-    youtube_id: Optional[str],
-    section: str,
-    entry: Dict[str, Any],
-    *,
-    section_meta: Optional[Dict[str, Any]] = None,
+def format_duration(seconds: Optional[float]) -> str:
+    """Render a duration as ``MM:SS`` (or ``HH:MM:SS`` once it reaches an hour)."""
+    total = int(round(float(seconds or 0)))
+    if total < 0:
+        total = 0
+    hours, rem = divmod(total, 3600)
+    minutes, secs = divmod(rem, 60)
+    if hours:
+        return f"{hours:02d}:{minutes:02d}:{secs:02d}"
+    return f"{minutes:02d}:{secs:02d}"
+
+
+# Canonical ordering used when rendering the stages map so metrics.json reads
+# top-to-bottom in pipeline order regardless of which stage wrote last.
+_STAGE_ORDER = (
+    "transcript_fetch",
+    "extraction",
+    "article_writing",
+    "bullet_points",
+    "image_generation",
+    "wordpress_sync",
+)
+
+
+def _load_metrics(path: Path) -> Dict[str, Any]:
+    data: Dict[str, Any] = {}
+    if path.exists():
+        try:
+            with open(path, "r", encoding="utf-8") as f:
+                data = json.load(f) or {}
+        except Exception:  # noqa: BLE001
+            data = {}
+    if not isinstance(data, dict):
+        data = {}
+    return data
+
+
+def _ordered_stages(stages: Dict[str, Any]) -> Dict[str, Any]:
+    ordered: Dict[str, Any] = {}
+    for key in _STAGE_ORDER:
+        if key in stages:
+            ordered[key] = stages[key]
+    for key, value in stages.items():
+        if key not in ordered:
+            ordered[key] = value
+    return ordered
+
+
+def _recompute_totals(data: Dict[str, Any]) -> None:
+    """Recompute ``totals`` from every stage's elapsed time and tokens."""
+    stages = data.get("stages") or {}
+    total_elapsed = 0.0
+    total_tokens = empty_usage()
+    for stage in stages.values():
+        if not isinstance(stage, dict):
+            continue
+        total_elapsed += float(stage.get("elapsed_seconds") or 0)
+        total_tokens = add_usage(total_tokens, stage.get("tokens"))
+    data["totals"] = {
+        "duration": format_duration(total_elapsed),
+        "elapsed_seconds": round(total_elapsed, 3),
+        "tokens": total_tokens,
+    }
+
+
+def _write_metrics(
+    youtube_id: Optional[str], mutate
 ) -> Optional[Path]:
-    """Merge one timing/token ``entry`` into ``logs/<youtube_id>/metrics.json``.
+    """Read-modify-write ``logs/<youtube_id>/metrics.json`` under ``mutate``.
 
-    ``section`` is ``"extraction"`` or ``"article"``. Entries land in
-    ``section["passes"]`` (extraction) or ``section["steps"]`` (article), and
-    ``section["totals"]`` is recomputed from the list each time.
-
-    Idempotency / rerun behavior:
-
-    - ``section_meta`` (e.g. ``{"run_id": ...}``) is merged onto the section.
-      For extraction, a *new* ``run_id`` clears the prior passes so a re-run
-      replaces rather than appends.
-    - Within a section, an entry with the same label (``pass`` for extraction,
-      ``step`` for article) replaces the existing one instead of duplicating.
-
-    Best-effort: returns the metrics path on success, ``None`` on failure.
+    ``mutate(data)`` edits the dict in place; this helper handles load,
+    youtube_id seeding, stage ordering, totals recompute, and the write. All
+    best-effort: a failure is logged at WARNING and ``None`` is returned.
     """
-    list_key = "passes" if section == "extraction" else "steps"
-    label_key = "pass" if section == "extraction" else "step"
     try:
         directory = video_log_dir(youtube_id)
         path = directory / "metrics.json"
-
-        data: Dict[str, Any] = {}
-        if path.exists():
-            try:
-                with open(path, "r", encoding="utf-8") as f:
-                    data = json.load(f) or {}
-            except Exception:  # noqa: BLE001
-                data = {}
-        if not isinstance(data, dict):
-            data = {}
-
+        data = _load_metrics(path)
         data.setdefault("youtube_id", _safe(youtube_id, "unknown"))
+        if not isinstance(data.get("stages"), dict):
+            data["stages"] = {}
 
-        sec = data.get(section)
-        if not isinstance(sec, dict):
-            sec = {}
+        mutate(data)
 
-        # A new extraction run replaces the previous section's passes.
-        new_run_id = (section_meta or {}).get("run_id")
-        if new_run_id and sec.get("run_id") and sec.get("run_id") != new_run_id:
-            sec = {}
-        if section_meta:
-            sec.update(section_meta)
-
-        items = sec.get(list_key)
-        if not isinstance(items, list):
-            items = []
-        label_val = entry.get(label_key)
-        items = [it for it in items if it.get(label_key) != label_val]
-        items.append(entry)
-        sec[list_key] = items
-
-        total_elapsed = 0.0
-        total_tokens = empty_usage()
-        for it in items:
-            total_elapsed += float(it.get("elapsed_seconds") or 0)
-            total_tokens = add_usage(total_tokens, it.get("tokens"))
-        sec["totals"] = {
-            "elapsed_seconds": round(total_elapsed, 3),
-            "tokens": total_tokens,
-        }
-
-        data[section] = sec
+        data["stages"] = _ordered_stages(data["stages"])
+        _recompute_totals(data)
         data["updated_at"] = datetime.now(timezone.utc).isoformat()
 
         with open(path, "w", encoding="utf-8") as f:
             json.dump(data, f, ensure_ascii=False, indent=2, default=str)
         return path
     except Exception as e:  # noqa: BLE001
-        logger.warning(
-            "append_metric failed yt=%s section=%s: %s", youtube_id, section, e
-        )
+        logger.warning("metrics write failed yt=%s: %s", youtube_id, e)
         return None
+
+
+def record_stage(
+    youtube_id: Optional[str],
+    stage_key: str,
+    label: str,
+    elapsed_seconds: float,
+    *,
+    model: Optional[str] = None,
+    tokens: Optional[Dict[str, Any]] = None,
+    extra: Optional[Dict[str, Any]] = None,
+) -> Optional[Path]:
+    """Create or replace a single-shot pipeline stage in metrics.json.
+
+    Used for stages that are one timed unit per video (transcript fetch,
+    article body, bullet points, image generation, WordPress sync). Re-running
+    a stage replaces its prior entry.
+    """
+    def mutate(data: Dict[str, Any]) -> None:
+        stage: Dict[str, Any] = {
+            "label": label,
+            "duration": format_duration(elapsed_seconds),
+            "elapsed_seconds": round(float(elapsed_seconds or 0), 3),
+        }
+        if model is not None:
+            stage["model"] = model
+        if tokens is not None:
+            stage["tokens"] = tokens
+        if extra:
+            stage.update(extra)
+        data["stages"][stage_key] = stage
+
+    return _write_metrics(youtube_id, mutate)
+
+
+def record_extraction_pass(
+    youtube_id: Optional[str],
+    pass_entry: Dict[str, Any],
+    *,
+    run_id: str,
+    model: Optional[str] = None,
+    label: str = "Anchor extraction (Gemma Nye, 4-pass)",
+) -> Optional[Path]:
+    """Append one extractor pass into the ``extraction`` stage.
+
+    Passes accumulate under ``stages.extraction.passes`` and the stage's token
+    totals are recomputed from them. A new ``run_id`` clears prior passes so a
+    re-extraction replaces rather than appends. The stage-level
+    ``elapsed_seconds``/``duration`` (full wall time) is owned by
+    :func:`set_stage_duration` and is not overwritten here.
+    """
+    def mutate(data: Dict[str, Any]) -> None:
+        stage = data["stages"].get("extraction")
+        if not isinstance(stage, dict):
+            stage = {}
+        # A new run replaces the previous run's passes.
+        if stage.get("run_id") and stage.get("run_id") != run_id:
+            stage = {}
+        stage["label"] = label
+        stage["run_id"] = run_id
+        if model is not None:
+            stage["model"] = model
+
+        passes = stage.get("passes")
+        if not isinstance(passes, list):
+            passes = []
+        pass_name = pass_entry.get("pass")
+        passes = [p for p in passes if p.get("pass") != pass_name]
+        passes.append(pass_entry)
+        stage["passes"] = passes
+
+        stage_tokens = empty_usage()
+        for p in passes:
+            stage_tokens = add_usage(stage_tokens, p.get("tokens"))
+        stage["tokens"] = stage_tokens
+        # Seed an elapsed from the passes until the stage timer sets the real
+        # wall time; never shrink an already-set wall time.
+        passes_elapsed = round(
+            sum(float(p.get("elapsed_seconds") or 0) for p in passes), 3
+        )
+        if float(stage.get("elapsed_seconds") or 0) < passes_elapsed:
+            stage["elapsed_seconds"] = passes_elapsed
+            stage["duration"] = format_duration(passes_elapsed)
+
+        data["stages"]["extraction"] = stage
+
+    return _write_metrics(youtube_id, mutate)
+
+
+def set_stage_duration(
+    youtube_id: Optional[str],
+    stage_key: str,
+    label: str,
+    elapsed_seconds: float,
+) -> Optional[Path]:
+    """Set/override a stage's wall-clock duration without touching its detail.
+
+    Used for the extraction stage so its ``elapsed_seconds`` reflects the full
+    four-pass run (including Gemini cache create/delete overhead), while the
+    nested per-pass timings stay intact.
+    """
+    def mutate(data: Dict[str, Any]) -> None:
+        stage = data["stages"].get(stage_key)
+        if not isinstance(stage, dict):
+            stage = {}
+        stage["label"] = label
+        stage["elapsed_seconds"] = round(float(elapsed_seconds or 0), 3)
+        stage["duration"] = format_duration(elapsed_seconds)
+        data["stages"][stage_key] = stage
+
+    return _write_metrics(youtube_id, mutate)

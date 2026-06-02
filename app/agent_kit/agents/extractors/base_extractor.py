@@ -449,25 +449,23 @@ class BaseExtractor(BaseCreator):
     ) -> None:
         """Append this pass's timing + tokens into the video's metrics.json.
 
-        Cache-create/-only passes carry no token usage; they are still logged
-        for traceability but skipped here so totals reflect real LLM passes.
+        Lands under the ``extraction`` stage's ``passes`` list; the stage's
+        full wall-clock duration is set separately by the caller via
+        :func:`run_logging.set_stage_duration`.
         """
-        run_logging.append_metric(
+        run_logging.record_extraction_pass(
             youtube_video_id,
-            "extraction",
             {
                 "pass": pass_label,
                 "model": model,
+                "duration": run_logging.format_duration(elapsed_seconds),
                 "elapsed_seconds": elapsed_seconds,
                 "tokens": token_usage,
                 "started_at": started_at,
                 "completed_at": completed_at,
             },
-            section_meta={
-                "run_id": run_id,
-                "extractor": self.FULL_NAME,
-                "provider": self.PROVIDER.value,
-            },
+            run_id=run_id,
+            model=model,
         )
 
     # ------------------------------------------------------------------
