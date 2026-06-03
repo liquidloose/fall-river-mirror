@@ -561,6 +561,20 @@ async def regenerate_articles_from_anchors(
             "from extracted anchors."
         ),
     ),
+    artist: Artist = Artist.FRA1,
+    image_model: Optional[ImageModel] = Query(
+        default=ImageModel.GPT_IMAGE_1,
+        description=(
+            "Image generation model used when cover art is missing before WordPress create-on-miss sync."
+        ),
+    ),
+    snippet_text_model: Optional[TextModel] = Query(
+        default=TextModel.GEMINI_2_5_FLASH,
+        description=(
+            "Text model used to condense article context into an image prompt snippet "
+            "before calling the image model."
+        ),
+    ),
     sync_to_wordpress: bool = True,
     deps: AppDependencies = Depends(AppDependencies),
 ) -> Dict[str, Any]:
@@ -572,8 +586,10 @@ async def regenerate_articles_from_anchors(
     2. For each successful extraction, generate article content from anchors. When a local
        SQLite article row already exists, content and bullets are updated in place (title
        unchanged). When only a transcript exists, a new ``articles`` row is inserted.
-    3. Optionally sync to WordPress: ``update-article-body`` for existing WP posts;
-       ``create-article`` for newly created local rows not yet on the site.
+    3. Optionally sync to WordPress via ``update-article-body`` (updates existing posts
+       or creates a draft with meeting_date, featured_image, and committee category when
+       none match ``youtube_id``). Cover art is generated automatically when missing before
+       a WordPress create-on-miss sync.
 
     When fewer eligible transcripts exist than ``amount``, the response ``message`` reports
     ``requested``, ``found_without_anchors``, and how many were processed.
@@ -612,6 +628,18 @@ async def regenerate_articles_from_anchors(
 
     wp_svc = deps.wordpress_sync_service
 
+    on_wp_ids: set[str] = set()
+    if sync_to_wordpress and wp_svc:
+        try:
+            on_wp_ids = wp_svc.get_article_youtube_ids()
+        except Exception as e:
+            logger.warning(
+                "Regenerate: get_article_youtube_ids failed (proceeding with empty set): %s",
+                e,
+            )
+
+    resolved_image_model = image_model or ImageModel.GPT_IMAGE_1
+
     extract_batch = await pipeline.run_bulk_extract_anchors(
         amount,
         extractor=extractor,
@@ -636,6 +664,7 @@ async def regenerate_articles_from_anchors(
             "article_id": None,
             "extract": extract_result,
             "regenerate": None,
+            "image": None,
             "wordpress": None,
         }
 
@@ -653,10 +682,35 @@ async def regenerate_articles_from_anchors(
         item["regenerate"] = regenerate_result
         if regenerate_result.get("article_id") is not None:
             item["article_id"] = regenerate_result["article_id"]
+        if regenerate_result.get("title") is not None:
+            item["title"] = regenerate_result["title"]
 
         if regenerate_result.get("success"):
             articles_regenerated += 1
             if sync_to_wordpress and wp_svc:
+                article_id = regenerate_result.get("article_id")
+                create_on_miss = youtube_id not in on_wp_ids
+                if create_on_miss and article_id is not None and deps.database:
+                    deps.database.cursor.execute(
+                        "SELECT id FROM art WHERE article_id = ?",
+                        (article_id,),
+                    )
+                    if not deps.database.cursor.fetchone():
+                        image_result = pipeline.generate_image_for_article(
+                            article_id,
+                            artist,
+                            resolved_image_model,
+                            snippet_text_model=snippet_text_model,
+                        )
+                        item["image"] = image_result
+                        if not image_result.get("success"):
+                            item["wordpress"] = {
+                                "success": False,
+                                "error": image_result.get("error", "Image generation failed"),
+                            }
+                            wordpress_failed += 1
+                            results.append(item)
+                            continue
                 wp_result = wp_svc.sync_regenerated_article_to_wordpress(
                     youtube_id,
                     created=regenerate_result.get("mode") == "created",

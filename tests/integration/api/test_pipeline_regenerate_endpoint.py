@@ -26,6 +26,7 @@ class RegenerateStubPipelineService:
             {"success": False, "youtube_id": "vid-c", "error": "extract failed"},
         ]
         self.regenerate_calls: list[str] = []
+        self.image_calls: list[int] = []
 
     async def run_bulk_extract_anchors(
         self,
@@ -66,21 +67,37 @@ class RegenerateStubPipelineService:
             "mode": "updated",
             "article_id": 10 if youtube_id == "vid-a" else 11,
             "youtube_id": youtube_id,
+            "title": "Test Article Title",
             "content_len": 100,
             "bullets_count": 2,
         }
 
+    def generate_image_for_article(
+        self,
+        article_id,
+        artist,
+        model,
+        snippet_text_model=None,
+    ):
+        self.image_calls.append(article_id)
+        return {"success": True, "article_id": article_id, "art_id": 501}
+
 
 class StubWordPressSyncService:
-    def __init__(self) -> None:
-        self.sync_calls: list[tuple[str, bool]] = []
+    def __init__(self, *, on_wp_ids: set[str] | None = None) -> None:
+        self.sync_calls: list[str] = []
+        self._on_wp_ids = on_wp_ids if on_wp_ids is not None else {"vid-b"}
 
-    def sync_regenerated_article_to_wordpress(self, youtube_id: str, *, created: bool):
-        self.sync_calls.append((youtube_id, created))
+    def get_article_youtube_ids(self):
+        return set(self._on_wp_ids)
+
+    def sync_regenerated_article_to_wordpress(self, youtube_id: str, *, created: bool = False):
+        del created
+        self.sync_calls.append(youtube_id)
         return {
             "success": True,
             "youtube_id": youtube_id,
-            "wordpress_response": {"post_id": 999},
+            "wordpress_response": {"post_id": 999, "created": True},
         }
 
 
@@ -162,6 +179,7 @@ def test_regenerate_creates_when_no_local_article() -> None:
             "mode": "created",
             "article_id": 99,
             "youtube_id": youtube_id,
+            "title": "New Article Title",
             "content_len": 50,
             "bullets_count": 1,
         }
@@ -179,6 +197,7 @@ def test_regenerate_creates_when_no_local_article() -> None:
     payload = response.json()
     assert payload["articles_regenerated"] == 1
     assert payload["results"][0]["regenerate"]["mode"] == "created"
+    assert payload["results"][0]["title"] == "New Article Title"
     assert payload["results"][0]["article_id"] == 99
     assert stub.regenerate_calls == ["vid-missing"]
 
@@ -188,7 +207,7 @@ def test_regenerate_syncs_body_when_enabled() -> None:
         found_without_anchors=1,
         extract_results=[{"success": True, "youtube_id": "vid-a", "run_id": "run-1"}],
     )
-    wp_stub = StubWordPressSyncService()
+    wp_stub = StubWordPressSyncService(on_wp_ids={"vid-a"})
     with _build_test_client(stub, wp_service=wp_stub) as client:
         response = client.post(
             "/pipeline/regenerate/1",
@@ -199,8 +218,52 @@ def test_regenerate_syncs_body_when_enabled() -> None:
     assert response.status_code == 200
     payload = response.json()
     assert payload["wordpress_synced"] == 1
-    assert wp_stub.sync_calls == [("vid-a", False)]
+    assert wp_stub.sync_calls == ["vid-a"]
+    assert stub.image_calls == []
     assert payload["results"][0]["wordpress"]["success"] is True
+
+
+def test_regenerate_generates_image_before_wp_create_on_miss() -> None:
+    stub = RegenerateStubPipelineService(
+        found_without_anchors=1,
+        extract_results=[{"success": True, "youtube_id": "vid-a", "run_id": "run-1"}],
+    )
+    wp_stub = StubWordPressSyncService(on_wp_ids=set())
+
+    mock_db = MagicMock()
+
+    def get_article_by_youtube_id(youtube_id: str):
+        return {"id": 10, "youtube_id": youtube_id}
+
+    mock_db.get_article_by_youtube_id.side_effect = get_article_by_youtube_id
+    mock_db.cursor.fetchone.return_value = None
+
+    def get_test_deps(_request=None):
+        return SimpleNamespace(
+            database=mock_db,
+            transcript_manager=None,
+            article_generator=None,
+            journalist_manager=None,
+            articles_db={},
+            wordpress_sync_service=wp_stub,
+            pipeline_service=stub,
+            image_service=None,
+        )
+
+    app.dependency_overrides[AppDependencies] = get_test_deps
+    with TestClient(app, raise_server_exceptions=False) as client:
+        response = client.post(
+            "/pipeline/regenerate/1",
+            params={"sync_to_wordpress": True},
+        )
+    _clear_dependency_overrides()
+
+    assert response.status_code == 200
+    payload = response.json()
+    assert stub.image_calls == [10]
+    assert payload["results"][0]["image"]["success"] is True
+    assert payload["wordpress_synced"] == 1
+    assert wp_stub.sync_calls == ["vid-a"]
 
 
 def test_regenerate_sync_false_skips_wordpress() -> None:

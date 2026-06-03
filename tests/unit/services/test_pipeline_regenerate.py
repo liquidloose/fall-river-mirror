@@ -83,6 +83,7 @@ def test_regenerate_updates_content_not_title(temp_database):
     assert result["success"] is True
     assert result["mode"] == "updated"
     assert result["article_id"] == article_id
+    assert result["title"] == "Original Title"
     assert result["bullets_count"] == 1
 
     updated = db.get_article_by_id(article_id)
@@ -155,6 +156,7 @@ def test_regenerate_creates_article_when_missing(temp_database):
     assert result["mode"] == "created"
     article = db.get_article_by_youtube_id(youtube_id)
     assert article is not None
+    assert result["title"] == "Fresh LLM Title"
     assert article["title"] == "Fresh LLM Title"
     assert "<p>new article body</p>" in article["content"]
     assert article["transcript_id"] == transcript_id

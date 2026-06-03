@@ -740,6 +740,113 @@ class WordPressSyncService:
                 "http_status": status.HTTP_502_BAD_GATEWAY,
             }
 
+    def _format_meeting_date(self, date_str: str) -> str:
+        """Normalize transcript meeting_date to YYYY-MM-DD when parseable."""
+        if not date_str:
+            return ""
+        try:
+            date_obj = None
+            for fmt in ("%m-%d-%Y", "%m/%d/%Y", "%Y-%m-%d"):
+                try:
+                    date_obj = datetime.strptime(date_str, fmt)
+                    break
+                except ValueError:
+                    continue
+            if not date_obj:
+                try:
+                    s = date_str.replace("Z", "+00:00") if date_str.endswith("Z") else date_str
+                    date_obj = datetime.fromisoformat(s)
+                except ValueError:
+                    pass
+            if date_obj:
+                return date_obj.strftime("%Y-%m-%d")
+            logger.warning("Could not parse meeting_date %r, using as-is", date_str)
+            return date_str
+        except Exception as e:
+            logger.warning("Failed to format meeting_date: %s, using original value", e)
+            return date_str
+
+    def _resolve_wordpress_article_metadata(self, article: dict) -> Dict[str, Any]:
+        """Resolve WordPress create payload fields from a local article row."""
+        db = self._database
+        article_id = article["id"]
+
+        journalist_name = ""
+        if article.get("journalist_id") and db:
+            try:
+                db.cursor.execute(
+                    "SELECT first_name, last_name FROM journalists WHERE id = ?",
+                    (article["journalist_id"],),
+                )
+                journalist_result = db.cursor.fetchone()
+                if journalist_result:
+                    first_name = journalist_result[0] or ""
+                    last_name = journalist_result[1] or ""
+                    if first_name and last_name:
+                        journalist_name = f"{first_name} {last_name}"
+                    elif first_name:
+                        journalist_name = first_name
+                    elif last_name:
+                        journalist_name = last_name
+            except Exception as e:
+                logger.warning("Failed to fetch journalist data: %s", e)
+
+        meeting_date = ""
+        transcript_id = article.get("transcript_id")
+        if transcript_id and db:
+            try:
+                db.cursor.execute(
+                    "SELECT meeting_date FROM transcripts WHERE id = ?",
+                    (transcript_id,),
+                )
+                transcript_result = db.cursor.fetchone()
+                if transcript_result and transcript_result[0]:
+                    meeting_date = self._format_meeting_date(transcript_result[0])
+            except Exception as e:
+                logger.warning("Failed to fetch meeting_date from transcript: %s", e)
+
+        featured_image = None
+        if db:
+            try:
+                db.cursor.execute(
+                    "SELECT id, image_data, model FROM art WHERE article_id = ? LIMIT 1",
+                    (article_id,),
+                )
+                art_result = db.cursor.fetchone()
+                if art_result and art_result[1]:
+                    image_data = art_result[1]
+                    if isinstance(image_data, bytes):
+                        image_format = "png"
+                        if len(image_data) >= 2 and image_data[:2] == b"\xff\xd8":
+                            image_format = "jpeg"
+                        elif len(image_data) >= 8 and image_data[:8] == b"\x89PNG\r\n\x1a\n":
+                            image_format = "png"
+                        base64_data = base64.b64encode(image_data).decode("utf-8")
+                        featured_image = f"data:image/{image_format};base64,{base64_data}"
+            except Exception as e:
+                logger.warning(
+                    "Failed to fetch/process image for article %s: %s",
+                    article_id,
+                    e,
+                    exc_info=True,
+                )
+
+        committee = (article.get("committee") or "").strip()
+        if not committee and db and article.get("youtube_id"):
+            try:
+                transcript_data = db.get_transcript_by_youtube_id(article["youtube_id"])
+                if transcript_data and len(transcript_data) > 1:
+                    committee = (transcript_data[1] or "").strip()
+            except Exception as e:
+                logger.warning("Failed to fetch committee from transcript: %s", e)
+
+        return {
+            "journalist_name": journalist_name,
+            "meeting_date": meeting_date,
+            "featured_image": featured_image,
+            "committee": committee,
+        }
+
     def sync_one_article(self, article_id: int) -> Dict[str, Any]:
         """
         Push one local article to WordPress **create-article** as a draft (if not already on WP).
@@ -776,89 +883,11 @@ class WordPressSyncService:
                 "http_status": status.HTTP_404_NOT_FOUND,
             }
 
-        journalist_name = ""
-        if article.get("journalist_id"):
-            try:
-                db.cursor.execute(
-                    "SELECT first_name, last_name FROM journalists WHERE id = ?",
-                    (article["journalist_id"],),
-                )
-                journalist_result = db.cursor.fetchone()
-                if journalist_result:
-                    first_name = journalist_result[0] or ""
-                    last_name = journalist_result[1] or ""
-                    if first_name and last_name:
-                        journalist_name = f"{first_name} {last_name}"
-                    elif first_name:
-                        journalist_name = first_name
-                    elif last_name:
-                        journalist_name = last_name
-            except Exception as e:
-                logger.warning(f"Failed to fetch journalist data: {str(e)}")
-
-        meeting_date = ""
-        transcript_id = article.get("transcript_id")
-        if transcript_id:
-            try:
-                db.cursor.execute(
-                    "SELECT meeting_date FROM transcripts WHERE id = ?",
-                    (transcript_id,),
-                )
-                transcript_result = db.cursor.fetchone()
-                if transcript_result and transcript_result[0]:
-                    date_str = transcript_result[0]
-                    try:
-                        date_obj = None
-                        try:
-                            date_obj = datetime.strptime(date_str, "%m-%d-%Y")
-                        except ValueError:
-                            pass
-                        if not date_obj:
-                            try:
-                                date_obj = datetime.strptime(date_str, "%m/%d/%Y")
-                            except ValueError:
-                                pass
-                        if not date_obj:
-                            try:
-                                s = date_str.replace("Z", "+00:00") if date_str.endswith("Z") else date_str
-                                date_obj = datetime.fromisoformat(s)
-                            except ValueError:
-                                pass
-                        if not date_obj:
-                            try:
-                                date_obj = datetime.strptime(date_str, "%Y-%m-%d")
-                            except ValueError:
-                                pass
-                        if date_obj:
-                            meeting_date = date_obj.strftime("%Y-%m-%d")
-                        else:
-                            logger.warning(f"Could not parse meeting_date '{date_str}', using as-is")
-                            meeting_date = date_str
-                    except Exception as e:
-                        logger.warning(f"Failed to format meeting_date: {str(e)}, using original value")
-                        meeting_date = transcript_result[0]
-            except Exception as e:
-                logger.warning(f"Failed to fetch meeting_date from transcript: {str(e)}")
-
-        featured_image = None
-        try:
-            db.cursor.execute(
-                "SELECT id, image_data, model FROM art WHERE article_id = ? LIMIT 1",
-                (article_id,),
-            )
-            art_result = db.cursor.fetchone()
-            if art_result and art_result[1]:
-                image_data = art_result[1]
-                if isinstance(image_data, bytes):
-                    image_format = "png"
-                    if len(image_data) >= 2 and image_data[:2] == b"\xff\xd8":
-                        image_format = "jpeg"
-                    elif len(image_data) >= 8 and image_data[:8] == b"\x89PNG\r\n\x1a\n":
-                        image_format = "png"
-                    base64_data = base64.b64encode(image_data).decode("utf-8")
-                    featured_image = f"data:image/{image_format};base64,{base64_data}"
-        except Exception as e:
-            logger.warning(f"Failed to fetch/process image for article {article_id}: {str(e)}", exc_info=True)
+        metadata = self._resolve_wordpress_article_metadata(article)
+        journalist_name = metadata["journalist_name"]
+        meeting_date = metadata["meeting_date"]
+        featured_image = metadata["featured_image"]
+        committee = metadata["committee"]
 
         missing_fields = []
         if not article.get("content"):
@@ -907,7 +936,7 @@ class WordPressSyncService:
             "title": article.get("title") or "",
             "article_content": article.get("content") or "",
             "journalist_name": journalist_name or "",
-            "committee": article.get("committee") or "",
+            "committee": committee or article.get("committee") or "",
             "youtube_id": youtube_id or "",
             "bullet_points": article.get("bullet_points") or "",
             "meeting_date": meeting_date or "",
@@ -1066,13 +1095,11 @@ class WordPressSyncService:
 
     def update_article_body_on_wordpress(self, youtube_id: str) -> Dict[str, Any]:
         """
-        POST current DB **content** and **bullet_points** to the fr-mirror **update-article-body** endpoint.
+        POST current DB content to update-article-body.
 
-        Looks up the local article by ``youtube_id``. Does not send or change title.
-
-        Returns:
-            ``success``, ``article_id``, ``youtube_id``, ``wordpress_response`` on 2xx; otherwise
-            ``success: False``, ``error``, ``http_status``, ``raw_response``.
+        WordPress updates an existing post by ``youtube_id`` (body + bullets only), or
+        creates a draft when none exists with full create metadata: title, meeting_date,
+        featured_image, and committee (WordPress category).
         """
         db = self._database
         if not db:
@@ -1098,9 +1125,40 @@ class WordPressSyncService:
         article_id = article["id"]
         payload = {
             "youtube_id": youtube_id,
+            "title": article.get("title") or "",
             "content": article.get("content") or "",
             "bullet_points": article.get("bullet_points") or "",
         }
+
+        youtube_ids_result = self.get_article_youtube_ids_result()
+        if not youtube_ids_result.get("success"):
+            return {
+                "success": False,
+                "error": (
+                    "Failed to verify existing WordPress articles before sync: "
+                    + (youtube_ids_result.get("error") or "Unknown error")
+                ),
+                "http_status": youtube_ids_result.get(
+                    "http_status", status.HTTP_502_BAD_GATEWAY
+                ),
+                "raw_response": youtube_ids_result.get("raw_response"),
+            }
+        create_on_miss = youtube_id not in (youtube_ids_result.get("youtube_ids") or set())
+        if create_on_miss:
+            metadata = self._resolve_wordpress_article_metadata(article)
+            if metadata.get("meeting_date"):
+                payload["meeting_date"] = metadata["meeting_date"]
+            if metadata.get("committee"):
+                payload["committee"] = metadata["committee"]
+            featured_image = metadata.get("featured_image")
+            if not featured_image:
+                return {
+                    "success": False,
+                    "error": "featured_image (art) required to create article on WordPress",
+                    "http_status": status.HTTP_400_BAD_REQUEST,
+                }
+            payload["featured_image"] = featured_image
+
         url = self._base_url + self._api_path_update_body
         try:
             response = self._request_with_jwt_retry(
@@ -1127,6 +1185,7 @@ class WordPressSyncService:
                 "success": True,
                 "article_id": article_id,
                 "youtube_id": youtube_id,
+                "title": article.get("title") or "",
                 "wordpress_response": response.json() if response.content else None,
             }
         except requests.exceptions.RequestException as e:
@@ -1150,37 +1209,17 @@ class WordPressSyncService:
         self,
         youtube_id: str,
         *,
-        created: bool,
+        created: bool = False,
     ) -> Dict[str, Any]:
-        """Push a post-regeneration article to WordPress.
+        """Push a post-regeneration article to WordPress via update-article-body.
 
-        For **updated** local rows, uses ``update-article-body``. For **created** rows,
-        uses ``update-article-body`` when the ``youtube_id`` is already on WordPress;
-        otherwise attempts ``create-article`` via :meth:`sync_one_article`.
+        WordPress upserts by ``youtube_id``: updates body and bullets on an existing post,
+        or creates a draft with meeting_date, featured_image, and committee (category)
+        when none exists. The ``created`` flag is accepted for API compatibility but
+        does not change routing.
         """
-        youtube_id = (youtube_id or "").strip()
-        if not created:
-            return self.update_article_body_on_wordpress(youtube_id)
-
-        on_wp = youtube_id in self.get_article_youtube_ids()
-        if on_wp:
-            return self.update_article_body_on_wordpress(youtube_id)
-
-        db = self._database
-        if not db:
-            return {
-                "success": False,
-                "error": "Database not available",
-                "http_status": status.HTTP_500_INTERNAL_SERVER_ERROR,
-            }
-        article = db.get_article_by_youtube_id(youtube_id)
-        if not article:
-            return {
-                "success": False,
-                "error": f"No article found for youtube_id={youtube_id!r}",
-                "http_status": status.HTTP_404_NOT_FOUND,
-            }
-        return self.sync_one_article(article["id"])
+        del created
+        return self.update_article_body_on_wordpress(youtube_id)
 
     def repair_article_featured_image(self, youtube_id: str) -> Dict[str, Any]:
         """

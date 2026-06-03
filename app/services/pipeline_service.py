@@ -1342,18 +1342,21 @@ class PipelineService:
             bullets_count = len(summary_bullets)
 
         logger.info(
-            "Article %s from anchors youtube_id=%s article_id=%s content_len=%d bullets=%d",
+            "Article %s from anchors youtube_id=%s article_id=%s title=%r content_len=%d bullets=%d",
             mode,
             youtube_id,
             article_id,
+            (db.get_article_by_id(article_id) or {}).get("title", ""),
             len(article_content),
             bullets_count,
         )
+        saved = db.get_article_by_id(article_id) or {}
         return {
             "success": True,
             "mode": mode,
             "article_id": article_id,
             "youtube_id": youtube_id,
+            "title": saved.get("title") or "",
             "content_len": len(article_content),
             "bullets_count": bullets_count,
         }
@@ -1416,6 +1419,124 @@ class PipelineService:
             results["processed"] += 1
         return results
 
+    def generate_image_for_article(
+        self,
+        article_id: int,
+        artist: Artist,
+        model: ImageModel,
+        snippet_text_model: Optional[TextModel] = None,
+    ) -> Dict[str, Any]:
+        """Generate and persist cover art for one article when none exists."""
+        db = self._database
+        image_svc = self._image_service
+        if not db or not image_svc:
+            return {
+                "success": False,
+                "error": "Database or image service not available",
+                "article_id": article_id,
+            }
+
+        article = db.get_article_by_id(article_id)
+        if not article:
+            return {
+                "success": False,
+                "error": f"Article with ID {article_id} not found",
+                "article_id": article_id,
+            }
+
+        db.cursor.execute("SELECT id FROM art WHERE article_id = ?", (article_id,))
+        if db.cursor.fetchone():
+            return {
+                "success": True,
+                "skipped": True,
+                "reason": "Art exists",
+                "article_id": article_id,
+            }
+
+        title = article.get("title") or ""
+        bullet_points = article.get("bullet_points") or ""
+        if not bullet_points:
+            return {
+                "success": False,
+                "error": "Article has no bullet_points; cannot generate image",
+                "article_id": article_id,
+            }
+
+        artist_classes = {
+            Artist.SPECTRA_VERITAS: SpectraVeritas,
+            Artist.FRA1: FRA1,
+        }
+        artist_class = artist_classes.get(artist)
+        if not artist_class:
+            raise ValueError(f"Artist '{artist.value}' not implemented")
+        artist_instance = artist_class()
+
+        snippet_provider = None
+        snippet_model = None
+        if snippet_text_model is not None:
+            snippet_provider, snippet_model = resolve_text_model(snippet_text_model)
+
+        article_youtube_id = article.get("youtube_id")
+        try:
+            _image_perf = time.perf_counter()
+            image_result = artist_instance.generate_image(
+                title=title,
+                bullet_points=bullet_points,
+                model=model.value,
+                snippet_provider=snippet_provider,
+                snippet_model=snippet_model,
+            )
+            if image_result.get("error"):
+                return {
+                    "success": False,
+                    "error": image_result["error"],
+                    "article_id": article_id,
+                }
+            run_logging.record_stage(
+                article_youtube_id,
+                "image_generation",
+                "Cover image",
+                time.perf_counter() - _image_perf,
+                model=model.value,
+            )
+            if not image_result.get("image_url"):
+                return {
+                    "success": False,
+                    "error": "No image URL",
+                    "article_id": article_id,
+                }
+            image_data = image_svc.decode_url(image_result["image_url"])
+            art_id = db.add_art(
+                prompt=image_result["prompt_used"],
+                image_url=None,
+                image_data=image_data,
+                medium=image_result.get("medium"),
+                aesthetic=image_result.get("aesthetic"),
+                title=title,
+                artist_name=image_result.get("artist"),
+                snippet=image_result.get("snippet"),
+                transcript_id=article.get("transcript_id"),
+                article_id=article_id,
+                model=model.value,
+            )
+            return {
+                "success": True,
+                "article_id": article_id,
+                "art_id": art_id,
+                "title": title,
+            }
+        except Exception as e:
+            logger.warning(
+                "Pipeline image generate failed for article_id=%s: %s",
+                article_id,
+                e,
+            )
+            return {
+                "success": False,
+                "error": str(e),
+                "article_id": article_id,
+            }
+
     def run_image_batch(
         self,
         amount: int,
@@ -1471,10 +1592,8 @@ class PipelineService:
             Artist.SPECTRA_VERITAS: SpectraVeritas,
             Artist.FRA1: FRA1,
         }
-        artist_class = artist_classes.get(artist)
-        if not artist_class:
+        if artist not in artist_classes:
             raise ValueError(f"Artist '{artist.value}' not implemented")
-        artist_instance = artist_class()
         cursor = db.cursor
         cursor.execute(
             """SELECT a.id, a.title, a.bullet_points, a.transcript_id, a.youtube_id
@@ -1497,8 +1616,6 @@ class PipelineService:
         results = []
         images_generated = 0
         images_failed = 0
-        snippet_provider = None
-        snippet_model = None
         if snippet_text_model is not None:
             snippet_provider, snippet_model = resolve_text_model(snippet_text_model)
             logger.info(
@@ -1508,68 +1625,44 @@ class PipelineService:
                 model.value,
             )
         for row in articles:
-            article_id, title, bullet_points, transcript_id = row[0], row[1], row[2], row[3]
-            article_youtube_id = row[4] if len(row) > 4 else None
+            article_id = row[0]
+            title = row[1]
             try:
-                cursor.execute("SELECT id FROM art WHERE article_id = ?", (article_id,))
-                if cursor.fetchone():
+                db.cursor.execute("SELECT id FROM art WHERE article_id = ?", (article_id,))
+                if db.cursor.fetchone():
                     results.append({
                         "article_id": article_id,
                         "status": "skipped",
                         "reason": "Art exists",
                     })
                     continue
-                _image_perf = time.perf_counter()
-                image_result = artist_instance.generate_image(
-                    title=title,
-                    bullet_points=bullet_points,
-                    model=model.value,
-                    snippet_provider=snippet_provider,
-                    snippet_model=snippet_model,
+                item_result = self.generate_image_for_article(
+                    article_id,
+                    artist,
+                    model,
+                    snippet_text_model=snippet_text_model,
                 )
-                if image_result.get("error"):
-                    images_failed += 1
+                if item_result.get("skipped"):
                     results.append({
                         "article_id": article_id,
-                        "status": "failed",
-                        "error": image_result["error"],
+                        "status": "skipped",
+                        "reason": item_result.get("reason", "Art exists"),
                     })
                     continue
-                run_logging.record_stage(
-                    article_youtube_id,
-                    "image_generation",
-                    "Cover image",
-                    time.perf_counter() - _image_perf,
-                    model=model.value,
-                )
-                if image_result.get("image_url"):
-                    image_data = image_svc.decode_url(image_result["image_url"])
-                    art_id = db.add_art(
-                        prompt=image_result["prompt_used"],
-                        image_url=None,
-                        image_data=image_data,
-                        medium=image_result.get("medium"),
-                        aesthetic=image_result.get("aesthetic"),
-                        title=title,
-                        artist_name=image_result.get("artist"),
-                        snippet=image_result.get("snippet"),
-                        transcript_id=transcript_id,
-                        article_id=article_id,
-                        model=model.value,
-                    )
+                if item_result.get("success"):
                     images_generated += 1
                     results.append({
                         "article_id": article_id,
                         "status": "success",
-                        "art_id": art_id,
-                        "title": title,
+                        "art_id": item_result.get("art_id"),
+                        "title": item_result.get("title") or title,
                     })
                 else:
                     images_failed += 1
                     results.append({
                         "article_id": article_id,
                         "status": "failed",
-                        "error": "No image URL",
+                        "error": item_result.get("error", "Image generation failed"),
                     })
             except Exception as e:
                 images_failed += 1
