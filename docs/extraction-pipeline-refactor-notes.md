@@ -47,19 +47,26 @@ The fact-check *behavior* itself does not live in Python. It lives in:
 
 The Python code never fact-checks anything; it ferries prompts to Gemini.
 
-## Call chain (7 hops from `extract()` to the SDK)
+## Call chain (`extract()` to the SDK)
+
+The transcript is cached once per extraction and reused by all four passes.
+`extract()` owns the cache lifecycle (create once up front, delete once in a
+`finally`); each pass only issues a generate against that shared cache,
+folding its own system prompt into the user turn.
 
 ```
 GemmaNye.extract                                  gemma_nye.py
+  → BaseExtractor._create_extraction_cache        base_extractor.py   (once)
+    → LLMTextQuery.gemini_create_cache            llm_text_query.py
   → _pass_extract / _pass_fact_check /            (each picks a pass-specific md pair
     _pass_bullets_and_committee /                  + injects whatever cross-pass payload
     _pass_spell_check                              that pass needs)
-    → _pass_with_cached_transcript
-      → BaseExtractor._create_extraction_cache    base_extractor.py
-        → LLMTextQuery.gemini_create_cache        llm_text_query.py
+    → _run_pass_against_cache
       → BaseExtractor._call_cached_llm_and_parse  base_extractor.py
         → LLMTextQuery.gemini_generate_with_cache llm_text_query.py
           → client.models.generate_content        llm_text_query.py
+  → BaseExtractor._delete_extraction_cache        base_extractor.py   (once, finally)
+    → LLMTextQuery.gemini_delete_cache            llm_text_query.py
 ```
 
 ## Refactor targets (collapse these)

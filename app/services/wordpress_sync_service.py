@@ -831,14 +831,16 @@ class WordPressSyncService:
                     exc_info=True,
                 )
 
-        committee = (article.get("committee") or "").strip()
-        if not committee and db and article.get("youtube_id"):
+        committee = ""
+        if db and article.get("youtube_id"):
             try:
                 transcript_data = db.get_transcript_by_youtube_id(article["youtube_id"])
                 if transcript_data and len(transcript_data) > 1:
                     committee = (transcript_data[1] or "").strip()
             except Exception as e:
                 logger.warning("Failed to fetch committee from transcript: %s", e)
+        if not committee:
+            committee = (article.get("committee") or "").strip()
 
         return {
             "journalist_name": journalist_name,
@@ -1143,13 +1145,13 @@ class WordPressSyncService:
                 ),
                 "raw_response": youtube_ids_result.get("raw_response"),
             }
+        metadata = self._resolve_wordpress_article_metadata(article)
+        if metadata.get("committee"):
+            payload["committee"] = metadata["committee"]
         create_on_miss = youtube_id not in (youtube_ids_result.get("youtube_ids") or set())
         if create_on_miss:
-            metadata = self._resolve_wordpress_article_metadata(article)
             if metadata.get("meeting_date"):
                 payload["meeting_date"] = metadata["meeting_date"]
-            if metadata.get("committee"):
-                payload["committee"] = metadata["committee"]
             featured_image = metadata.get("featured_image")
             if not featured_image:
                 return {

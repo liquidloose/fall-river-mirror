@@ -485,9 +485,11 @@ class BaseExtractor(BaseCreator):
     ) -> Optional[str]:
         """Upload ``transcript`` as a Gemini ``CachedContent`` and return its name.
 
-        Gemma runs one cache per pass with that pass's ``system_instruction``
-        baked in at create time (Gemini forbids system_instruction on generate
-        when ``cached_content`` is set). ``run_id`` ties per-pass log files
+        Gemma uploads the transcript to one cache per extraction and reuses
+        it across all four passes; it passes ``system_instruction=None`` here
+        and folds each pass's system prompt into the generate user turn
+        instead (Gemini forbids system_instruction on generate when
+        ``cached_content`` is set). ``run_id`` ties per-pass log files
         together.
 
         Returns:
@@ -495,17 +497,17 @@ class BaseExtractor(BaseCreator):
             failed. Also writes a ``p{cache_pass_label}`` log file so failures
             are traceable from disk without re-running the extraction.
 
-        Call chain — cached Gemini extraction (one block runs per pass, three passes per extraction):
+        Call chain — cached Gemini extraction (cache created once in extract; one generate per pass):
 
           GemmaNye.extract
-            → _pass_extract / _pass_fact_check / _pass_bullets_and_committee
-              → _pass_with_cached_transcript
-                ├─ BaseExtractor._create_extraction_cache
-                │    └─ LLMTextQuery.gemini_create_cache         → client.caches.create
-                ├─ BaseExtractor._call_cached_llm_and_parse
-                │    └─ LLMTextQuery.gemini_generate_with_cache  → client.models.generate_content  ★
-                └─ BaseExtractor._delete_extraction_cache
-                     └─ LLMTextQuery.gemini_delete_cache         → client.caches.delete
+            ├─ BaseExtractor._create_extraction_cache (once)
+            │    └─ LLMTextQuery.gemini_create_cache         → client.caches.create
+            → _pass_extract / _pass_fact_check / _pass_bullets_and_committee / _pass_spell_check
+              → _run_pass_against_cache
+                └─ BaseExtractor._call_cached_llm_and_parse
+                     └─ LLMTextQuery.gemini_generate_with_cache  → client.models.generate_content  ★
+            └─ BaseExtractor._delete_extraction_cache (once, in finally)
+                 └─ LLMTextQuery.gemini_delete_cache         → client.caches.delete
 
         ★ = the actual Gemini round-trip (the LLM "extraction request" you're tracing).
         YOU ARE HERE: BaseExtractor._create_extraction_cache — uploads transcript + system prompt to Gemini cache; first hop of each pass.
@@ -565,17 +567,17 @@ class BaseExtractor(BaseCreator):
         Safe to call from a ``finally`` block. Accepts ``None`` so callers
         do not have to gate the call on cache-create success.
 
-        Call chain — cached Gemini extraction (one block runs per pass, three passes per extraction):
+        Call chain — cached Gemini extraction (cache created once in extract; one generate per pass):
 
           GemmaNye.extract
-            → _pass_extract / _pass_fact_check / _pass_bullets_and_committee
-              → _pass_with_cached_transcript
-                ├─ BaseExtractor._create_extraction_cache
-                │    └─ LLMTextQuery.gemini_create_cache         → client.caches.create
-                ├─ BaseExtractor._call_cached_llm_and_parse
-                │    └─ LLMTextQuery.gemini_generate_with_cache  → client.models.generate_content  ★
-                └─ BaseExtractor._delete_extraction_cache
-                     └─ LLMTextQuery.gemini_delete_cache         → client.caches.delete
+            ├─ BaseExtractor._create_extraction_cache (once)
+            │    └─ LLMTextQuery.gemini_create_cache         → client.caches.create
+            → _pass_extract / _pass_fact_check / _pass_bullets_and_committee / _pass_spell_check
+              → _run_pass_against_cache
+                └─ BaseExtractor._call_cached_llm_and_parse
+                     └─ LLMTextQuery.gemini_generate_with_cache  → client.models.generate_content  ★
+            └─ BaseExtractor._delete_extraction_cache (once, in finally)
+                 └─ LLMTextQuery.gemini_delete_cache         → client.caches.delete
 
         ★ = the actual Gemini round-trip (the LLM "extraction request" you're tracing).
         YOU ARE HERE: BaseExtractor._delete_extraction_cache — cleanup hop of each pass; runs in a finally block.
@@ -611,25 +613,28 @@ class BaseExtractor(BaseCreator):
         downstream anchor rows. ``pass_label`` distinguishes per-pass logs
         (e.g. ``"extract"``, ``"fact_check"``, ``"bullets"``).
 
-        Pass ``system_instruction=None`` when the system prompt was already
-        set on the cache at create time (Gemma's per-pass cache pattern).
+        Pass a ``system_instruction`` to have it folded into the generate
+        user turn (Gemma's shared-cache pattern, since Gemini forbids
+        system_instruction on generate when ``cached_content`` is set); pass
+        ``None`` only when the system prompt was already baked into the cache
+        at create time.
 
         When ``response_schema`` is given, Gemini constrains its output to
         the Pydantic shape and this method returns the parsed ``dict`` in
         the envelope's ``data`` field. When omitted, the raw text is parsed
         as JSON the same way :meth:`_call_llm_and_parse` does.
 
-        Call chain — cached Gemini extraction (one block runs per pass, three passes per extraction):
+        Call chain — cached Gemini extraction (cache created once in extract; one generate per pass):
 
           GemmaNye.extract
-            → _pass_extract / _pass_fact_check / _pass_bullets_and_committee
-              → _pass_with_cached_transcript
-                ├─ BaseExtractor._create_extraction_cache
-                │    └─ LLMTextQuery.gemini_create_cache         → client.caches.create
-                ├─ BaseExtractor._call_cached_llm_and_parse
-                │    └─ LLMTextQuery.gemini_generate_with_cache  → client.models.generate_content  ★
-                └─ BaseExtractor._delete_extraction_cache
-                     └─ LLMTextQuery.gemini_delete_cache         → client.caches.delete
+            ├─ BaseExtractor._create_extraction_cache (once)
+            │    └─ LLMTextQuery.gemini_create_cache         → client.caches.create
+            → _pass_extract / _pass_fact_check / _pass_bullets_and_committee / _pass_spell_check
+              → _run_pass_against_cache
+                └─ BaseExtractor._call_cached_llm_and_parse
+                     └─ LLMTextQuery.gemini_generate_with_cache  → client.models.generate_content  ★
+            └─ BaseExtractor._delete_extraction_cache (once, in finally)
+                 └─ LLMTextQuery.gemini_delete_cache         → client.caches.delete
 
         ★ = the actual Gemini round-trip (the LLM "extraction request" you're tracing).
         YOU ARE HERE: BaseExtractor._call_cached_llm_and_parse — middle hop of each pass; sends the generate request against the cache and parses the response.

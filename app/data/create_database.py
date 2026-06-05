@@ -1314,6 +1314,62 @@ class Database:
             )
             return False
 
+    def update_article_committee(self, youtube_id: str, committee: str) -> bool:
+        """Overwrite committee on the local article row for a youtube_id.
+
+        Used after extraction so articles and WordPress inherit the extractor's
+        enum-validated ``primary_committee`` rather than the title-derived seed.
+        """
+        youtube_id = (youtube_id or "").strip()
+        committee = (committee or "").strip()
+        if not youtube_id or not committee:
+            self.logger.warning(
+                "update_article_committee: skipped (youtube_id=%r, committee=%r)",
+                youtube_id,
+                committee,
+            )
+            return False
+        try:
+            self._log_operation(
+                "update_article_committee",
+                {"youtube_id": youtube_id, "committee": committee},
+            )
+            self.cursor.execute(
+                "UPDATE articles SET committee = ? WHERE youtube_id = ?",
+                (committee, youtube_id),
+            )
+            self.conn.commit()
+            self.cursor.execute(
+                "SELECT committee FROM articles WHERE youtube_id = ?",
+                (youtube_id,),
+            )
+            row = self.cursor.fetchone()
+            if row is not None and row[0] == committee:
+                self.logger.info(
+                    "update_article_committee: verified youtube_id=%s committee=%r",
+                    youtube_id,
+                    committee,
+                )
+                return True
+            self.logger.warning(
+                "update_article_committee: no matching/verified row for youtube_id=%s",
+                youtube_id,
+            )
+            return False
+        except Exception as e:
+            self.logger.exception(
+                "update_article_committee failed: youtube_id=%s committee=%r - %s",
+                youtube_id,
+                committee,
+                e,
+            )
+            self._log_error(
+                "update_article_committee",
+                e,
+                {"youtube_id": youtube_id, "committee": committee},
+            )
+            return False
+
     def update_article_title(self, article_id: int, title: str) -> bool:
         """
         Update title for an existing article.

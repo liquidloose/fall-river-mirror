@@ -2,11 +2,13 @@
 Gemma Nye — Fall River meeting-data extractor (four-pass Gemini pipeline).
 
 One :meth:`GemmaNye.extract` call runs four sequential Gemini reading
-passes against the transcript. Each pass owns its own short-lived
-:class:`CachedContent` upload (``cache.create`` → ``generate`` →
-``cache.delete``) because Gemini bakes the system instruction into the
-cache at create time and the four passes need four different system
-instructions — so cache reuse across passes is not an option here:
+passes against the transcript. The transcript is uploaded to a single
+:class:`CachedContent` once per extraction (``cache.create`` →
+four × ``generate`` → ``cache.delete``) and reused by all four passes.
+Gemini forbids ``system_instruction`` on ``generate`` when
+``cached_content`` is set, so each pass's (different) system prompt is
+folded into its user turn instead of baked into the cache — which is
+exactly what lets the four passes share one cache:
 
 1. ``extract`` — draft factual anchors (Pydantic-constrained shape).
 2. ``fact_check`` — re-emit the corrected full list of anchors, plus a
@@ -21,11 +23,12 @@ instructions — so cache reuse across passes is not an option here:
    Replaced EditorAgent's post-hoc article spell-check; spelling now
    happens at the anchor layer, before journalists ever see the data.
 
-The four passes are independent on the LLM side: no cache is reused and
-no conversation history flows between calls. Cross-pass data dependencies
-flow only through the user message: pass 2 sees pass 1's draft anchors;
-pass 4 sees both pass 2's corrected anchors and pass 3's bullets. None
-of that traffic relies on Gemini remembering anything.
+The four passes are independent on the LLM side: the shared cache carries
+only the transcript, and no conversation history flows between calls.
+Cross-pass data dependencies flow only through the user message: pass 2
+sees pass 1's draft anchors; pass 4 sees both pass 2's corrected anchors
+and pass 3's bullets. None of that traffic relies on Gemini remembering
+anything.
 
 After pass 4, we stitch in ``timestamp_seconds`` (parsed directly from the
 model's ``timestamp_string``) and ``text_to_embed`` (a one-line formatted
@@ -102,13 +105,14 @@ class GemmaNye(BaseExtractor):
                                            pass 3's ``executive_summary_bullets`` —
                                            the only place those two streams are joined.
 
-    Each pass runs its own fresh cache (``cache.create`` → ``generate`` →
-    ``cache.delete``) because Gemini bakes the system instruction into the
-    cache at create time and the four passes need four different system
-    instructions. Inter-pass communication happens through the user message
-    only (``draft["data"]["factual_anchor_items"]`` for pass 2; pass-2
-    anchors + pass-3 bullets for pass 4) — never through cache reuse or
-    conversation history.
+    The transcript is cached once per extraction and reused by all four
+    passes (``cache.create`` → four × ``generate`` → ``cache.delete``).
+    Because Gemini forbids ``system_instruction`` on ``generate`` when
+    ``cached_content`` is set, each pass's (different) system prompt is
+    folded into its user turn rather than baked into the cache. Inter-pass
+    communication happens through the user message only
+    (``draft["data"]["factual_anchor_items"]`` for pass 2; pass-2 anchors +
+    pass-3 bullets for pass 4) — never through conversation history.
 
     On any pass failure, :meth:`extract` returns that pass's failure
     envelope immediately — no downstream pass runs, no partial result is
@@ -208,17 +212,17 @@ class GemmaNye(BaseExtractor):
             ``None``; per-pass debug logs under ``logs/extractions/`` reveal
             which pass failed. The cache is always deleted on the way out.
 
-        Call chain — cached Gemini extraction (one block runs per pass, four passes per extraction):
+        Call chain — cached Gemini extraction (cache created once in extract; one generate per pass):
 
           GemmaNye.extract
+            ├─ BaseExtractor._create_extraction_cache (once)
+            │    └─ LLMTextQuery.gemini_create_cache         → client.caches.create
             → _pass_extract / _pass_fact_check / _pass_bullets_and_committee / _pass_spell_check
-              → _pass_with_cached_transcript
-                ├─ BaseExtractor._create_extraction_cache
-                │    └─ LLMTextQuery.gemini_create_cache         → client.caches.create
-                ├─ BaseExtractor._call_cached_llm_and_parse
-                │    └─ LLMTextQuery.gemini_generate_with_cache  → client.models.generate_content  ★
-                └─ BaseExtractor._delete_extraction_cache
-                     └─ LLMTextQuery.gemini_delete_cache         → client.caches.delete
+              → _run_pass_against_cache
+                └─ BaseExtractor._call_cached_llm_and_parse
+                     └─ LLMTextQuery.gemini_generate_with_cache  → client.models.generate_content  ★
+            └─ BaseExtractor._delete_extraction_cache (once, in finally)
+                 └─ LLMTextQuery.gemini_delete_cache         → client.caches.delete
 
         ★ = the actual Gemini round-trip (the LLM "extraction request" you're tracing).
         YOU ARE HERE: GemmaNye.extract — orchestrator. Runs the four passes in sequence and stitches results.
@@ -250,98 +254,121 @@ class GemmaNye(BaseExtractor):
         #                                         (consumes pass-2 anchors AND pass-3 bullets —
         #                                         the only place those two streams are joined)
         #
-        # Each pass runs its own fresh cache (cache.create → generate →
-        # cache.delete) because Gemini bakes the system instruction into
-        # the cache at create time and the four passes need four
-        # different system instructions.
+        # The transcript is uploaded to a single Gemini cache once here and
+        # reused by all four passes. Each pass folds its own (different)
+        # system prompt into the user turn at generate time instead of
+        # baking it into the cache, so we no longer create and delete a
+        # cache per pass. The cache is deleted exactly once in the finally
+        # below, on every exit path (success or any pass failure).
         #
         # If any pass fails we return its failure envelope immediately;
         # no later pass runs and no partial result is stitched below.
         # ─────────────────────────────────────────────────────────────────
-        draft = self._pass_extract(
-            transcript, run_id, youtube_video_id, meeting_date, model=model
-        )
-        if not draft["success"]:
-            return draft
-
-        corrected = self._pass_fact_check(
+        cache_name = self._create_extraction_cache(
             transcript,
-            run_id,
-            youtube_video_id,
-            meeting_date,
-            draft["data"]["factual_anchor_items"],
+            run_id=run_id,
+            youtube_video_id=youtube_video_id,
+            display_name=f"gemma:{youtube_video_id}:shared",
             model=model,
+            system_instruction=None,
+            cache_pass_label="cache",
         )
-        if not corrected["success"]:
-            return corrected
+        if not cache_name:
+            return self._failure_envelope(
+                run_id,
+                "Gemini cache create failed; see pcache log for details.",
+                model=model,
+            )
 
-        bullets_committee = self._pass_bullets_and_committee(
-            transcript, run_id, youtube_video_id, meeting_date, model=model
-        )
-        if not bullets_committee["success"]:
-            return bullets_committee
+        try:
+            draft = self._pass_extract(
+                cache_name, run_id, youtube_video_id, meeting_date, model=model
+            )
+            if not draft["success"]:
+                return draft
 
-        spell_checked = self._pass_spell_check(
-            transcript,
-            run_id,
-            youtube_video_id,
-            meeting_date,
-            corrected["data"]["factual_anchor_items"],
-            bullets_committee["data"]["executive_summary_bullets"],
-            model=model,
-        )
-        if not spell_checked["success"]:
-            return spell_checked
+            corrected = self._pass_fact_check(
+                cache_name,
+                run_id,
+                youtube_video_id,
+                meeting_date,
+                draft["data"]["factual_anchor_items"],
+                model=model,
+            )
+            if not corrected["success"]:
+                return corrected
 
-        committee_value = bullets_committee["data"]["primary_committee"]
-        if isinstance(committee_value, Committee):
-            committee_str = committee_value.value
-        else:
-            committee_str = str(committee_value)
+            bullets_committee = self._pass_bullets_and_committee(
+                cache_name, run_id, youtube_video_id, meeting_date, model=model
+            )
+            if not bullets_committee["success"]:
+                return bullets_committee
 
-        # Stitch on pass-4 anchors so the locally-computed `text_to_embed`
-        # rides the spelling-clean wording into the vector store, not the
-        # pre-spell-check version.
-        stitched_anchors = [
-            self._stitch_anchor(a, meeting_date, committee_str)
-            for a in spell_checked["data"]["factual_anchor_items"]
-        ]
+            spell_checked = self._pass_spell_check(
+                cache_name,
+                run_id,
+                youtube_video_id,
+                meeting_date,
+                corrected["data"]["factual_anchor_items"],
+                bullets_committee["data"]["executive_summary_bullets"],
+                model=model,
+            )
+            if not spell_checked["success"]:
+                return spell_checked
 
-        fact_check_audit = corrected["data"].get("fact_check_audit") or []
-        spelling_corrections = spell_checked["data"].get("spelling_corrections") or []
-        envelope = {
-            **draft,
-            "run_id": run_id,
-            "success": True,
-            "message": "Extraction complete",
-            "data": {
-                "factual_anchor_items": stitched_anchors,
-                # Bullets sourced from pass 4 (spelling-clean), not pass 3.
-                "executive_summary_bullets": spell_checked["data"][
-                    "executive_summary_bullets"
-                ],
-                "primary_committee": committee_str,
-                "fact_check_audit": fact_check_audit,
-                "spelling_corrections": spelling_corrections,
-            },
-        }
-        logger.info(
-            f"{self.FULL_NAME}: extraction done yt={youtube_video_id} run_id={run_id} "
-            f"anchors={len(stitched_anchors)} "
-            f"bullets={len(envelope['data']['executive_summary_bullets'])} "
-            f"fact_check_audit={len(fact_check_audit)} "
-            f"spelling_corrections={len(spelling_corrections)} "
-            f"committee={committee_str!r}"
-        )
-        return envelope
+            committee_value = bullets_committee["data"]["primary_committee"]
+            if isinstance(committee_value, Committee):
+                committee_str = committee_value.value
+            else:
+                committee_str = str(committee_value)
+
+            # Stitch on pass-4 anchors so the locally-computed `text_to_embed`
+            # rides the spelling-clean wording into the vector store, not the
+            # pre-spell-check version.
+            stitched_anchors = [
+                self._stitch_anchor(a, meeting_date, committee_str)
+                for a in spell_checked["data"]["factual_anchor_items"]
+            ]
+
+            fact_check_audit = corrected["data"].get("fact_check_audit") or []
+            spelling_corrections = (
+                spell_checked["data"].get("spelling_corrections") or []
+            )
+            envelope = {
+                **draft,
+                "run_id": run_id,
+                "success": True,
+                "message": "Extraction complete",
+                "data": {
+                    "factual_anchor_items": stitched_anchors,
+                    # Bullets sourced from pass 4 (spelling-clean), not pass 3.
+                    "executive_summary_bullets": spell_checked["data"][
+                        "executive_summary_bullets"
+                    ],
+                    "primary_committee": committee_str,
+                    "fact_check_audit": fact_check_audit,
+                    "spelling_corrections": spelling_corrections,
+                },
+            }
+            logger.info(
+                f"{self.FULL_NAME}: extraction done yt={youtube_video_id} run_id={run_id} "
+                f"anchors={len(stitched_anchors)} "
+                f"bullets={len(envelope['data']['executive_summary_bullets'])} "
+                f"fact_check_audit={len(fact_check_audit)} "
+                f"spelling_corrections={len(spelling_corrections)} "
+                f"committee={committee_str!r}"
+            )
+            return envelope
+        finally:
+            self._delete_extraction_cache(cache_name, model=model)
 
     # ------------------------------------------------------------------
     # Per-pass helpers
     # ------------------------------------------------------------------
 
-    def _pass_with_cached_transcript(
+    def _run_pass_against_cache(
         self,
-        transcript: str,
+        cache_name: str,
         *,
         run_id: str,
         pass_label: str,
@@ -351,95 +378,78 @@ class GemmaNye(BaseExtractor):
         response_schema: type,
         model: Optional[ModelEnum] = None,
     ) -> Dict[str, Any]:
-        """One Gemma pass: cache transcript + system prompt, then generate.
+        """One Gemma pass: generate against the shared transcript cache.
 
         Shared body of the four per-pass methods (``_pass_extract``,
         ``_pass_fact_check``, ``_pass_bullets_and_committee``,
-        ``_pass_spell_check``). Each pass owns its own cache lifecycle — we
-        deliberately do not reuse one cache across passes because each pass
-        needs a different system prompt baked into the cache at create time
-        (Gemini forbids ``system_instruction`` on generate when
-        ``cached_content`` is set).
+        ``_pass_spell_check``). The transcript cache is created and deleted
+        once by :meth:`extract`; this helper does not own the cache
+        lifecycle. Because Gemini forbids ``system_instruction`` on generate
+        when ``cached_content`` is set, each pass's (different) system prompt
+        is folded into the user turn instead of baked into the cache (see
+        :meth:`LLMTextQuery._cached_turn_contents`), which is what lets all
+        four passes share one cache.
 
-        Call chain — cached Gemini extraction (one block runs per pass, four passes per extraction):
+        Call chain — cached Gemini extraction (cache created once in extract; one generate per pass):
 
           GemmaNye.extract
+            ├─ BaseExtractor._create_extraction_cache (once)
+            │    └─ LLMTextQuery.gemini_create_cache         → client.caches.create
             → _pass_extract / _pass_fact_check / _pass_bullets_and_committee / _pass_spell_check
-              → _pass_with_cached_transcript
-                ├─ BaseExtractor._create_extraction_cache
-                │    └─ LLMTextQuery.gemini_create_cache         → client.caches.create
-                ├─ BaseExtractor._call_cached_llm_and_parse
-                │    └─ LLMTextQuery.gemini_generate_with_cache  → client.models.generate_content  ★
-                └─ BaseExtractor._delete_extraction_cache
-                     └─ LLMTextQuery.gemini_delete_cache         → client.caches.delete
+              → _run_pass_against_cache
+                └─ BaseExtractor._call_cached_llm_and_parse
+                     └─ LLMTextQuery.gemini_generate_with_cache  → client.models.generate_content  ★
+            └─ BaseExtractor._delete_extraction_cache (once, in finally)
+                 └─ LLMTextQuery.gemini_delete_cache         → client.caches.delete
 
         ★ = the actual Gemini round-trip (the LLM "extraction request" you're tracing).
-        YOU ARE HERE: GemmaNye._pass_with_cached_transcript — runs cache.create → generate → cache.delete for one pass.
+        YOU ARE HERE: GemmaNye._run_pass_against_cache — issues one generate against the shared cache, folding this pass's system prompt into the user turn.
         See docs/extraction-pipeline-refactor-notes.md for layering rationale and refactor targets.
         """
-        cache_name = self._create_extraction_cache(
-            transcript,
+        return self._call_cached_llm_and_parse(
+            cache_name,
             run_id=run_id,
-            youtube_video_id=youtube_video_id,
-            display_name=f"gemma:{youtube_video_id}:{pass_label}",
-            model=model,
+            pass_label=pass_label,
             system_instruction=system_instruction,
-            cache_pass_label=f"{pass_label}_cache",
+            user_message=user_message,
+            response_schema=response_schema,
+            youtube_video_id=youtube_video_id,
+            model=model,
         )
-        if not cache_name:
-            return self._failure_envelope(
-                run_id,
-                f"Gemini cache create failed for pass={pass_label}; "
-                f"see p{pass_label}_cache log for details.",
-                model=model,
-            )
-        try:
-            return self._call_cached_llm_and_parse(
-                cache_name,
-                run_id=run_id,
-                pass_label=pass_label,
-                system_instruction=None,
-                user_message=user_message,
-                response_schema=response_schema,
-                youtube_video_id=youtube_video_id,
-                model=model,
-            )
-        finally:
-            self._delete_extraction_cache(cache_name, model=model)
 
     def _pass_extract(
         self,
-        transcript: str,
+        cache_name: str,
         run_id: str,
         youtube_video_id: str,
         meeting_date: str,
         *,
         model: Optional[ModelEnum] = None,
     ) -> Dict[str, Any]:
-        """Pass 1 of 3 — draft factual anchors from the transcript.
+        """Pass 1 of 4 — draft factual anchors from the transcript.
 
         Loads ``gemma_nye_extract_*.md`` prompts, constrains output to
-        :class:`ExtractEnvelope`, delegates the cache + generate + delete
-        cycle to :meth:`_pass_with_cached_transcript`.
+        :class:`ExtractEnvelope`, delegates the generate against the shared
+        transcript cache to :meth:`_run_pass_against_cache`.
 
-        Call chain — cached Gemini extraction (one block runs per pass, four passes per extraction):
+        Call chain — cached Gemini extraction (cache created once in extract; one generate per pass):
 
           GemmaNye.extract
+            ├─ BaseExtractor._create_extraction_cache (once)
+            │    └─ LLMTextQuery.gemini_create_cache         → client.caches.create
             → _pass_extract / _pass_fact_check / _pass_bullets_and_committee / _pass_spell_check
-              → _pass_with_cached_transcript
-                ├─ BaseExtractor._create_extraction_cache
-                │    └─ LLMTextQuery.gemini_create_cache         → client.caches.create
-                ├─ BaseExtractor._call_cached_llm_and_parse
-                │    └─ LLMTextQuery.gemini_generate_with_cache  → client.models.generate_content  ★
-                └─ BaseExtractor._delete_extraction_cache
-                     └─ LLMTextQuery.gemini_delete_cache         → client.caches.delete
+              → _run_pass_against_cache
+                └─ BaseExtractor._call_cached_llm_and_parse
+                     └─ LLMTextQuery.gemini_generate_with_cache  → client.models.generate_content  ★
+            └─ BaseExtractor._delete_extraction_cache (once, in finally)
+                 └─ LLMTextQuery.gemini_delete_cache         → client.caches.delete
 
         ★ = the actual Gemini round-trip (the LLM "extraction request" you're tracing).
         YOU ARE HERE: GemmaNye._pass_extract — pass 1 of 4, picks extract prompts + ExtractEnvelope schema.
         See docs/extraction-pipeline-refactor-notes.md for layering rationale and refactor targets.
         """
-        return self._pass_with_cached_transcript(
-            transcript,
+        return self._run_pass_against_cache(
+            cache_name,
             run_id=run_id,
             pass_label="extract",
             youtube_video_id=youtube_video_id,
@@ -457,7 +467,7 @@ class GemmaNye(BaseExtractor):
 
     def _pass_fact_check(
         self,
-        transcript: str,
+        cache_name: str,
         run_id: str,
         youtube_video_id: str,
         meeting_date: str,
@@ -465,34 +475,35 @@ class GemmaNye(BaseExtractor):
         *,
         model: Optional[ModelEnum] = None,
     ) -> Dict[str, Any]:
-        """Pass 2 of 3 — fact-check draft anchors against the transcript.
+        """Pass 2 of 4 — fact-check draft anchors against the transcript.
 
         Loads ``gemma_nye_fact_check_*.md`` prompts, injects the draft
         anchors from pass 1 into the user prompt as ``draft_anchors_json``,
-        constrains output to :class:`FactCheckEnvelope`, delegates the cache
-        + generate + delete cycle to :meth:`_pass_with_cached_transcript`.
-        The fact-check *logic* lives in the markdown file, not here — this
-        method only ferries the draft into the user prompt.
+        constrains output to :class:`FactCheckEnvelope`, delegates the
+        generate against the shared transcript cache to
+        :meth:`_run_pass_against_cache`. The fact-check *logic* lives in the
+        markdown file, not here — this method only ferries the draft into
+        the user prompt.
 
-        Call chain — cached Gemini extraction (one block runs per pass, four passes per extraction):
+        Call chain — cached Gemini extraction (cache created once in extract; one generate per pass):
 
           GemmaNye.extract
+            ├─ BaseExtractor._create_extraction_cache (once)
+            │    └─ LLMTextQuery.gemini_create_cache         → client.caches.create
             → _pass_extract / _pass_fact_check / _pass_bullets_and_committee / _pass_spell_check
-              → _pass_with_cached_transcript
-                ├─ BaseExtractor._create_extraction_cache
-                │    └─ LLMTextQuery.gemini_create_cache         → client.caches.create
-                ├─ BaseExtractor._call_cached_llm_and_parse
-                │    └─ LLMTextQuery.gemini_generate_with_cache  → client.models.generate_content  ★
-                └─ BaseExtractor._delete_extraction_cache
-                     └─ LLMTextQuery.gemini_delete_cache         → client.caches.delete
+              → _run_pass_against_cache
+                └─ BaseExtractor._call_cached_llm_and_parse
+                     └─ LLMTextQuery.gemini_generate_with_cache  → client.models.generate_content  ★
+            └─ BaseExtractor._delete_extraction_cache (once, in finally)
+                 └─ LLMTextQuery.gemini_delete_cache         → client.caches.delete
 
         ★ = the actual Gemini round-trip (the LLM "extraction request" you're tracing).
         YOU ARE HERE: GemmaNye._pass_fact_check — pass 2 of 4, picks fact-check prompts + FactCheckEnvelope schema, injects draft anchors.
         See docs/extraction-pipeline-refactor-notes.md for layering rationale and refactor targets.
         """
         draft_anchors_json = json.dumps(draft_anchors, ensure_ascii=False, indent=2)
-        return self._pass_with_cached_transcript(
-            transcript,
+        return self._run_pass_against_cache(
+            cache_name,
             run_id=run_id,
             pass_label="fact_check",
             youtube_video_id=youtube_video_id,
@@ -511,38 +522,38 @@ class GemmaNye(BaseExtractor):
 
     def _pass_bullets_and_committee(
         self,
-        transcript: str,
+        cache_name: str,
         run_id: str,
         youtube_video_id: str,
         meeting_date: str,
         *,
         model: Optional[ModelEnum] = None,
     ) -> Dict[str, Any]:
-        """Pass 3 of 3 — executive bullets + committee classification.
+        """Pass 3 of 4 — executive bullets + committee classification.
 
         Loads ``gemma_nye_bullets_*.md`` prompts, injects the canonical
         committee list into the user prompt, constrains output to
-        :class:`BulletsAndCommittee`, delegates the cache + generate +
-        delete cycle to :meth:`_pass_with_cached_transcript`.
+        :class:`BulletsAndCommittee`, delegates the generate against the
+        shared transcript cache to :meth:`_run_pass_against_cache`.
 
-        Call chain — cached Gemini extraction (one block runs per pass, four passes per extraction):
+        Call chain — cached Gemini extraction (cache created once in extract; one generate per pass):
 
           GemmaNye.extract
+            ├─ BaseExtractor._create_extraction_cache (once)
+            │    └─ LLMTextQuery.gemini_create_cache         → client.caches.create
             → _pass_extract / _pass_fact_check / _pass_bullets_and_committee / _pass_spell_check
-              → _pass_with_cached_transcript
-                ├─ BaseExtractor._create_extraction_cache
-                │    └─ LLMTextQuery.gemini_create_cache         → client.caches.create
-                ├─ BaseExtractor._call_cached_llm_and_parse
-                │    └─ LLMTextQuery.gemini_generate_with_cache  → client.models.generate_content  ★
-                └─ BaseExtractor._delete_extraction_cache
-                     └─ LLMTextQuery.gemini_delete_cache         → client.caches.delete
+              → _run_pass_against_cache
+                └─ BaseExtractor._call_cached_llm_and_parse
+                     └─ LLMTextQuery.gemini_generate_with_cache  → client.models.generate_content  ★
+            └─ BaseExtractor._delete_extraction_cache (once, in finally)
+                 └─ LLMTextQuery.gemini_delete_cache         → client.caches.delete
 
         ★ = the actual Gemini round-trip (the LLM "extraction request" you're tracing).
         YOU ARE HERE: GemmaNye._pass_bullets_and_committee — pass 3 of 4, picks bullets prompts + BulletsAndCommittee schema.
         See docs/extraction-pipeline-refactor-notes.md for layering rationale and refactor targets.
         """
-        return self._pass_with_cached_transcript(
-            transcript,
+        return self._run_pass_against_cache(
+            cache_name,
             run_id=run_id,
             pass_label="bullets",
             youtube_video_id=youtube_video_id,
@@ -561,7 +572,7 @@ class GemmaNye(BaseExtractor):
 
     def _pass_spell_check(
         self,
-        transcript: str,
+        cache_name: str,
         run_id: str,
         youtube_video_id: str,
         meeting_date: str,
@@ -575,23 +586,23 @@ class GemmaNye(BaseExtractor):
         Loads ``gemma_nye_spell_check_*.md`` prompts, injects pass 2's
         corrected anchors and pass 3's bullets into the user prompt as
         ``corrected_anchors_json`` and ``bullets_json``, constrains output
-        to :class:`SpellCheckEnvelope`, delegates the cache + generate +
-        delete cycle to :meth:`_pass_with_cached_transcript`. The canonical
-        Fall River names list (officials, boards, streets) is baked into
-        the pass-4 system instructions markdown — this method does not
-        ferry any names list into Python.
+        to :class:`SpellCheckEnvelope`, delegates the generate against the
+        shared transcript cache to :meth:`_run_pass_against_cache`. The
+        canonical Fall River names list (officials, boards, streets) is
+        baked into the pass-4 system instructions markdown — this method
+        does not ferry any names list into Python.
 
-        Call chain — cached Gemini extraction (one block runs per pass, four passes per extraction):
+        Call chain — cached Gemini extraction (cache created once in extract; one generate per pass):
 
           GemmaNye.extract
+            ├─ BaseExtractor._create_extraction_cache (once)
+            │    └─ LLMTextQuery.gemini_create_cache         → client.caches.create
             → _pass_extract / _pass_fact_check / _pass_bullets_and_committee / _pass_spell_check
-              → _pass_with_cached_transcript
-                ├─ BaseExtractor._create_extraction_cache
-                │    └─ LLMTextQuery.gemini_create_cache         → client.caches.create
-                ├─ BaseExtractor._call_cached_llm_and_parse
-                │    └─ LLMTextQuery.gemini_generate_with_cache  → client.models.generate_content  ★
-                └─ BaseExtractor._delete_extraction_cache
-                     └─ LLMTextQuery.gemini_delete_cache         → client.caches.delete
+              → _run_pass_against_cache
+                └─ BaseExtractor._call_cached_llm_and_parse
+                     └─ LLMTextQuery.gemini_generate_with_cache  → client.models.generate_content  ★
+            └─ BaseExtractor._delete_extraction_cache (once, in finally)
+                 └─ LLMTextQuery.gemini_delete_cache         → client.caches.delete
 
         ★ = the actual Gemini round-trip (the LLM "extraction request" you're tracing).
         YOU ARE HERE: GemmaNye._pass_spell_check — pass 4 of 4, picks spell-check prompts + SpellCheckEnvelope schema, injects pass-2 anchors + pass-3 bullets.
@@ -601,8 +612,8 @@ class GemmaNye(BaseExtractor):
             corrected_anchors, ensure_ascii=False, indent=2
         )
         bullets_json = json.dumps(bullets, ensure_ascii=False, indent=2)
-        return self._pass_with_cached_transcript(
-            transcript,
+        return self._run_pass_against_cache(
+            cache_name,
             run_id=run_id,
             pass_label="spell_check",
             youtube_video_id=youtube_video_id,

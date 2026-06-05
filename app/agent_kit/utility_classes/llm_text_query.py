@@ -366,9 +366,7 @@ class LLMTextQuery:
             )
 
     @staticmethod
-    def _cached_turn_contents(
-        system_instruction: str | None, user_message: str
-    ) -> str:
+    def _cached_turn_contents(system_instruction: str | None, user_message: str) -> str:
         """Build ``contents`` for a cached generate call.
 
         Gemini rejects ``system_instruction`` on ``GenerateContentConfig`` when

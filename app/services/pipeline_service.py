@@ -1063,9 +1063,46 @@ class PipelineService:
         text_model: Optional[TextModel] = None,
         skip_youtube_ids: Optional[Set[str]] = None,
     ) -> Dict[str, Any]:
-        """Extract anchors for transcripts that do not yet have any anchor rows."""
+        """Extract anchors for transcripts that have no anchor rows yet.
+
+        **Async** method (callable with ``await`` from the pipeline); DB queries
+        and each :meth:`run_extract_anchors` call are synchronous.
+
+        Selects up to ``amount`` transcripts with non-empty ``content`` and no
+        row in ``anchors`` for the same ``youtube_id``. Newest transcripts first
+        (``ORDER BY t.id DESC``). For each id, delegates to
+        :meth:`run_extract_anchors`, which runs the configured extractor (today
+        Gemma Nye's four-pass Gemini flow) and persists anchors when successful.
+
+        Args:
+            amount: Maximum number of transcripts to process in this call.
+            extractor: Which agent extractor to run (see ``Extractor`` enum).
+            text_model: Optional unified :class:`TextModel` member; when it
+                maps to a Gemini model, that model is used for all extraction
+                passes. When ``None``, the extractor's class default applies.
+            skip_youtube_ids: YouTube IDs to exclude from selection (e.g.
+                already published on WordPress during regenerate flows).
+
+        Returns:
+            Dict with:
+
+            - ``success`` (``bool``): ``False`` if the database is unavailable,
+              or if any selected extraction failed (``anchors_failed > 0``).
+              ``True`` when there was nothing to process or every attempt succeeded.
+            - ``message`` (``str``): Summary for operators.
+            - ``requested`` (``int``): Echo of ``amount``.
+            - ``found_without_anchors`` (``int``): Count of eligible transcripts
+              in the DB (may exceed ``processed`` when ``amount`` is smaller).
+            - ``processed`` (``int``): Rows actually attempted (length of
+              ``results``).
+            - ``anchors_extracted`` (``int``), ``anchors_failed`` (``int``)
+            - ``results`` (``list[dict]``): Per-video return values from
+              :meth:`run_extract_anchors` (``youtube_id``, ``success``,
+              ``message``, ``run_id``, etc.).
+        """
         db = self._database
         if not db:
+            logger.warning("Pipeline bulk_extract_anchors: database not available")
             return {
                 "success": False,
                 "message": "Database not available",
@@ -1083,9 +1120,14 @@ class PipelineService:
         )
         if gemini_model is not None:
             logger.info(
-                "Pipeline anchor extraction: using extractor=%s model=%s",
+                "Pipeline bulk_extract_anchors: using extractor=%s model=%s",
                 extractor.value,
                 gemini_model.value,
+            )
+        else:
+            logger.info(
+                "Pipeline bulk_extract_anchors: using extractor=%s (extractor default model)",
+                extractor.value,
             )
 
         cursor = db.cursor
@@ -1114,7 +1156,10 @@ class PipelineService:
                      AND NOT EXISTS (
                        SELECT 1 FROM anchors a WHERE a.youtube_id = t.youtube_id
                      )
-                   ORDER BY t.id DESC
+                   ORDER BY substr(t.meeting_date, 7, 4)
+                            || substr(t.meeting_date, 1, 2)
+                            || substr(t.meeting_date, 4, 2) DESC,
+                            t.id DESC
                    LIMIT ?""",
                 (*skip_youtube_ids, amount),
             )
@@ -1141,13 +1186,32 @@ class PipelineService:
                      AND NOT EXISTS (
                        SELECT 1 FROM anchors a WHERE a.youtube_id = t.youtube_id
                      )
-                   ORDER BY t.id DESC
+                   ORDER BY substr(t.meeting_date, 7, 4)
+                            || substr(t.meeting_date, 1, 2)
+                            || substr(t.meeting_date, 4, 2) DESC,
+                            t.id DESC
                    LIMIT ?""",
                 (amount,),
             )
 
         transcript_rows = cursor.fetchall()
+        batch_size = len(transcript_rows)
+        logger.info(
+            "Pipeline bulk_extract_anchors: requested=%s found_without_anchors=%s "
+            "processing=%s skip_count=%s extractor=%s",
+            amount,
+            found_without_anchors,
+            batch_size,
+            len(skip_youtube_ids) if skip_youtube_ids else 0,
+            extractor.value,
+        )
         if not transcript_rows:
+            logger.info(
+                "Pipeline bulk_extract_anchors: no eligible transcripts "
+                "(requested=%s found=%s)",
+                amount,
+                found_without_anchors,
+            )
             return {
                 "success": True,
                 "message": (
@@ -1164,10 +1228,16 @@ class PipelineService:
         anchors_extracted = 0
         anchors_failed = 0
         results: list[dict[str, Any]] = []
-        for row in transcript_rows:
+        for index, row in enumerate(transcript_rows, start=1):
             youtube_id = (row[0] or "").strip()
             if not youtube_id:
                 continue
+            logger.info(
+                "Pipeline bulk_extract_anchors: starting %s/%s youtube_id=%s",
+                index,
+                batch_size,
+                youtube_id,
+            )
             extract_result = self.run_extract_anchors(
                 youtube_id,
                 extractor=extractor,
@@ -1177,6 +1247,11 @@ class PipelineService:
                 anchors_extracted += 1
             else:
                 anchors_failed += 1
+                logger.warning(
+                    "Pipeline bulk_extract_anchors: failed youtube_id=%s: %s",
+                    youtube_id,
+                    extract_result.get("message") or extract_result.get("error"),
+                )
             results.append(extract_result)
 
         processed = len(results)
@@ -1188,8 +1263,18 @@ class PipelineService:
         else:
             message = f"Processed {processed} transcript(s) for anchor extraction"
 
+        batch_success = anchors_failed == 0
+        logger.info(
+            "Pipeline bulk_extract_anchors: complete requested=%s processed=%s "
+            "extracted=%s failed=%s success=%s",
+            amount,
+            processed,
+            anchors_extracted,
+            anchors_failed,
+            batch_success,
+        )
         return {
-            "success": anchors_failed == 0,
+            "success": batch_success,
             "message": message,
             "requested": amount,
             "found_without_anchors": found_without_anchors,
@@ -1234,16 +1319,15 @@ class PipelineService:
         transcript_id: Optional[int] = None
         committee = "Unknown"
 
-        if created:
-            transcript_data = db.get_transcript_by_youtube_id(youtube_id)
-            if not transcript_data:
-                return {
-                    "success": False,
-                    "error": f"No transcript found for youtube_id={youtube_id}",
-                    "youtube_id": youtube_id,
-                }
-            transcript_id = transcript_data[0]
-            committee = (transcript_data[1] or "Unknown") if len(transcript_data) > 1 else "Unknown"
+        transcript_data = db.get_transcript_by_youtube_id(youtube_id)
+        if not transcript_data:
+            return {
+                "success": False,
+                "error": f"No transcript found for youtube_id={youtube_id}",
+                "youtube_id": youtube_id,
+            }
+        transcript_id = transcript_data[0]
+        committee = (transcript_data[1] or "Unknown") if len(transcript_data) > 1 else "Unknown"
 
         article_id = article["id"] if article else None
         anchor_context = self.build_article_context_from_anchors(youtube_id)
@@ -1332,6 +1416,9 @@ class PipelineService:
                     "article_id": article_id,
                 }
             mode = "updated"
+
+        if committee and committee != "Unknown":
+            db.update_article_committee(youtube_id, committee)
 
         bullets_count = 0
         if summary_bullets:
@@ -1949,7 +2036,9 @@ class PipelineService:
         # value seeded at fetch time). The original title stays in video_title.
         primary_committee = data.get("primary_committee")
         if persist and isinstance(primary_committee, str) and primary_committee.strip():
-            db.update_transcript_committee(youtube_id, primary_committee.strip())
+            committee_value = primary_committee.strip()
+            db.update_transcript_committee(youtube_id, committee_value)
+            db.update_article_committee(youtube_id, committee_value)
         result: Dict[str, Any] = {
             "success": True,
             "message": "Extraction complete" if persist else "Extraction complete (not persisted)",
