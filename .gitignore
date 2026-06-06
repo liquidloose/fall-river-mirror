@@ -1,6 +1,7 @@
 .env
 .env.dev
 .env.production
+fr-mirror.db
 
 # Google OAuth credentials (sensitive)
 client_secret.json
@@ -31,7 +32,6 @@ the-fall-river-mirror-mailer-*.json
 /WordPress/wp-content/backups/
 /WordPress/wp-content/blogs.dir/
 /WordPress/wp-content/upgrade/
-/WordPress/wp-content/uploads/
 /WordPress/wp-content/advanced-cache.php
 /WordPress/wp-content/wp-cache-config.php
 /WordPress/wp-content/plugins/hello.php
@@ -42,13 +42,13 @@ the-fall-river-mirror-mailer-*.json
 /WordPress/wp-content/themes/twentytwentythree/
 asdf
 # Python cache files
-__pycache__/
+app/__pycache__/
 /vendor/*
 
 # Typesense bind-mounted data (docker-compose)
 typesense-data/
 
-/app/data/fr-mirror.db
+/app/data/*.db
 app.log
 
 # Per-call extraction debug logs (Gemma Nye et al.); regenerated on every run.
@@ -59,3 +59,6 @@ client_secret.json
 youtube_oauth_token.json
 youtube_token.json
 *_token.json
+
+# Database backups
+/app/data/backups/

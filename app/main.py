@@ -124,8 +124,13 @@ class RequestLogMiddleware(BaseHTTPMiddleware):
 
     async def dispatch(self, request: Request, call_next):
         path = (request.scope.get("path") or "").split("?")[0]
-        if path.endswith("/wordpress/repair-article-featured-image") and request.scope.get("method") == "POST":
-            logger.info("REQUEST RECEIVED: POST /wordpress/repair-article-featured-image")
+        if (
+            path.endswith("/wordpress/repair-article-featured-image")
+            and request.scope.get("method") == "POST"
+        ):
+            logger.info(
+                "REQUEST RECEIVED: POST /wordpress/repair-article-featured-image"
+            )
         return await call_next(request)
 
 

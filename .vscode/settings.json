@@ -1,4 +1,29 @@
 {
+    "git.autorefresh": false,
+    "git.autofetch": false,
+    "git.untrackedChanges": "separate",
+    "git.repositoryScanMaxDepth": 1,
+    "files.watcherExclude": {
+        "**/WordPress/wp-content/uploads/**": true,
+        "**/WordPress/wp-content/plugins/*/node_modules/**": true,
+        "**/node_modules/**": true,
+        "**/app/data/*.db": true,
+        "**/app/data/*.backup-*.db": true,
+        "**/typesense-data/**": true,
+        "**/.git/**": true,
+        "**/logs/**": true,
+        "**/__pycache__/**": true
+    },
+    "files.exclude": {
+        "**/WordPress/wp-content/uploads/prime-mover-export-files": false,
+        "**/__pycache__": true
+    },
+    "search.exclude": {
+        "**/WordPress/wp-content/uploads/**": true,
+        "**/node_modules/**": true,
+        "**/typesense-data/**": true,
+        "**/app/data/*.db": true
+    },
     "sqlite.sqlite3": "/usr/bin/sqlite3",
     "editor.defaultFormatter": null,
     "editor.formatOnSave": true,

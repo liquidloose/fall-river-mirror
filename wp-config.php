@@ -93,6 +93,8 @@ define('NONCE_SALT',       getenv_docker('WORDPRESS_NONCE_SALT',       '12f91e8d
  * You can have multiple installations in one database if you give each
  * a unique prefix. Only numbers, letters, and underscores please!
  */
+define( 'WP_SITEURL', 'http://fr-mirror.ferret-boa.ts.net' );
+define( 'WP_HOME', 'http://fr-mirror.ferret-boa.ts.net' );
 $table_prefix = getenv_docker('WORDPRESS_TABLE_PREFIX', 'wp_');
 
 /**
@@ -121,12 +123,7 @@ define('SAVEQUERIES', true); // Save database queries for analysis
 // see also https://wordpress.org/support/article/administration-over-ssl/#using-a-reverse-proxy
 $wp_public_url = getenv_docker('WORDPRESS_PUBLIC_URL', '');
 if ($wp_public_url !== '') {
-	define('WP_HOME', $wp_public_url);
-	define('WP_SITEURL', $wp_public_url);
-} else {
-	define('WP_HOME', 'http://192.168.1.17:9004');
-	define('WP_SITEURL', 'http://192.168.1.17:9004');
-}
+	} 
 if (getenv_docker('WORDPRESS_FORCE_SSL_ADMIN', '') === '1') {
 	define('FORCE_SSL_ADMIN', true);
 }
