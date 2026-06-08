@@ -160,7 +160,7 @@ services:
   typesense:
     profiles: [dev, prod]
     image: typesense/typesense:30.2
-    restart: always
+    restart: unless-stopped
     environment:
       - TYPESENSE_DATA_DIR=/data
     networks:

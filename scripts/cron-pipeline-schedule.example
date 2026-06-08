@@ -1,0 +1,16 @@
+# VPS crontab for the regenerate backlog loop.
+# Main pipeline (5 new meetings/night) runs via GitHub Actions — see .github/workflows/trigger-pipeline.yml
+#
+# Install:
+#   chmod +x /path/to/fall-river-mirror/scripts/regenerate-loop.sh
+#   crontab -e
+# Paste ONE line (adjust DEPLOY_PATH and log path):
+#
+# Regenerate loop — 6:00 AM Eastern (10:00 UTC during EDT, 11:00 UTC during EST).
+# Gives ~4.5h after the 1:30 AM ET main run before backlog processing starts.
+0 10 * * * PIPELINE_API_BASE_URL=http://127.0.0.1:3004 REGEN_LOG=/path/to/fall-river-mirror/logs/regenerate-loop.log /path/to/fall-river-mirror/scripts/regenerate-loop.sh >> /path/to/fall-river-mirror/logs/regenerate-loop.cron.log 2>&1
+#
+# After DST ends (EST), use 11 instead of 10 for the hour field to keep 6:00 AM local.
+#
+# Manual one-off (run now until 11 PM or backlog cleared):
+#   PIPELINE_API_BASE_URL=http://127.0.0.1:3004 ./scripts/regenerate-loop.sh
