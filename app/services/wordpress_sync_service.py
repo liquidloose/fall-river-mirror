@@ -22,7 +22,7 @@ Uses ``WORDPRESS_JWT_TOKEN`` in the ``Authorization: Bearer`` header when set. O
 - ``WORDPRESS_JWT_TOKEN`` — optional until first protected call; refreshed in-process on success.
 - ``WORDPRESS_JWT_USER``, ``WORDPRESS_JWT_PASSWORD`` — for :meth:`~WordPressSyncService.refresh_jwt_token`.
 - ``WORDPRESS_API_PATH_CREATE_ARTICLE``, ``WORDPRESS_API_PATH_UPDATE_ARTICLE``,
-  ``WORDPRESS_API_PATH_ARTICLE_YOUTUBE_IDS`` — optional path overrides.
+  ``WORDPRESS_API_PATH_UPDATE_ARTICLE_BODY``, ``WORDPRESS_API_PATH_ARTICLE_YOUTUBE_IDS`` — optional path overrides.
 
 **Return conventions**
 
@@ -49,6 +49,7 @@ logger = logging.getLogger(__name__)
 # fr-mirror REST API paths (under WORDPRESS_BASE_URL). Override with WORDPRESS_API_PATH_* env vars.
 DEFAULT_API_PATH_CREATE = "/wp-json/fr-mirror/v2/create-article"
 DEFAULT_API_PATH_UPDATE = "/wp-json/fr-mirror/v2/update-article"
+DEFAULT_API_PATH_UPDATE_BODY = "/wp-json/fr-mirror/v2/update-article-body"
 DEFAULT_API_PATH_YOUTUBE_IDS = "/wp-json/fr-mirror/v2/article-youtube-ids"
 
 
@@ -71,6 +72,7 @@ class WordPressSyncService:
 
     - :meth:`sync_one_article` — DB article → create-article (draft), requires content, bullets, art
     - :meth:`update_article_title_and_content` — partial update endpoint
+    - :meth:`update_article_body_on_wordpress` — body + bullet points only (no title)
     - :meth:`repair_article_featured_image` — featured image only by ``youtube_id``
     - :meth:`repair_missing_featured_images` — scan WP posts and repair broken/missing featured_media
 
@@ -84,6 +86,7 @@ class WordPressSyncService:
         base_url: Optional[str] = None,
         api_path_create: Optional[str] = None,
         api_path_update: Optional[str] = None,
+        api_path_update_body: Optional[str] = None,
         api_path_youtube_ids: Optional[str] = None,
     ) -> None:
         """
@@ -93,6 +96,8 @@ class WordPressSyncService:
             api_path_create: Defaults to env ``WORDPRESS_API_PATH_CREATE_ARTICLE`` or
                 :data:`DEFAULT_API_PATH_CREATE`.
             api_path_update: Env ``WORDPRESS_API_PATH_UPDATE_ARTICLE`` or :data:`DEFAULT_API_PATH_UPDATE`.
+            api_path_update_body: Env ``WORDPRESS_API_PATH_UPDATE_ARTICLE_BODY`` or
+                :data:`DEFAULT_API_PATH_UPDATE_BODY`.
             api_path_youtube_ids: Env ``WORDPRESS_API_PATH_ARTICLE_YOUTUBE_IDS`` or
                 :data:`DEFAULT_API_PATH_YOUTUBE_IDS`.
         """
@@ -100,6 +105,7 @@ class WordPressSyncService:
         self._base_url = (base_url if base_url is not None else os.environ.get("WORDPRESS_BASE_URL", "")).strip().rstrip("/")
         self._api_path_create = api_path_create or os.environ.get("WORDPRESS_API_PATH_CREATE_ARTICLE") or DEFAULT_API_PATH_CREATE
         self._api_path_update = api_path_update or os.environ.get("WORDPRESS_API_PATH_UPDATE_ARTICLE") or DEFAULT_API_PATH_UPDATE
+        self._api_path_update_body = api_path_update_body or os.environ.get("WORDPRESS_API_PATH_UPDATE_ARTICLE_BODY") or DEFAULT_API_PATH_UPDATE_BODY
         self._api_path_youtube_ids = api_path_youtube_ids or os.environ.get("WORDPRESS_API_PATH_ARTICLE_YOUTUBE_IDS") or DEFAULT_API_PATH_YOUTUBE_IDS
 
     def _headers(self) -> Dict[str, str]:
@@ -123,6 +129,25 @@ class WordPressSyncService:
         except ValueError:
             return False
 
+    def _is_auth_missing_or_forbidden_response(self, response: requests.Response) -> bool:
+        """
+        Return True for auth failures that should trigger a token refresh.
+
+        This covers common WordPress responses when the process has no JWT in
+        memory yet (e.g. after container restart) or when auth middleware returns
+        a generic REST permission failure instead of jwt_auth_invalid_token.
+        """
+        if response.status_code not in (401, 403):
+            return False
+        text = (response.text or "").strip()
+        if "jwt_auth_no_auth_header" in text or "rest_forbidden" in text:
+            return True
+        try:
+            code = (response.json().get("code") or "").strip()
+            return code in {"jwt_auth_no_auth_header", "rest_forbidden"}
+        except ValueError:
+            return False
+
     def _request_with_jwt_retry(self, request_fn: Callable[[], requests.Response]) -> requests.Response:
         """
         Execute ``request_fn`` (typically a closure over ``requests.get/post``).
@@ -131,9 +156,15 @@ class WordPressSyncService:
         and retries **once**; otherwise returns the first response.
         """
         response = request_fn()
-        if not self._is_jwt_invalid_token_response(response):
+        if not (
+            self._is_jwt_invalid_token_response(response)
+            or self._is_auth_missing_or_forbidden_response(response)
+        ):
             return response
-        logger.info("WordPress returned jwt_auth_invalid_token; refreshing JWT and retrying once.")
+        logger.info(
+            "WordPress auth failed (status=%s); refreshing JWT and retrying once.",
+            response.status_code,
+        )
         refresh = self.refresh_jwt_token()
         if not refresh.get("success"):
             return response
@@ -225,17 +256,22 @@ class WordPressSyncService:
                 "error": body,
             }
 
-    def get_article_youtube_ids(self, base_url: Optional[str] = None) -> Set[str]:
+    def get_article_youtube_ids_result(
+        self, base_url: Optional[str] = None
+    ) -> Dict[str, Any]:
         """
-        GET fr-mirror ``article-youtube-ids`` and return the published YouTube ID set.
+        GET fr-mirror ``article-youtube-ids`` with structured success/error payload.
 
-        Appends ``nocache`` timestamp to avoid stale CDN caches. Uses :meth:`_request_with_jwt_retry`.
-
-        Args:
-            base_url: Optional origin override; defaults to configured ``_base_url``.
+        Unlike :meth:`get_article_youtube_ids`, this preserves the concrete remote
+        error body and status code so callers can propagate the real failure.
 
         Returns:
-            Set of non-empty ``youtube_id`` strings. On any failure logs a warning and returns ``set()``.
+            Dict with:
+            - ``success`` (bool)
+            - ``youtube_ids`` (set[str]) on success
+            - ``http_status`` (int) on failure
+            - ``error`` (str) on failure
+            - ``raw_response`` (str|None) on failure
         """
         url = (base_url or self._base_url) + self._api_path_youtube_ids
         sep = "&" if "?" in url else "?"
@@ -250,8 +286,36 @@ class WordPressSyncService:
                 )
             r.raise_for_status()
             data = r.json()
-            raw = data.get("youtube_ids") or []
-            return set((yid or "").strip() for yid in raw if (yid or "").strip())
+            if not isinstance(data, dict):
+                return {
+                    "success": False,
+                    "youtube_ids": set(),
+                    "http_status": status.HTTP_502_BAD_GATEWAY,
+                    "error": "Unexpected article-youtube-ids response type (expected JSON object).",
+                    "raw_response": (r.text or "")[:2000],
+                }
+            raw = data.get("youtube_ids")
+            if not isinstance(raw, list):
+                # Preserve WordPress/plugin error payload when endpoint does not
+                # return the expected field.
+                wp_message = data.get("message") if isinstance(data.get("message"), str) else None
+                wp_code = data.get("code") if isinstance(data.get("code"), str) else None
+                payload_error = (
+                    f"article-youtube-ids response missing/invalid youtube_ids list"
+                    + (f" (code={wp_code})" if wp_code else "")
+                    + (f": {wp_message}" if wp_message else "")
+                )
+                return {
+                    "success": False,
+                    "youtube_ids": set(),
+                    "http_status": status.HTTP_502_BAD_GATEWAY,
+                    "error": payload_error,
+                    "raw_response": (r.text or "")[:2000],
+                }
+            return {
+                "success": True,
+                "youtube_ids": set((yid or "").strip() for yid in raw if (yid or "").strip()),
+            }
         except Exception as e:
             resp = getattr(e, "response", None)
             logger.warning(
@@ -260,7 +324,30 @@ class WordPressSyncService:
                 resp.status_code if resp is not None else None,
                 (resp.text if resp is not None and resp.text else None),
             )
-            return set()
+            return {
+                "success": False,
+                "youtube_ids": set(),
+                "http_status": (
+                    resp.status_code if resp is not None else status.HTTP_502_BAD_GATEWAY
+                ),
+                "error": str(e),
+                "raw_response": (resp.text if resp is not None and resp.text else None),
+            }
+
+    def get_article_youtube_ids(self, base_url: Optional[str] = None) -> Set[str]:
+        """
+        GET fr-mirror ``article-youtube-ids`` and return the published YouTube ID set.
+
+        Appends ``nocache`` timestamp to avoid stale CDN caches. Uses :meth:`_request_with_jwt_retry`.
+
+        Args:
+            base_url: Optional origin override; defaults to configured ``_base_url``.
+
+        Returns:
+            Set of non-empty ``youtube_id`` strings. On any failure logs a warning and returns ``set()``.
+        """
+        result = self.get_article_youtube_ids_result(base_url=base_url)
+        return result.get("youtube_ids", set()) if result.get("success") else set()
 
     def test_jwt_get(self) -> Dict[str, Any]:
         """
@@ -653,6 +740,115 @@ class WordPressSyncService:
                 "http_status": status.HTTP_502_BAD_GATEWAY,
             }
 
+    def _format_meeting_date(self, date_str: str) -> str:
+        """Normalize transcript meeting_date to YYYY-MM-DD when parseable."""
+        if not date_str:
+            return ""
+        try:
+            date_obj = None
+            for fmt in ("%m-%d-%Y", "%m/%d/%Y", "%Y-%m-%d"):
+                try:
+                    date_obj = datetime.strptime(date_str, fmt)
+                    break
+                except ValueError:
+                    continue
+            if not date_obj:
+                try:
+                    s = date_str.replace("Z", "+00:00") if date_str.endswith("Z") else date_str
+                    date_obj = datetime.fromisoformat(s)
+                except ValueError:
+                    pass
+            if date_obj:
+                return date_obj.strftime("%Y-%m-%d")
+            logger.warning("Could not parse meeting_date %r, using as-is", date_str)
+            return date_str
+        except Exception as e:
+            logger.warning("Failed to format meeting_date: %s, using original value", e)
+            return date_str
+
+    def _resolve_wordpress_article_metadata(self, article: dict) -> Dict[str, Any]:
+        """Resolve WordPress create payload fields from a local article row."""
+        db = self._database
+        article_id = article["id"]
+
+        journalist_name = ""
+        if article.get("journalist_id") and db:
+            try:
+                db.cursor.execute(
+                    "SELECT first_name, last_name FROM journalists WHERE id = ?",
+                    (article["journalist_id"],),
+                )
+                journalist_result = db.cursor.fetchone()
+                if journalist_result:
+                    first_name = journalist_result[0] or ""
+                    last_name = journalist_result[1] or ""
+                    if first_name and last_name:
+                        journalist_name = f"{first_name} {last_name}"
+                    elif first_name:
+                        journalist_name = first_name
+                    elif last_name:
+                        journalist_name = last_name
+            except Exception as e:
+                logger.warning("Failed to fetch journalist data: %s", e)
+
+        meeting_date = ""
+        transcript_id = article.get("transcript_id")
+        if transcript_id and db:
+            try:
+                db.cursor.execute(
+                    "SELECT meeting_date FROM transcripts WHERE id = ?",
+                    (transcript_id,),
+                )
+                transcript_result = db.cursor.fetchone()
+                if transcript_result and transcript_result[0]:
+                    meeting_date = self._format_meeting_date(transcript_result[0])
+            except Exception as e:
+                logger.warning("Failed to fetch meeting_date from transcript: %s", e)
+
+        featured_image = None
+        if db:
+            try:
+                db.cursor.execute(
+                    "SELECT id, image_data, model FROM art WHERE article_id = ? LIMIT 1",
+                    (article_id,),
+                )
+                art_result = db.cursor.fetchone()
+                if art_result and art_result[1]:
+                    image_data = art_result[1]
+                    if isinstance(image_data, bytes):
+                        image_format = "png"
+                        if len(image_data) >= 2 and image_data[:2] == b"\xff\xd8":
+                            image_format = "jpeg"
+                        elif len(image_data) >= 8 and image_data[:8] == b"\x89PNG\r\n\x1a\n":
+                            image_format = "png"
+                        base64_data = base64.b64encode(image_data).decode("utf-8")
+                        featured_image = f"data:image/{image_format};base64,{base64_data}"
+            except Exception as e:
+                logger.warning(
+                    "Failed to fetch/process image for article %s: %s",
+                    article_id,
+                    e,
+                    exc_info=True,
+                )
+
+        committee = ""
+        if db and article.get("youtube_id"):
+            try:
+                transcript_data = db.get_transcript_by_youtube_id(article["youtube_id"])
+                if transcript_data and len(transcript_data) > 1:
+                    committee = (transcript_data[1] or "").strip()
+            except Exception as e:
+                logger.warning("Failed to fetch committee from transcript: %s", e)
+        if not committee:
+            committee = (article.get("committee") or "").strip()
+
+        return {
+            "journalist_name": journalist_name,
+            "meeting_date": meeting_date,
+            "featured_image": featured_image,
+            "committee": committee,
+        }
+
     def sync_one_article(self, article_id: int) -> Dict[str, Any]:
         """
         Push one local article to WordPress **create-article** as a draft (if not already on WP).
@@ -689,89 +885,11 @@ class WordPressSyncService:
                 "http_status": status.HTTP_404_NOT_FOUND,
             }
 
-        journalist_name = ""
-        if article.get("journalist_id"):
-            try:
-                db.cursor.execute(
-                    "SELECT first_name, last_name FROM journalists WHERE id = ?",
-                    (article["journalist_id"],),
-                )
-                journalist_result = db.cursor.fetchone()
-                if journalist_result:
-                    first_name = journalist_result[0] or ""
-                    last_name = journalist_result[1] or ""
-                    if first_name and last_name:
-                        journalist_name = f"{first_name} {last_name}"
-                    elif first_name:
-                        journalist_name = first_name
-                    elif last_name:
-                        journalist_name = last_name
-            except Exception as e:
-                logger.warning(f"Failed to fetch journalist data: {str(e)}")
-
-        meeting_date = ""
-        transcript_id = article.get("transcript_id")
-        if transcript_id:
-            try:
-                db.cursor.execute(
-                    "SELECT meeting_date FROM transcripts WHERE id = ?",
-                    (transcript_id,),
-                )
-                transcript_result = db.cursor.fetchone()
-                if transcript_result and transcript_result[0]:
-                    date_str = transcript_result[0]
-                    try:
-                        date_obj = None
-                        try:
-                            date_obj = datetime.strptime(date_str, "%m-%d-%Y")
-                        except ValueError:
-                            pass
-                        if not date_obj:
-                            try:
-                                date_obj = datetime.strptime(date_str, "%m/%d/%Y")
-                            except ValueError:
-                                pass
-                        if not date_obj:
-                            try:
-                                s = date_str.replace("Z", "+00:00") if date_str.endswith("Z") else date_str
-                                date_obj = datetime.fromisoformat(s)
-                            except ValueError:
-                                pass
-                        if not date_obj:
-                            try:
-                                date_obj = datetime.strptime(date_str, "%Y-%m-%d")
-                            except ValueError:
-                                pass
-                        if date_obj:
-                            meeting_date = date_obj.strftime("%Y-%m-%d")
-                        else:
-                            logger.warning(f"Could not parse meeting_date '{date_str}', using as-is")
-                            meeting_date = date_str
-                    except Exception as e:
-                        logger.warning(f"Failed to format meeting_date: {str(e)}, using original value")
-                        meeting_date = transcript_result[0]
-            except Exception as e:
-                logger.warning(f"Failed to fetch meeting_date from transcript: {str(e)}")
-
-        featured_image = None
-        try:
-            db.cursor.execute(
-                "SELECT id, image_data, model FROM art WHERE article_id = ? LIMIT 1",
-                (article_id,),
-            )
-            art_result = db.cursor.fetchone()
-            if art_result and art_result[1]:
-                image_data = art_result[1]
-                if isinstance(image_data, bytes):
-                    image_format = "png"
-                    if len(image_data) >= 2 and image_data[:2] == b"\xff\xd8":
-                        image_format = "jpeg"
-                    elif len(image_data) >= 8 and image_data[:8] == b"\x89PNG\r\n\x1a\n":
-                        image_format = "png"
-                    base64_data = base64.b64encode(image_data).decode("utf-8")
-                    featured_image = f"data:image/{image_format};base64,{base64_data}"
-        except Exception as e:
-            logger.warning(f"Failed to fetch/process image for article {article_id}: {str(e)}", exc_info=True)
+        metadata = self._resolve_wordpress_article_metadata(article)
+        journalist_name = metadata["journalist_name"]
+        meeting_date = metadata["meeting_date"]
+        featured_image = metadata["featured_image"]
+        committee = metadata["committee"]
 
         missing_fields = []
         if not article.get("content"):
@@ -788,7 +906,22 @@ class WordPressSyncService:
             }
 
         youtube_id = (article.get("youtube_id") or "").strip()
-        existing_on_wp = youtube_id in self.get_article_youtube_ids() if youtube_id else False
+        existing_on_wp = False
+        if youtube_id:
+            youtube_ids_result = self.get_article_youtube_ids_result()
+            if not youtube_ids_result.get("success"):
+                return {
+                    "success": False,
+                    "error": (
+                        "Failed to verify existing WordPress articles before sync: "
+                        + (youtube_ids_result.get("error") or "Unknown error")
+                    ),
+                    "http_status": youtube_ids_result.get(
+                        "http_status", status.HTTP_502_BAD_GATEWAY
+                    ),
+                    "raw_response": youtube_ids_result.get("raw_response"),
+                }
+            existing_on_wp = youtube_id in (youtube_ids_result.get("youtube_ids") or set())
 
         if existing_on_wp:
             # Already on WordPress: skip. We don't create or update; content is already there.
@@ -805,7 +938,7 @@ class WordPressSyncService:
             "title": article.get("title") or "",
             "article_content": article.get("content") or "",
             "journalist_name": journalist_name or "",
-            "committee": article.get("committee") or "",
+            "committee": committee or article.get("committee") or "",
             "youtube_id": youtube_id or "",
             "bullet_points": article.get("bullet_points") or "",
             "meeting_date": meeting_date or "",
@@ -879,16 +1012,16 @@ class WordPressSyncService:
                 "http_status": status.HTTP_500_INTERNAL_SERVER_ERROR,
             }
 
-    def update_article_title_and_content(self, article_id: int) -> Dict[str, Any]:
+    def update_article_title_and_content(self, youtube_id: str) -> Dict[str, Any]:
         """
         POST current DB **title** and **content** to the fr-mirror **update-article** endpoint.
 
-        Payload includes local ``article_id`` and ``youtube_id`` for WP to locate the post. Does not
-        change slug or delete the post (WordPress plugin contract).
+        Looks up the local article by ``youtube_id``. Payload sends ``youtube_id`` for WP to locate
+        the post. Does not change slug or delete the post (WordPress plugin contract).
 
         Returns:
-            ``success``, ``article_id``, ``wordpress_response`` on 2xx; otherwise ``success: False``,
-            ``error``, ``http_status``, ``raw_response``.
+            ``success``, ``article_id``, ``youtube_id``, ``wordpress_response`` on 2xx; otherwise
+            ``success: False``, ``error``, ``http_status``, ``raw_response``.
         """
         db = self._database
         if not db:
@@ -897,16 +1030,23 @@ class WordPressSyncService:
                 "error": "Database not available",
                 "http_status": status.HTTP_500_INTERNAL_SERVER_ERROR,
             }
-        article = db.get_article_by_id(article_id)
+        youtube_id = (youtube_id or "").strip()
+        if not youtube_id:
+            return {
+                "success": False,
+                "error": "youtube_id is required",
+                "http_status": status.HTTP_400_BAD_REQUEST,
+            }
+        article = db.get_article_by_youtube_id(youtube_id)
         if not article:
             return {
                 "success": False,
-                "error": f"Article with ID {article_id} not found",
+                "error": f"No article found for youtube_id={youtube_id!r}",
                 "http_status": status.HTTP_404_NOT_FOUND,
             }
+        article_id = article["id"]
         payload = {
-            "article_id": article_id,
-            "youtube_id": (article.get("youtube_id") or "").strip(),
+            "youtube_id": youtube_id,
             "title": article.get("title") or "",
             "content": article.get("content") or "",
         }
@@ -927,10 +1067,15 @@ class WordPressSyncService:
                     url,
                 )
             response.raise_for_status()
-            logger.info("Successfully sent title/content update for article_id=%s to WordPress", article_id)
+            logger.info(
+                "Successfully sent title/content update for youtube_id=%s article_id=%s to WordPress",
+                youtube_id,
+                article_id,
+            )
             return {
                 "success": True,
                 "article_id": article_id,
+                "youtube_id": youtube_id,
                 "wordpress_response": response.json() if response.content else None,
             }
         except requests.exceptions.RequestException as e:
@@ -949,6 +1094,134 @@ class WordPressSyncService:
                 "http_status": status_code,
                 "raw_response": body or None,
             }
+
+    def update_article_body_on_wordpress(self, youtube_id: str) -> Dict[str, Any]:
+        """
+        POST current DB content to update-article-body.
+
+        WordPress updates an existing post by ``youtube_id`` (body + bullets only), or
+        creates a draft when none exists with full create metadata: title, meeting_date,
+        featured_image, and committee (WordPress category).
+        """
+        db = self._database
+        if not db:
+            return {
+                "success": False,
+                "error": "Database not available",
+                "http_status": status.HTTP_500_INTERNAL_SERVER_ERROR,
+            }
+        youtube_id = (youtube_id or "").strip()
+        if not youtube_id:
+            return {
+                "success": False,
+                "error": "youtube_id is required",
+                "http_status": status.HTTP_400_BAD_REQUEST,
+            }
+        article = db.get_article_by_youtube_id(youtube_id)
+        if not article:
+            return {
+                "success": False,
+                "error": f"No article found for youtube_id={youtube_id!r}",
+                "http_status": status.HTTP_404_NOT_FOUND,
+            }
+        article_id = article["id"]
+        payload = {
+            "youtube_id": youtube_id,
+            "title": article.get("title") or "",
+            "content": article.get("content") or "",
+            "bullet_points": article.get("bullet_points") or "",
+        }
+
+        youtube_ids_result = self.get_article_youtube_ids_result()
+        if not youtube_ids_result.get("success"):
+            return {
+                "success": False,
+                "error": (
+                    "Failed to verify existing WordPress articles before sync: "
+                    + (youtube_ids_result.get("error") or "Unknown error")
+                ),
+                "http_status": youtube_ids_result.get(
+                    "http_status", status.HTTP_502_BAD_GATEWAY
+                ),
+                "raw_response": youtube_ids_result.get("raw_response"),
+            }
+        metadata = self._resolve_wordpress_article_metadata(article)
+        if metadata.get("committee"):
+            payload["committee"] = metadata["committee"]
+        create_on_miss = youtube_id not in (youtube_ids_result.get("youtube_ids") or set())
+        if create_on_miss:
+            if metadata.get("meeting_date"):
+                payload["meeting_date"] = metadata["meeting_date"]
+            featured_image = metadata.get("featured_image")
+            if not featured_image:
+                return {
+                    "success": False,
+                    "error": "featured_image (art) required to create article on WordPress",
+                    "http_status": status.HTTP_400_BAD_REQUEST,
+                }
+            payload["featured_image"] = featured_image
+
+        url = self._base_url + self._api_path_update_body
+        try:
+            response = self._request_with_jwt_retry(
+                lambda: requests.post(
+                    url,
+                    json=payload,
+                    headers=self._headers(),
+                    timeout=30,
+                )
+            )
+            if response.status_code in (401, 403):
+                logger.warning(
+                    "WordPress returned %s for update-article-body: %s",
+                    response.status_code,
+                    url,
+                )
+            response.raise_for_status()
+            logger.info(
+                "Successfully sent body/bullet update for youtube_id=%s article_id=%s to WordPress",
+                youtube_id,
+                article_id,
+            )
+            return {
+                "success": True,
+                "article_id": article_id,
+                "youtube_id": youtube_id,
+                "title": article.get("title") or "",
+                "wordpress_response": response.json() if response.content else None,
+            }
+        except requests.exceptions.RequestException as e:
+            resp = getattr(e, "response", None)
+            status_code = resp.status_code if resp is not None else status.HTTP_502_BAD_GATEWAY
+            body = (resp.text if resp is not None and resp.text else None) or ""
+            logger.error(
+                "update_article_body_on_wordpress POST to WordPress failed: %s | response: status=%s body=%s",
+                repr(e),
+                status_code,
+                body,
+            )
+            return {
+                "success": False,
+                "error": body if body else str(e),
+                "http_status": status_code,
+                "raw_response": body or None,
+            }
+
+    def sync_regenerated_article_to_wordpress(
+        self,
+        youtube_id: str,
+        *,
+        created: bool = False,
+    ) -> Dict[str, Any]:
+        """Push a post-regeneration article to WordPress via update-article-body.
+
+        WordPress upserts by ``youtube_id``: updates body and bullets on an existing post,
+        or creates a draft with meeting_date, featured_image, and committee (category)
+        when none exists. The ``created`` flag is accepted for API compatibility but
+        does not change routing.
+        """
+        del created
+        return self.update_article_body_on_wordpress(youtube_id)
 
     def repair_article_featured_image(self, youtube_id: str) -> Dict[str, Any]:
         """

@@ -2,6 +2,7 @@ import json
 import os
 import random
 import logging
+from enum import Enum
 from typing import Dict, Any, Optional
 
 from fastapi.responses import JSONResponse
@@ -77,7 +78,13 @@ class BaseArtist(BaseCreator):
 
         return {"name": trait_type, "description": ""}
 
-    def generate_snippet(self, bullet_points: str) -> str:
+    def generate_snippet(
+        self,
+        bullet_points: str,
+        *,
+        snippet_provider: Optional[TextLLMProvider] = None,
+        snippet_model: Optional[Enum] = None,
+    ) -> str:
         """
         Generate a short summary snippet from bullet points for image prompts.
 
@@ -90,7 +97,15 @@ class BaseArtist(BaseCreator):
         if not bullet_points or len(bullet_points) <= 300:
             return bullet_points
 
-        llm = LLMTextQuery(provider=TextLLMProvider.XAI)
+        provider = snippet_provider or TextLLMProvider.XAI
+        llm_kwargs: dict[str, Any] = {"provider": provider}
+        if snippet_model is not None:
+            llm_kwargs["model"] = snippet_model
+        try:
+            llm = LLMTextQuery(**llm_kwargs)
+        except Exception as e:
+            logger.warning("Snippet model configuration invalid, using fallback text: %s", e)
+            return bullet_points[:300]
 
         try:
             response = llm.get_response(
@@ -101,7 +116,7 @@ class BaseArtist(BaseCreator):
             if isinstance(response, JSONResponse):
                 try:
                     err = json.loads(response.body.decode()).get(
-                        "error", "Unknown xAI API error"
+                        "error", "Unknown text model API error"
                     )
                 except Exception:
                     err = response.body.decode(errors="replace")[:500]
@@ -119,7 +134,12 @@ class BaseArtist(BaseCreator):
             return bullet_points[:300]
 
     def generate_image(
-        self, title: str, bullet_points: str = "", model: str = "gpt-image-1"
+        self,
+        title: str,
+        bullet_points: str = "",
+        model: str = "gpt-image-1",
+        snippet_provider: Optional[TextLLMProvider] = None,
+        snippet_model: Optional[Enum] = None,
     ) -> Dict[str, Any]:
         """
         Generate an editorial illustration for an article.
@@ -139,7 +159,15 @@ class BaseArtist(BaseCreator):
         style = self.get_random_trait("style/art")
 
         # Generate a short snippet from bullet points to stay under 1024 char limit
-        snippet = self.generate_snippet(bullet_points) if bullet_points else ""
+        snippet = (
+            self.generate_snippet(
+                bullet_points,
+                snippet_provider=snippet_provider,
+                snippet_model=snippet_model,
+            )
+            if bullet_points
+            else ""
+        )
 
         # Build prompt with explicit style instructions using trait descriptions
         full_prompt = (

@@ -109,6 +109,99 @@ class Database:
                 f"Failed to add column '{column_name}' to '{table_name}': {str(e)}"
             )
 
+    def _get_table_columns(self, table_name: str) -> List[Tuple]:
+        """Return PRAGMA table_info rows for a table, empty list when unavailable."""
+        try:
+            self.cursor.execute(f"PRAGMA table_info({table_name})")
+            return self.cursor.fetchall() or []
+        except Exception:
+            return []
+
+    def _migrate_fact_check_removals_if_legacy(self) -> None:
+        """Rebuild ``fact_check_removals`` when legacy constraints/columns remain.
+
+        Legacy DBs may carry the old schema where ``removal_reason`` exists and/or
+        ``original_anchor_text`` is NOT NULL. Current audit writes use
+        ``audit_note`` and allow NULL originals for ``kind='added'`` rows.
+        """
+        columns = self._get_table_columns("fact_check_removals")
+        if not columns:
+            return
+
+        col_index = {row[1]: row for row in columns}
+        has_legacy_removal_reason = "removal_reason" in col_index
+        original_anchor_notnull = bool(col_index.get("original_anchor_text", [None, None, None, 0])[3])
+        if not has_legacy_removal_reason and not original_anchor_notnull:
+            return
+
+        self.logger.info(
+            "Migrating legacy fact_check_removals schema "
+            "(has_removal_reason=%s original_anchor_text_notnull=%s)",
+            has_legacy_removal_reason,
+            original_anchor_notnull,
+        )
+
+        legacy_table = "fact_check_removals_legacy"
+        self.cursor.execute(f"DROP TABLE IF EXISTS {legacy_table}")
+        self.cursor.execute(f"ALTER TABLE fact_check_removals RENAME TO {legacy_table}")
+
+        self._create_table(
+            "fact_check_removals",
+            "id INTEGER PRIMARY KEY AUTOINCREMENT, "
+            "youtube_id TEXT NOT NULL, "
+            "run_id TEXT NOT NULL, "
+            "kind TEXT NOT NULL DEFAULT 'removed', "
+            "anchor_id INTEGER, "
+            "original_timestamp_string TEXT, "
+            "original_anchor_headline TEXT, "
+            "original_anchor_text TEXT, "
+            "audit_note TEXT, "
+            "extractor_name TEXT NOT NULL, "
+            "model TEXT, "
+            "created_at TEXT NOT NULL, "
+            "FOREIGN KEY(youtube_id) REFERENCES transcripts(youtube_id), "
+            "FOREIGN KEY(anchor_id) REFERENCES anchors(id)",
+        )
+
+        legacy_cols = {row[1] for row in self._get_table_columns(legacy_table)}
+        run_id_expr = "run_id" if "run_id" in legacy_cols else "''"
+        kind_expr = "kind" if "kind" in legacy_cols else "'removed'"
+        anchor_id_expr = "anchor_id" if "anchor_id" in legacy_cols else "NULL"
+        original_timestamp_expr = (
+            "original_timestamp_string" if "original_timestamp_string" in legacy_cols else "NULL"
+        )
+        original_headline_expr = (
+            "original_anchor_headline" if "original_anchor_headline" in legacy_cols else "NULL"
+        )
+        original_text_expr = "original_anchor_text" if "original_anchor_text" in legacy_cols else "NULL"
+        if "audit_note" in legacy_cols and "removal_reason" in legacy_cols:
+            audit_note_expr = "COALESCE(audit_note, removal_reason)"
+        elif "audit_note" in legacy_cols:
+            audit_note_expr = "audit_note"
+        elif "removal_reason" in legacy_cols:
+            audit_note_expr = "removal_reason"
+        else:
+            audit_note_expr = "NULL"
+        model_expr = "model" if "model" in legacy_cols else "NULL"
+        created_at_expr = "created_at" if "created_at" in legacy_cols else "datetime('now')"
+
+        self.cursor.execute(
+            "INSERT INTO fact_check_removals ("
+            "youtube_id, run_id, kind, anchor_id, "
+            "original_timestamp_string, original_anchor_headline, "
+            "original_anchor_text, audit_note, extractor_name, model, created_at"
+            ") "
+            "SELECT "
+            f"youtube_id, {run_id_expr}, {kind_expr}, {anchor_id_expr}, "
+            f"{original_timestamp_expr}, {original_headline_expr}, "
+            f"{original_text_expr}, {audit_note_expr}, extractor_name, "
+            f"{model_expr}, {created_at_expr} "
+            f"FROM {legacy_table}"
+        )
+        self.cursor.execute(f"DROP TABLE {legacy_table}")
+        self.conn.commit()
+        self.logger.info("fact_check_removals legacy migration completed")
+
     def _backfill_article_view_counts(self) -> None:
         """
         Backfill view_count for existing articles by matching youtube_id with transcripts.
@@ -284,7 +377,7 @@ class Database:
             "has_voting_roll_call INTEGER NOT NULL DEFAULT 0, "  # LEGACY (pre-enum): kept for historical rows; new code uses roll_call_type below
             "has_attendance_roll_call INTEGER NOT NULL DEFAULT 0, "  # LEGACY (pre-enum): kept for historical rows; new code uses roll_call_type below
             "roll_call_type TEXT NOT NULL DEFAULT 'none', "  # enum: 'none' | 'attendance' | 'voting' — see app.data.enum_classes.RollCallType
-            "fact_check_note TEXT, "  # fact-check pass audit field: brief description of what was wrong with the draft anchor; NULL/empty for unchanged anchors and extract-pass rows. NEVER embedded.
+            "fact_check_note TEXT, "  # fact-check pass uncertainty caveat for this anchor (e.g. "timestamp approximate", "speaker attribution uncertain"). NULL/empty when the model is confident. WHEN POPULATED, this string IS appended into `text_to_embed` so RAG queries see the caveat alongside the fact.
             "text_to_embed TEXT NOT NULL, "  # precomputed embedding input string
             "extractor_name TEXT NOT NULL, "  # e.g. "Gemma Nye"
             "model TEXT, "  # provider model id (e.g. gemini-2.0-pro)
@@ -311,32 +404,134 @@ class Database:
         self._add_column_if_not_exists(
             "anchors", "roll_call_type", "TEXT NOT NULL DEFAULT 'none'"
         )
-        # Migration: per-anchor fact-check audit field. Populated by the
-        # fact-check pass when it changes a draft anchor (or adds a missing
-        # one); NULL for extract-pass rows and for unchanged fact-check rows.
-        # NEVER concatenated into `text_to_embed` — this column is for prompt
-        # iteration / model-error analysis only.
+        # Migration: per-anchor fact-check uncertainty caveat. Populated by the
+        # fact-check pass ONLY when the model wants to flag self-doubt about
+        # the anchor's content (e.g. ambiguous timestamp, unsure speaker
+        # attribution). NULL/empty when the model is confident and for all
+        # extract-pass rows. When populated, this string IS appended into
+        # `text_to_embed` so RAG queries see the caveat alongside the fact.
         self._add_column_if_not_exists("anchors", "fact_check_note", "TEXT")
 
-        # Fact-check removals audit log. One row per draft anchor that the
-        # fact-check pass concluded was fabricated and dropped from the
-        # corrected list. Lives in its own table — NOT alongside `anchors` —
-        # because the anchors table is the canonical RAG/vector-store source
-        # and must stay factual. Correlated with the corresponding anchor run
-        # via `run_id` (shared with `anchors.run_id`).
+        # Fact-check audit log. One row per draft anchor the fact-check pass
+        # removed, corrected, added, or left unresolved — distinguished by
+        # `kind`. Lives in its own table (never alongside `anchors`) so the
+        # canonical RAG/vector-store source stays clean of audit metadata.
+        # Correlated with the corresponding anchor run via `run_id` (shared
+        # with `anchors.run_id`); rows for
+        # `kind in ('corrected','added','unresolved')` also carry `anchor_id`
+        # linking to the resulting `anchors.id` row.
+        #
+        # Table name kept as `fact_check_removals` to avoid migration churn
+        # — the scope is broader than removals now (every fact-check
+        # decision audit row lives here).
+        #
+        # `audit_note` is a REQUIRED DISCREPANCY LOG for LLM-emitted kinds:
+        # it describes what was wrong, missing, or unverifiable about the
+        # draft anchor. For `kind='unresolved'` that note is also surfaced to
+        # readers as an "AI Editor's note" on the published article. Bulk
+        # error analysis inspects the structural fields (`kind`, `original_*`,
+        # joined `anchors.anchor_text` via `anchor_id`) alongside `audit_note`.
+        #
+        # AnchorManager additionally writes two system-synthesized kinds the
+        # LLM never emits — `rejected_anchor` (empty anchor/bullet text) and
+        # `rejected_audit` (malformed audit entry) — whose `audit_note` holds
+        # the rejection reason. A rising count flags prompt/context drift.
         self._create_table(
             "fact_check_removals",
             "id INTEGER PRIMARY KEY AUTOINCREMENT, "
             "youtube_id TEXT NOT NULL, "  # FK to transcripts.youtube_id
             "run_id TEXT NOT NULL, "  # same UUID as the corresponding anchors.run_id
-            "original_timestamp_string TEXT, "  # whatever the draft anchor claimed
-            "original_anchor_headline TEXT, "
-            "original_anchor_text TEXT NOT NULL, "
-            "removal_reason TEXT NOT NULL, "  # short factual reason
+            "kind TEXT NOT NULL DEFAULT 'removed', "  # LLM decisions: 'removed' | 'corrected' | 'added' | 'unresolved'; system rejections: 'rejected_anchor' | 'rejected_audit'
+            "anchor_id INTEGER, "  # FK to anchors.id; NULL for kind='removed' and the rejected_* kinds
+            "original_timestamp_string TEXT, "  # whatever the draft anchor claimed; NULL for kind='added'
+            "original_anchor_headline TEXT, "  # NULL for kind='added'
+            "original_anchor_text TEXT, "  # NULL for kind='added'
+            "audit_note TEXT, "  # REQUIRED issue description for LLM kinds (surfaced to readers for 'unresolved'); system-generated rejection reason for rejected_* kinds
             "extractor_name TEXT NOT NULL, "
             "model TEXT, "  # provider model id of the fact-check pass
             "created_at TEXT NOT NULL, "
-            "FOREIGN KEY(youtube_id) REFERENCES transcripts(youtube_id)",
+            "FOREIGN KEY(youtube_id) REFERENCES transcripts(youtube_id), "
+            "FOREIGN KEY(anchor_id) REFERENCES anchors(id)",
+        )
+        self._migrate_fact_check_removals_if_legacy()
+        # Migration guard: older DBs may have a partial
+        # fact_check_removals schema from the pre-audit-expansion era.
+        # Ensure every column used by AnchorManager inserts exists.
+        self._add_column_if_not_exists(
+            "fact_check_removals",
+            "run_id",
+            "TEXT",
+        )
+        self._add_column_if_not_exists(
+            "fact_check_removals",
+            "kind",
+            "TEXT NOT NULL DEFAULT 'removed'",
+        )
+        self._add_column_if_not_exists(
+            "fact_check_removals",
+            "anchor_id",
+            "INTEGER",
+        )
+        self._add_column_if_not_exists(
+            "fact_check_removals",
+            "original_timestamp_string",
+            "TEXT",
+        )
+        self._add_column_if_not_exists(
+            "fact_check_removals",
+            "original_anchor_headline",
+            "TEXT",
+        )
+        self._add_column_if_not_exists(
+            "fact_check_removals",
+            "original_anchor_text",
+            "TEXT",
+        )
+        self._add_column_if_not_exists(
+            "fact_check_removals",
+            "audit_note",
+            "TEXT",
+        )
+        self._add_column_if_not_exists(
+            "fact_check_removals",
+            "model",
+            "TEXT",
+        )
+
+        # Spelling-corrections audit log. One row per canonical-name spelling
+        # fix the pass-4 spell-check applied to an anchor or bullet. Lives
+        # in its own table (never alongside `anchors`) so the canonical
+        # RAG/vector-store source stays clean of audit metadata. Correlated
+        # with the corresponding anchor run via `run_id` (shared with
+        # `anchors.run_id`); every row carries `anchor_id` linking to the
+        # resulting `anchors.id` row — both factual and summary rows live
+        # in `anchors`, so the join works for both `target_kind` values.
+        # Multiple spelling fixes per anchor produce multiple rows that all
+        # link to the same `anchor_id`.
+        #
+        # `audit_note` is an UNCERTAINTY FLAG, not a correction log:
+        # populated only when the model wants to flag self-doubt about the
+        # correction (e.g. "ambiguous context; could also be a private
+        # citizen named Kugan"). NULL/empty when confident. Bulk
+        # error-pattern queries inspect the structural fields
+        # (`target_kind`, `original_term`, `corrected_term`, joined
+        # `anchors.anchor_text` via `anchor_id`); the `audit_note` column
+        # is for human-reviewer flags only.
+        self._create_table(
+            "spelling_corrections",
+            "id INTEGER PRIMARY KEY AUTOINCREMENT, "
+            "youtube_id TEXT NOT NULL, "  # FK to transcripts.youtube_id
+            "run_id TEXT NOT NULL, "  # same UUID as the corresponding anchors.run_id
+            "anchor_id INTEGER NOT NULL, "  # FK to anchors.id (both factual_anchor and executive_summary rows)
+            "target_kind TEXT NOT NULL DEFAULT 'factual_anchor', "  # 'factual_anchor' | 'executive_summary'
+            "original_term TEXT NOT NULL, "  # misspelled token in the pre-pass-4 input
+            "corrected_term TEXT NOT NULL, "  # canonical spelling applied
+            "audit_note TEXT, "  # uncertainty caveat about the correction; NULL/empty when confident
+            "extractor_name TEXT NOT NULL, "
+            "model TEXT, "  # provider model id of the spell-check pass
+            "created_at TEXT NOT NULL, "
+            "FOREIGN KEY(youtube_id) REFERENCES transcripts(youtube_id), "
+            "FOREIGN KEY(anchor_id) REFERENCES anchors(id)",
         )
 
         self.tables_created = True
@@ -1053,6 +1248,128 @@ class Database:
             )
             return False
 
+    def update_transcript_committee(self, youtube_id: str, committee: str) -> bool:
+        """
+        Overwrite the committee on a transcript row.
+
+        Used after extraction so the article's committee/category comes from the
+        extractor's enum-validated ``primary_committee`` rather than the raw,
+        title-derived value seeded at fetch time. The original title remains in
+        ``transcripts.video_title``.
+
+        Args:
+            youtube_id: The YouTube video id of the transcript to update.
+            committee: The canonical committee value (a ``Committee`` enum string).
+
+        Returns:
+            True if a row was updated and verified, False otherwise.
+        """
+        youtube_id = (youtube_id or "").strip()
+        committee = (committee or "").strip()
+        if not youtube_id or not committee:
+            self.logger.warning(
+                "update_transcript_committee: skipped (youtube_id=%r, committee=%r)",
+                youtube_id,
+                committee,
+            )
+            return False
+        try:
+            self._log_operation(
+                "update_transcript_committee",
+                {"youtube_id": youtube_id, "committee": committee},
+            )
+            self.cursor.execute(
+                "UPDATE transcripts SET committee = ? WHERE youtube_id = ?",
+                (committee, youtube_id),
+            )
+            self.conn.commit()
+            self.cursor.execute(
+                "SELECT committee FROM transcripts WHERE youtube_id = ?",
+                (youtube_id,),
+            )
+            row = self.cursor.fetchone()
+            if row is not None and row[0] == committee:
+                self.logger.info(
+                    "update_transcript_committee: verified youtube_id=%s committee=%r",
+                    youtube_id,
+                    committee,
+                )
+                return True
+            self.logger.warning(
+                "update_transcript_committee: no matching/verified row for youtube_id=%s",
+                youtube_id,
+            )
+            return False
+        except Exception as e:
+            self.logger.exception(
+                "update_transcript_committee failed: youtube_id=%s committee=%r - %s",
+                youtube_id,
+                committee,
+                e,
+            )
+            self._log_error(
+                "update_transcript_committee",
+                e,
+                {"youtube_id": youtube_id, "committee": committee},
+            )
+            return False
+
+    def update_article_committee(self, youtube_id: str, committee: str) -> bool:
+        """Overwrite committee on the local article row for a youtube_id.
+
+        Used after extraction so articles and WordPress inherit the extractor's
+        enum-validated ``primary_committee`` rather than the title-derived seed.
+        """
+        youtube_id = (youtube_id or "").strip()
+        committee = (committee or "").strip()
+        if not youtube_id or not committee:
+            self.logger.warning(
+                "update_article_committee: skipped (youtube_id=%r, committee=%r)",
+                youtube_id,
+                committee,
+            )
+            return False
+        try:
+            self._log_operation(
+                "update_article_committee",
+                {"youtube_id": youtube_id, "committee": committee},
+            )
+            self.cursor.execute(
+                "UPDATE articles SET committee = ? WHERE youtube_id = ?",
+                (committee, youtube_id),
+            )
+            self.conn.commit()
+            self.cursor.execute(
+                "SELECT committee FROM articles WHERE youtube_id = ?",
+                (youtube_id,),
+            )
+            row = self.cursor.fetchone()
+            if row is not None and row[0] == committee:
+                self.logger.info(
+                    "update_article_committee: verified youtube_id=%s committee=%r",
+                    youtube_id,
+                    committee,
+                )
+                return True
+            self.logger.warning(
+                "update_article_committee: no matching/verified row for youtube_id=%s",
+                youtube_id,
+            )
+            return False
+        except Exception as e:
+            self.logger.exception(
+                "update_article_committee failed: youtube_id=%s committee=%r - %s",
+                youtube_id,
+                committee,
+                e,
+            )
+            self._log_error(
+                "update_article_committee",
+                e,
+                {"youtube_id": youtube_id, "committee": committee},
+            )
+            return False
+
     def update_article_title(self, article_id: int, title: str) -> bool:
         """
         Update title for an existing article.
@@ -1109,42 +1426,6 @@ class Database:
                 "update_article_title",
                 e,
                 {"article_id": article_id, "title_len": title_len},
-            )
-            return False
-
-    def update_article_spell_checked(self, article_id: int, spell_checked: bool) -> bool:
-        """
-        Set the spell_checked flag for an article (True after spell-check has been run).
-
-        Args:
-            article_id: The unique identifier of the article
-            spell_checked: True if spell-checked, False otherwise
-
-        Returns:
-            True if update succeeded, False otherwise
-        """
-        try:
-            self._log_operation(
-                "update_article_spell_checked",
-                {"article_id": article_id, "spell_checked": spell_checked},
-            )
-            value = 1 if spell_checked else 0
-            self.cursor.execute(
-                "UPDATE articles SET spell_checked = ? WHERE id = ?",
-                (value, article_id),
-            )
-            self.conn.commit()
-            return self.cursor.rowcount > 0
-        except Exception as e:
-            self.logger.exception(
-                "update_article_spell_checked failed: article_id=%s - %s",
-                article_id,
-                e,
-            )
-            self._log_error(
-                "update_article_spell_checked",
-                e,
-                {"article_id": article_id, "spell_checked": spell_checked},
             )
             return False
 

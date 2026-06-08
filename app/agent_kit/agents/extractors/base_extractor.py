@@ -38,6 +38,7 @@ import json
 import logging
 import os
 import re
+import time
 import uuid
 from datetime import datetime, timezone
 from pathlib import Path
@@ -46,6 +47,7 @@ from typing import Any, ClassVar, Dict, Optional
 from fastapi.responses import JSONResponse
 from pydantic import BaseModel
 
+from app.agent_kit.utility_classes import run_logging
 from app.agent_kit.utility_classes.llm_text_query import LLMTextQuery, ModelEnum
 from app.data.enum_classes import TextLLMProvider
 
@@ -220,8 +222,6 @@ class BaseExtractor(BaseCreator):
             template = template.replace(placeholder, rendered_value)
         return template
 
-    EXTRACTION_LOG_DIR: ClassVar[Path] = Path("logs") / "extractions"
-
     # Default TTL (seconds) for transcripts uploaded via
     # :meth:`_create_extraction_cache`. 900s comfortably covers a multi-pass
     # extraction. If real-world runs ever brush against this, the follow-up
@@ -274,6 +274,11 @@ class BaseExtractor(BaseCreator):
               ``message`` quotes the ``json.JSONDecodeError``.
             - When the parsed value is not a JSON object: ``success=False``,
               ``data=None``, ``message`` explains.
+
+        Sibling of :meth:`_call_cached_llm_and_parse`. This is the
+        **non-cached** path — single-shot generate, no transcript upload.
+        Gemma's four-pass extraction does NOT use this method; it uses the
+        cached path. See docs/extraction-pipeline-refactor-notes.md.
         """
         run_id = run_id or str(uuid.uuid4())
         llm = LLMTextQuery(provider=self.PROVIDER, model=self.MODEL)
@@ -288,6 +293,7 @@ class BaseExtractor(BaseCreator):
         raw_response: Any = None
         raw_text: Optional[str] = None
 
+        perf_start = time.perf_counter()
         try:
             raw = llm.get_raw_response(system_instruction, user_message)
         except Exception as e:
@@ -333,6 +339,8 @@ class BaseExtractor(BaseCreator):
                         result_message = "Extraction complete"
                         result_data = data
 
+        elapsed_seconds = round(time.perf_counter() - perf_start, 3)
+        token_usage = dict(llm.usage_total)
         completed_at = datetime.now(timezone.utc).isoformat()
 
         # On parse_error we still want the raw text in the log so it can be
@@ -347,6 +355,8 @@ class BaseExtractor(BaseCreator):
                 "model": meta.get("model"),
                 "started_at": started_at,
                 "completed_at": completed_at,
+                "elapsed_seconds": elapsed_seconds,
+                "token_usage": token_usage,
                 "pass_label": pass_label,
                 "system_instruction": system_instruction,
                 "user_message": user_message,
@@ -354,6 +364,16 @@ class BaseExtractor(BaseCreator):
                 "parse_status": parse_status,
                 "error": error,
             }
+        )
+        self._record_pass_metric(
+            youtube_video_id=youtube_video_id,
+            run_id=run_id,
+            pass_label=pass_label,
+            model=meta.get("model"),
+            elapsed_seconds=elapsed_seconds,
+            token_usage=token_usage,
+            started_at=started_at,
+            completed_at=completed_at,
         )
 
         if result_success and isinstance(result_data, dict):
@@ -376,25 +396,25 @@ class BaseExtractor(BaseCreator):
             "success": result_success,
             "message": result_message,
             "data": result_data,
+            "elapsed_seconds": elapsed_seconds,
+            "token_usage": token_usage,
         }
 
     def _write_extraction_log(self, payload: Dict[str, Any]) -> Optional[Path]:
         """
-        Write a per-call JSON debug log under :attr:`EXTRACTION_LOG_DIR`.
+        Write a per-call JSON debug log into the video's folder.
 
-        Filename pattern:
-        ``{utc_iso_ts}_yt{youtube_video_id}_r{run_id}_p{pass_label}.json``
-        where ``:`` characters in the timestamp are replaced with ``-`` for
-        cross-platform filesystem safety. When ``youtube_video_id`` is
-        missing, the literal string ``"unknown"`` is used; when
-        ``pass_label`` is missing the literal ``"main"`` is used so
+        Delegates to :func:`run_logging.write_call_log`, which lands the file
+        at ``logs/<youtube_id>/<utc_iso_ts>_extract_<pass_label>_r<run_id>.json``
+        (``:`` in the timestamp replaced with ``-`` for cross-platform safety).
+        When ``youtube_video_id`` is missing the folder/filename use
+        ``"unknown"``; when ``pass_label`` is missing ``"main"`` is used so
         single-pass extractor calls have stable filenames.
 
         The log payload captures both inputs (system instruction, user
         message) and outputs (raw Gemini response, parse status, error
-        message) so an entire call is reconstructable from one file —
-        useful for diffing two prompt revisions on the same transcript or
-        pasting back into Gemini chat to debug a malformed response.
+        message, elapsed time, token usage) so an entire call is
+        reconstructable from one file.
 
         Failure to write the log is logged at WARN level but never raised:
         debug logging must not break extraction.
@@ -406,20 +426,47 @@ class BaseExtractor(BaseCreator):
         run_id = payload.get("run_id", "unknown")
         youtube_video_id = payload.get("youtube_video_id") or "unknown"
         pass_label = payload.get("pass_label") or "main"
-        ts = payload.get("started_at") or datetime.now(timezone.utc).isoformat()
-        safe_ts = ts.replace(":", "-")
-        filename = f"{safe_ts}_yt{youtube_video_id}_r{run_id}_p{pass_label}.json"
-        path = self.EXTRACTION_LOG_DIR / filename
-        try:
-            self.EXTRACTION_LOG_DIR.mkdir(parents=True, exist_ok=True)
-            with open(path, "w", encoding="utf-8") as f:
-                json.dump(payload, f, ensure_ascii=False, indent=2, default=str)
-            return path
-        except Exception as e:
-            logger.warning(
-                f"{self.FULL_NAME}: failed to write extraction log {path}: {e}"
-            )
-            return None
+        started_at = payload.get("started_at")
+        return run_logging.write_call_log(
+            youtube_video_id,
+            "extract",
+            f"{pass_label}_r{run_id}",
+            started_at,
+            payload,
+        )
+
+    def _record_pass_metric(
+        self,
+        *,
+        youtube_video_id: Optional[str],
+        run_id: str,
+        pass_label: str,
+        model: Optional[str],
+        elapsed_seconds: float,
+        token_usage: Dict[str, int],
+        started_at: str,
+        completed_at: str,
+    ) -> None:
+        """Append this pass's timing + tokens into the video's metrics.json.
+
+        Lands under the ``extraction`` stage's ``passes`` list; the stage's
+        full wall-clock duration is set separately by the caller via
+        :func:`run_logging.set_stage_duration`.
+        """
+        run_logging.record_extraction_pass(
+            youtube_video_id,
+            {
+                "pass": pass_label,
+                "model": model,
+                "duration": run_logging.format_duration(elapsed_seconds),
+                "elapsed_seconds": elapsed_seconds,
+                "tokens": token_usage,
+                "started_at": started_at,
+                "completed_at": completed_at,
+            },
+            run_id=run_id,
+            model=model,
+        )
 
     # ------------------------------------------------------------------
     # Multi-pass cached-content helpers (Gemini-only)
@@ -438,15 +485,33 @@ class BaseExtractor(BaseCreator):
     ) -> Optional[str]:
         """Upload ``transcript`` as a Gemini ``CachedContent`` and return its name.
 
-        Gemma runs one cache per pass with that pass's ``system_instruction``
-        baked in at create time (Gemini forbids system_instruction on generate
-        when ``cached_content`` is set). ``run_id`` ties per-pass log files
+        Gemma uploads the transcript to one cache per extraction and reuses
+        it across all four passes; it passes ``system_instruction=None`` here
+        and folds each pass's system prompt into the generate user turn
+        instead (Gemini forbids system_instruction on generate when
+        ``cached_content`` is set). ``run_id`` ties per-pass log files
         together.
 
         Returns:
             ``cache_name`` string on success; ``None`` when the cache create
             failed. Also writes a ``p{cache_pass_label}`` log file so failures
             are traceable from disk without re-running the extraction.
+
+        Call chain — cached Gemini extraction (cache created once in extract; one generate per pass):
+
+          GemmaNye.extract
+            ├─ BaseExtractor._create_extraction_cache (once)
+            │    └─ LLMTextQuery.gemini_create_cache         → client.caches.create
+            → _pass_extract / _pass_fact_check / _pass_bullets_and_committee / _pass_spell_check
+              → _run_pass_against_cache
+                └─ BaseExtractor._call_cached_llm_and_parse
+                     └─ LLMTextQuery.gemini_generate_with_cache  → client.models.generate_content  ★
+            └─ BaseExtractor._delete_extraction_cache (once, in finally)
+                 └─ LLMTextQuery.gemini_delete_cache         → client.caches.delete
+
+        ★ = the actual Gemini round-trip (the LLM "extraction request" you're tracing).
+        YOU ARE HERE: BaseExtractor._create_extraction_cache — uploads transcript + system prompt to Gemini cache; first hop of each pass.
+        See docs/extraction-pipeline-refactor-notes.md for layering rationale and refactor targets.
         """
         effective_model = self._resolve_model(model)
         llm = LLMTextQuery(provider=self.PROVIDER, model=effective_model)
@@ -501,6 +566,22 @@ class BaseExtractor(BaseCreator):
 
         Safe to call from a ``finally`` block. Accepts ``None`` so callers
         do not have to gate the call on cache-create success.
+
+        Call chain — cached Gemini extraction (cache created once in extract; one generate per pass):
+
+          GemmaNye.extract
+            ├─ BaseExtractor._create_extraction_cache (once)
+            │    └─ LLMTextQuery.gemini_create_cache         → client.caches.create
+            → _pass_extract / _pass_fact_check / _pass_bullets_and_committee / _pass_spell_check
+              → _run_pass_against_cache
+                └─ BaseExtractor._call_cached_llm_and_parse
+                     └─ LLMTextQuery.gemini_generate_with_cache  → client.models.generate_content  ★
+            └─ BaseExtractor._delete_extraction_cache (once, in finally)
+                 └─ LLMTextQuery.gemini_delete_cache         → client.caches.delete
+
+        ★ = the actual Gemini round-trip (the LLM "extraction request" you're tracing).
+        YOU ARE HERE: BaseExtractor._delete_extraction_cache — cleanup hop of each pass; runs in a finally block.
+        See docs/extraction-pipeline-refactor-notes.md for layering rationale and refactor targets.
         """
         if not cache_name:
             return
@@ -532,13 +613,32 @@ class BaseExtractor(BaseCreator):
         downstream anchor rows. ``pass_label`` distinguishes per-pass logs
         (e.g. ``"extract"``, ``"fact_check"``, ``"bullets"``).
 
-        Pass ``system_instruction=None`` when the system prompt was already
-        set on the cache at create time (Gemma's per-pass cache pattern).
+        Pass a ``system_instruction`` to have it folded into the generate
+        user turn (Gemma's shared-cache pattern, since Gemini forbids
+        system_instruction on generate when ``cached_content`` is set); pass
+        ``None`` only when the system prompt was already baked into the cache
+        at create time.
 
         When ``response_schema`` is given, Gemini constrains its output to
         the Pydantic shape and this method returns the parsed ``dict`` in
         the envelope's ``data`` field. When omitted, the raw text is parsed
         as JSON the same way :meth:`_call_llm_and_parse` does.
+
+        Call chain — cached Gemini extraction (cache created once in extract; one generate per pass):
+
+          GemmaNye.extract
+            ├─ BaseExtractor._create_extraction_cache (once)
+            │    └─ LLMTextQuery.gemini_create_cache         → client.caches.create
+            → _pass_extract / _pass_fact_check / _pass_bullets_and_committee / _pass_spell_check
+              → _run_pass_against_cache
+                └─ BaseExtractor._call_cached_llm_and_parse
+                     └─ LLMTextQuery.gemini_generate_with_cache  → client.models.generate_content  ★
+            └─ BaseExtractor._delete_extraction_cache (once, in finally)
+                 └─ LLMTextQuery.gemini_delete_cache         → client.caches.delete
+
+        ★ = the actual Gemini round-trip (the LLM "extraction request" you're tracing).
+        YOU ARE HERE: BaseExtractor._call_cached_llm_and_parse — middle hop of each pass; sends the generate request against the cache and parses the response.
+        See docs/extraction-pipeline-refactor-notes.md for layering rationale and refactor targets.
         """
         effective_model = self._resolve_model(model)
         llm = LLMTextQuery(provider=self.PROVIDER, model=effective_model)
@@ -553,6 +653,7 @@ class BaseExtractor(BaseCreator):
         raw_response: Any = None
         raw_text: Optional[str] = None
 
+        perf_start = time.perf_counter()
         try:
             raw = llm.gemini_generate_with_cache(
                 cache_name,
@@ -610,6 +711,8 @@ class BaseExtractor(BaseCreator):
                         result_message = "Extraction complete"
                         result_data = data
 
+        elapsed_seconds = round(time.perf_counter() - perf_start, 3)
+        token_usage = dict(llm.usage_total)
         completed_at = datetime.now(timezone.utc).isoformat()
         log_raw = raw_response if raw_response is not None else raw_text
         self._write_extraction_log(
@@ -621,6 +724,8 @@ class BaseExtractor(BaseCreator):
                 "model": meta.get("model"),
                 "started_at": started_at,
                 "completed_at": completed_at,
+                "elapsed_seconds": elapsed_seconds,
+                "token_usage": token_usage,
                 "pass_label": pass_label,
                 "cache_name": cache_name,
                 "response_schema": response_schema.__name__ if response_schema else None,
@@ -631,6 +736,16 @@ class BaseExtractor(BaseCreator):
                 "error": error,
             }
         )
+        self._record_pass_metric(
+            youtube_video_id=youtube_video_id,
+            run_id=run_id,
+            pass_label=pass_label,
+            model=meta.get("model"),
+            elapsed_seconds=elapsed_seconds,
+            token_usage=token_usage,
+            started_at=started_at,
+            completed_at=completed_at,
+        )
 
         return {
             **meta,
@@ -638,4 +753,6 @@ class BaseExtractor(BaseCreator):
             "success": result_success,
             "message": result_message,
             "data": result_data,
+            "elapsed_seconds": elapsed_seconds,
+            "token_usage": token_usage,
         }

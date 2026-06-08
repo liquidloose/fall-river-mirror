@@ -33,15 +33,19 @@ flowchart LR
     direction TB
     P0[[Gemini CachedContent<br/>transcript + per-pass system instructions<br/>TTL 900s · created on entry to section 2]]:::cache
     P1[Pass 1 · extract<br/>schema: ExtractEnvelope<br/>→ draft factual_anchor_items]
-    P2[Pass 2 · fact_check<br/>input: draft_anchors_json<br/>schema: FactCheckEnvelope<br/>→ verified anchors + removed_drafts]
+    P2[Pass 2 · fact_check<br/>input: draft_anchors_json<br/>schema: FactCheckEnvelope<br/>→ verified anchors + fact_check_audit]
     P3[Pass 3 · bullets + committee<br/>input: committee_list<br/>schema: BulletsAndCommittee<br/>→ executive_summary + primary_committee]
+    P4[Pass 4 · spell_check<br/>input: pass-2 anchors + pass-3 bullets<br/>schema: SpellCheckEnvelope<br/>→ spelling-clean anchors + bullets<br/>+ spelling_corrections]
     AN[(anchors)]
     FCR[(fact_check_removals)]
+    SC[(spelling_corrections)]
     P1 -->|draft anchors| P2
-    P2 -->|verified anchors| P3
-    P2 ==>|doc_type=factual_anchor| AN
+    P2 -->|verified anchors| P4
+    P3 -->|bullets| P4
     P2 --> FCR
-    P3 ==>|doc_type=executive_summary| AN
+    P4 ==>|doc_type=factual_anchor| AN
+    P4 ==>|doc_type=executive_summary| AN
+    P4 --> SC
     AN -.->|embedded_at NULL<br/>no consumer yet| VS[(future vector store)]:::future
   end
 
@@ -172,7 +176,7 @@ sequenceDiagram
   rect rgba(240,220,180,0.4)
     Note over G,API: Pass 2 — fact_check<br/>schema = FactCheckEnvelope
     G->>API: generate(user_prompt + draft_anchors_json)
-    API-->>G: fact_checked items + removed_drafts
+    API-->>G: fact_checked items + fact_check_audit
   end
 
   rect rgba(220,200,240,0.4)
@@ -181,42 +185,60 @@ sequenceDiagram
     API-->>G: executive_summary_bullets + primary_committee
   end
 
-  G->>G: stitch timestamp_seconds + text_to_embed
+  rect rgba(255,210,210,0.4)
+    Note over G,API: Pass 4 — spell_check<br/>schema = SpellCheckEnvelope
+    G->>API: generate(user_prompt + pass-2 anchors + pass-3 bullets)
+    API-->>G: spelling-clean anchors + bullets + spelling_corrections
+  end
+
+  G->>G: stitch timestamp_seconds + text_to_embed (on pass-4 anchors)
   G-->>PS: envelope{ run_id, success, data }
   PS->>AM: insert_from_envelope(envelope)
   AM->>AM: INSERT INTO anchors (factual_anchor rows)
   AM->>AM: INSERT INTO anchors (executive_summary rows)
   AM->>AM: INSERT INTO fact_check_removals
+  AM->>AM: INSERT INTO spelling_corrections
   AM-->>R: counts + run_id
 ```
 
-Each pass writes a debug JSON to `logs/extractions/{ts}_yt{id}_r{run_id}_p{pass_label}.json` (`app/agent_kit/agents/extractors/base_extractor.py` ~L381). Re-extraction does **not** overwrite — it gets a fresh `run_id` UUID and appends.
+Each pass writes a debug JSON into the video's folder: `logs/{youtube_id}/{ts}_extract_{pass_label}_r{run_id}.json` (`app/agent_kit/agents/extractors/base_extractor.py`, via `app/agent_kit/utility_classes/run_logging.py`). Timing and token usage land in `logs/{youtube_id}/metrics.json`, which covers the **whole** pipeline as a labeled `stages` map — `transcript_fetch`, `extraction`, `article_writing`, `bullet_points`, `image_generation`, `wordpress_sync` — in pipeline order. Each stage carries a human `duration` (`MM:SS`, auto `HH:MM:SS` past an hour) plus numeric `elapsed_seconds`, and LLM stages also carry a token breakdown (`prompt` / `cached` / `output` / `total`). The `extraction` stage's `elapsed_seconds` is the full four-pass wall time (including Gemini cache create/delete), while its nested `passes[]` keep each generate call's own time + tokens; the gap is the cache-upload overhead. A top-level `totals` block sums duration and tokens across all stages. Re-extraction gets a fresh `run_id` UUID and **replaces** the `extraction` stage's passes; re-running any single-shot stage replaces that stage entry (per-call debug JSONs stay distinct files). The per-video stage timers live in `app/services/pipeline_service.py` (transcript, extraction, image) and `app/routers/pipeline.py` (WordPress sync).
 
 ### 3c. Output shape and persistence
 
 ```mermaid
 flowchart LR
   subgraph env [GemmaNye envelope]
-    FAI[factual_anchor_items&lbrack;&rbrack;<br/>timestamp_string, headline, text,<br/>has_official_vote, roll_call_type,<br/>fact_check_note, timestamp_seconds,<br/>text_to_embed]
-    ESB[executive_summary_bullets&lbrack;&rbrack;<br/>5–8 strings]
+    FAI[factual_anchor_items&lbrack;&rbrack;<br/>timestamp_string, headline, text,<br/>has_official_vote, roll_call_type,<br/>fact_check_note caveat<br/>"empty when confident; appended into text_to_embed when populated",<br/>timestamp_seconds, text_to_embed<br/>"post-pass-4 spelling-clean"]
+    ESB[executive_summary_bullets&lbrack;&rbrack;<br/>5–8 strings, post-pass-4 spelling-clean]
     PC[primary_committee<br/>Committee enum value]
-    RD[removed_drafts&lbrack;&rbrack;<br/>headline, text, removal_reason]
+    FCA["fact_check_audit&lbrack;&rbrack;<br/>kind (removed|corrected|added|unresolved),<br/>originals (null for added),<br/>corrected_anchor_text (null for removed),<br/>audit_note (REQUIRED issue description)"]
+    SCA["spelling_corrections&lbrack;&rbrack;<br/>target_kind (factual_anchor|executive_summary),<br/>corrected_anchor_text (join key for anchor_id),<br/>original_term, corrected_term,<br/>audit_note (empty when confident)"]
   end
 
   FAI -->|doc_type=factual_anchor| AT[(anchors)]
   ESB -->|doc_type=executive_summary| AT
   PC -.->|currently unused on insert| AT
-  RD --> FCR[(fact_check_removals)]
+  FCA --> FCR[(fact_check_removals)]
+  SCA --> SC[(spelling_corrections)]
+  AM[AnchorManager rejections<br/>rejected_anchor / rejected_audit] --> FCR
+  AT -.->|anchor_id FK for kind=corrected/added/unresolved| FCR
+  AT -.->|anchor_id FK for every spelling fix| SC
+  FCR -.->|kind=unresolved audit_note| EN[AI Editor's note on article]
 
   AT -. embedded_at NULL .-> VS[future vector store]:::future
 
   classDef future fill:#f2f2f2,color:#666,stroke-dasharray: 4 4
 ```
 
-**`anchors` columns written** (`app/data/anchor_manager.py` ~L147):
-`youtube_id, run_id, doc_type, timestamp_string, timestamp_seconds, anchor_headline, anchor_text, has_official_vote, roll_call_type, fact_check_note, text_to_embed, extractor_name, model, created_at`.
+**`fact_check_removals` kinds**: LLM decisions `removed` (fabricated, anchor not saved), `corrected` (details fixed), `added` (milestone the draft missed), and `unresolved` (kept the anchor but the transcript could neither confirm nor refute it). Every LLM row carries a REQUIRED `audit_note` describing the issue; for `unresolved` that note is also appended to the published article as an "AI Editor's note" and mirrored onto the kept anchor's `fact_check_note` for RAG. Two system-synthesized kinds — `rejected_anchor` (empty anchor/bullet text) and `rejected_audit` (malformed audit entry: unknown kind, missing field, orphan join key, or empty `audit_note`) — are written by `AnchorManager` so persistence failures show up in analysis instead of disappearing into logs.
 
-**Placeholder, never populated yet:** `embedded_at`, `embedding_id` (`app/data/create_database.py` ~L292) — these signal a planned vector-store push that has no producer in `app/` today.
+**`anchors` columns written** (`app/data/anchor_manager.py`):
+`youtube_id, run_id, doc_type, timestamp_string, timestamp_seconds, anchor_headline, anchor_text, has_official_vote, roll_call_type, fact_check_note, text_to_embed, extractor_name, model, created_at`. Spelling in `anchor_headline` / `anchor_text` is canonical-clean (pass-4 output).
+
+**`spelling_corrections` columns written**:
+`youtube_id, run_id, anchor_id (FK to anchors.id — works for both factual_anchor and executive_summary rows), target_kind, original_term, corrected_term, audit_note, extractor_name, model, created_at`. One row per spelling fix applied; multiple rows per anchor are normal when several misspellings co-occurred.
+
+**Placeholder, never populated yet:** `embedded_at`, `embedding_id` — these signal a planned vector-store push that has no producer in `app/` today.
 
 ---
 
@@ -226,12 +248,11 @@ flowchart LR
 | --- | --- | --- |
 | Queue build | YouTube Data API, `transcripts` | `video_queue` |
 | Transcript fetch | `video_queue`, YouTube captions / Whisper | `transcripts`; DELETE `video_queue` |
-| Article write | `transcripts`, `articles`, `journalists` | `articles` |
+| Article write | `transcripts`, `articles`, `journalists`, `anchors`, `fact_check_removals` (unresolved notes for the "AI Editor's note") | `articles` |
 | Bullet points | `articles` | `articles.bullet_points` |
 | Image batch | `articles`, `art` | `art` (binary PNG) |
 | WordPress sync | `articles`, `transcripts`, `art`, `journalists` | WordPress REST (external) |
-| **Extraction** | `transcripts`, Committee enum, prompt `.md` | `anchors`, `fact_check_removals` |
-| Editor spell-check | `articles` | `articles.spell_checked`, optional WP |
+| **Extraction** | `transcripts`, Committee enum, prompt `.md` (incl. canonical Fall River names inlined in the pass-4 spell-check `.md`) | `anchors`, `fact_check_removals`, `spelling_corrections` |
 | Editor fact-check | `articles` | read-only report (no writes) |
 
 ---

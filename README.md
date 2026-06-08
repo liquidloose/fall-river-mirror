@@ -194,9 +194,9 @@ Both modes use the same [`docker-compose.yml`](docker-compose.yml); pass `--prof
 
 ### Article generation
 
-- `POST /article/generate/{journalist}/{tone}/{article_type}/{transcript_id}` — Generate from a cached transcript row
+- `POST /article/generate/{journalist}/{tone}/{article_type}/{youtube_id}` — Generate from extracted anchors for a YouTube video
 - `POST /article/write/{amount_of_articles}` — Batch write pipeline helper
-- `POST /article/create/manually` — Generate a preview article from a transcript (`transcript_id` and optional query params; see `/docs`)
+- `POST /article/create/manually` — Generate a preview article from extracted anchors (`youtube_id` and optional query params; see `/docs`)
 
 ### Transcript management
 
@@ -221,6 +221,15 @@ Both modes use the same [`docker-compose.yml`](docker-compose.yml); pass `--prof
 ### WordPress
 
 - `GET /wordpress/test-jwt` — Verify JWT against the configured WordPress base URL (e.g. fallrivermirror.com). Read-only; sends a GET to the article-youtube-ids endpoint and returns success/status. Does not create or modify any content.
+
+### Pipeline orchestration
+
+- `POST /pipeline/run` — End-to-end queue/fetch/extract/write/image/sync workflow.
+- Model controls on `/pipeline/run`:
+  - `extractor_text_model` (Gemini-only for extraction)
+  - `journalist_text_model`
+  - `snippet_text_model` (artist snippet summarizer)
+  - `image_model`
 
 Additional routes (sync, pipeline, images, dedupe, editors, etc.) exist in the running app; see **Swagger UI** at `/docs` for the full list. The [Application architecture](#application-architecture) section summarizes how the FastAPI app is layered (`main.py`, routers, services, dependencies).
 
@@ -462,7 +471,7 @@ flowchart LR
 | **`wordpress`** | Sync endpoints, JWT helpers, featured-image repair, sync audit |
 | **`journalist`** | **`GET /journalist/{journalist_name}`** |
 | **`crawler`** | **`GET /yt_crawler/{video_id}`** |
-| **`editor`** | Spell-check and fact-check endpoints, batch spell-check, swap article content toward WordPress |
+| **`editor`** | Fact-check endpoints and swap article content toward WordPress (spell-checking is owned by Gemma's pass 4, not a post-hoc article editor) |
 
 ### Dependency injection and tests
 
@@ -531,7 +540,8 @@ Extends BaseCreator with article-specific functionality.
 
 **Key methods**:
 
-- `generate_article(context, user_content)` — Generate article via xAI
+- `generate_article(context, user_content, ..., youtube_id=None)` — Generate article via the configured text LLM. Pass `youtube_id` to route the per-call debug log and timing/token metrics into `logs/{youtube_id}/`.
+- `generate_bullet_points(article_content, youtube_id=None)` — Summarize an article; same per-video logging when `youtube_id` is supplied.
 - `get_guidelines()` — Override for journalist-specific rules
 - `get_system_prompt(context)` — Build AI system prompt
 
@@ -612,8 +622,6 @@ app/
 │   │   ├── llm_text_query.py
 │   │   ├── xai_image_query.py
 │   │   ├── openai_image_query.py
-│   │   ├── official_names_loader.py
-│   │   ├── official_name_spelling_service.py
 │   └── agents/                      # Named journalists, artists, editors
 │       ├── base_creator.py          # BaseCreator ABC
 │       ├── journalists/
@@ -627,8 +635,7 @@ app/
 │       │   ├── spectra_veritas.py
 │       │   └── fra1.py
 │       └── editors/
-│           ├── context_files/       # e.g. `fact_check_system.md`, `official_names.md`
-│           ├── editor_agent.py
+│           ├── context_files/       # e.g. `fact_check_system.md`
 │           └── fact_checker_agent.py
 ```
 
@@ -705,7 +712,7 @@ crontab -e
 Add (API on port 3004, same host). Use full path to `curl` so cron finds it; the `echo` ensures a log line even if the request fails:
 
 ```cron
-*/15 * * * * echo "$(date -u) pipeline cron start" >> /tmp/pipeline-cron.log 2>&1; /usr/bin/curl -sSf -o /tmp/pipeline-response.json -w "\n\%{http_code}" -X POST "http://127.0.0.1:3004/pipeline/run?amount=2&queue_mode=Use%20Whisper&auto_build=true&journalist=FRJ1&tone=professional&article_type=news&model=gpt-image-1&sync_to_wordpress=true" >> /tmp/pipeline-cron.log 2>&1
+*/15 * * * * echo "$(date -u) pipeline cron start" >> /tmp/pipeline-cron.log 2>&1; /usr/bin/curl -sSf -o /tmp/pipeline-response.json -w "\n\%{http_code}" -X POST "http://127.0.0.1:3004/pipeline/run?amount=2&queue_mode=Use%20Whisper&auto_build=true&extractor=Gemma%20Nye&journalist=FRJ1&tone=professional&article_type=news&image_model=gpt-image-1&sync_to_wordpress=true" >> /tmp/pipeline-cron.log 2>&1
 ```
 
 If `curl` is elsewhere, run `which curl` and use that path. In crontab, `%` is special (turns into newline), so the curl format must use `\%{http_code}` not `%{http_code}`. Check that `crond` is running: `systemctl status crond`. View cron output: `tail -f /tmp/pipeline-cron.log`.
@@ -731,13 +738,13 @@ You can test the endpoints using:
 
 ```bash
 # Generate an article
-curl -X POST "http://localhost:3004/article/generate/FRJ1/professional/news/1"
+curl -X POST "http://localhost:3004/article/generate/FRJ1/professional/news/VjaU4DAxP6s"
 
 # Get a transcript (will cache automatically)
 curl "http://localhost:3004/transcript/fetch/VjaU4DAxP6s"
 
 # Preview-generate from an existing transcript (query params — see /docs)
-curl -X POST "http://localhost:3004/article/create/manually?transcript_id=1&journalist=FR_J1"
+curl -X POST "http://localhost:3004/article/create/manually?youtube_id=VjaU4DAxP6s&journalist=FR_J1"
 ```
 
 ### Debugging tips
@@ -745,8 +752,50 @@ curl -X POST "http://localhost:3004/article/create/manually?transcript_id=1&jour
 **When endpoints won't load**: Use the server reload command above with `--log-level debug` to see detailed Python errors and stack traces that can help identify issues.
 
 ```text
-uvicorn app.main:app --host 0.0.0.0 --port 80 --reload --log-level debug
+uvicorn app.main:app --host 0.0.0.0 --port 80 --reload --log-level debug \
+  --reload-exclude "logs/*" --reload-exclude "*.log"
 ```
+
+### Per-video pipeline logs & metrics
+
+Extraction passes and article-creation steps write per-call debug JSON into a
+single folder per video, keyed by YouTube id:
+
+```text
+logs/{youtube_id}/
+  {ts}_extract_{pass}_r{run_id}.json   # one per extractor pass (4-pass Gemma Nye run)
+  {ts}_article_{step}.json             # article_body, bullet_points
+  metrics.json                         # whole-pipeline timing + token breakdown
+```
+
+`metrics.json` covers the **whole** pipeline as a labeled `stages` map, in
+pipeline order:
+
+| stage key          | label                                  | timing source                                   |
+| ------------------ | -------------------------------------- | ----------------------------------------------- |
+| `transcript_fetch` | Transcript fetch (Whisper/captions)    | transcript download + Whisper transcribe        |
+| `extraction`       | Anchor extraction (Gemma Nye, 4-pass)  | full 4-pass wall time (incl. Gemini cache I/O)  |
+| `article_writing`  | Article body                           | FR J1 body generation                           |
+| `bullet_points`    | Bullet-point summary                   | bullet generation                               |
+| `image_generation` | Cover image                            | `gpt-image-1` generation                        |
+| `wordpress_sync`   | WordPress publish                      | one publish round-trip                          |
+
+Each stage carries a human `duration` (`MM:SS`, auto `HH:MM:SS` past an hour)
+and a numeric `elapsed_seconds` (kept so `totals` stay exact). Stages that hit
+an LLM also carry a token breakdown (`prompt`, `cached`, `output`, `total`);
+`cached` is the slice of prompt tokens served from Gemini cached content (the
+bulk of each extraction pass). The `extraction` stage's `elapsed_seconds` is
+the full wall time of the four-pass run, while nested `passes[]` keep each
+generate call's own time + tokens — the gap between them is the cache-upload
+overhead. A top-level `totals` block sums duration and tokens across all
+stages.
+
+Re-running extraction (fresh `run_id`) replaces the `extraction` stage's
+passes; re-running any single-shot stage replaces that stage entry. All of
+this logging is best-effort and never blocks the pipeline. Per-video stage
+timers live in `app/services/pipeline_service.py` (transcript, extraction,
+image) and `app/routers/pipeline.py` (WordPress sync); the schema + writers
+are in `app/agent_kit/utility_classes/run_logging.py`.
 
 ### Log levels
 

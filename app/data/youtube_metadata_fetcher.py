@@ -257,6 +257,11 @@ class YouTubeMetadataFetcher:
             # Remove date prefix from title to get committee name
             # "11.5.2025 City Council Meeting" -> "City Council Meeting"
             committee = re.sub(r"^\d{1,2}\.\d{1,2}\.\d{4}\s+", "", video_info["title"])
+            # Strip any leading separator left over from the title so we don't
+            # seed values like "- Peace Officer Memorial Ceremony".
+            # (This is only the pre-extraction seed; extraction overwrites it
+            # with the enum-validated committee.)
+            committee = re.sub(r"^[\s\-\u2013\u2014:|]+", "", committee).strip()
 
             # ========================================
             # Step 6: Build Result Dictionary

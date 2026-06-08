@@ -45,19 +45,25 @@ from app.routers import (
     extractions,
 )
 
-# Console always; optional file outside /code so uvicorn --reload does not watch app.log
-_log_file = os.environ.get("APP_LOG_PATH", "/tmp/fr-mirror-app.log")
+# Console always; default file log stays outside /code to avoid reload churn.
+_default_log_file = "/tmp/fr-mirror-app.log"
+_log_file = os.environ.get("APP_LOG_PATH", _default_log_file)
 _handlers = [logging.StreamHandler()]
 try:
+    _log_dir = os.path.dirname(_log_file)
+    if _log_dir:
+        os.makedirs(_log_dir, exist_ok=True)
     _handlers.append(logging.FileHandler(_log_file))
 except (OSError, PermissionError):
+    # Fall back to console-only logging if file logging cannot be initialized.
     pass
 logging.basicConfig(
     level=logging.DEBUG,
     format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
     handlers=_handlers,
 )
-logging.getLogger("watchfiles").setLevel(logging.INFO)
+# Suppress watchfiles "change detected" spam in app logs.
+logging.getLogger("watchfiles").setLevel(logging.WARNING)
 logger = logging.getLogger(__name__)
 
 # Initialize database instance at the top level
@@ -118,8 +124,13 @@ class RequestLogMiddleware(BaseHTTPMiddleware):
 
     async def dispatch(self, request: Request, call_next):
         path = (request.scope.get("path") or "").split("?")[0]
-        if path.endswith("/wordpress/repair-article-featured-image") and request.scope.get("method") == "POST":
-            logger.info("REQUEST RECEIVED: POST /wordpress/repair-article-featured-image")
+        if (
+            path.endswith("/wordpress/repair-article-featured-image")
+            and request.scope.get("method") == "POST"
+        ):
+            logger.info(
+                "REQUEST RECEIVED: POST /wordpress/repair-article-featured-image"
+            )
         return await call_next(request)
 
 

@@ -5,22 +5,77 @@ import logging
 from datetime import datetime
 from typing import Any, Dict, List, Optional
 
-from fastapi import APIRouter, Body, Depends, HTTPException, status
+from fastapi import APIRouter, Body, Depends, HTTPException, Query, status
 
 from app.dependencies import AppDependencies
 from app.data.enum_classes import (
     ArticleType,
     CreateArticleRequest,
+    Extractor,
     PartialUpdateRequest,
     Tone,
     Journalist,
+    TextModel,
+    resolve_gemini_text_model,
+    resolve_text_model,
 )
 from app.agent_kit.agents.journalists.aurelius_stone import AureliusStone
 from app.agent_kit.agents.journalists.base_journalist import ArticleGenerationError
 from app.agent_kit.agents.journalists.fr_j1 import FRJ1
+from app.agent_kit.utility_classes.video_jump_links import repair_video_jump_links
 
 router = APIRouter(tags=["articles"])
 logger = logging.getLogger(__name__)
+
+
+def _build_anchor_context_for_youtube_id(
+    deps: AppDependencies,
+    youtube_id: str,
+    *,
+    extraction_result: Optional[Dict[str, Any]] = None,
+) -> tuple:
+    """Fetch transcript metadata and anchor-based generation context.
+
+    When ``extraction_result`` is supplied (non-persisted preview extract), uses
+    ``article_context`` / ``summary_bullets`` from that payload instead of the DB.
+    """
+    db = deps.database
+    if not db:
+        raise HTTPException(status_code=500, detail="Database not available")
+    youtube_id = (youtube_id or "").strip()
+    if not youtube_id:
+        raise HTTPException(status_code=400, detail="youtube_id is required")
+    transcript_data = db.get_transcript_by_youtube_id(youtube_id)
+    if not transcript_data:
+        raise HTTPException(
+            status_code=404,
+            detail=f"No transcript found with youtube_id {youtube_id}",
+        )
+    pipeline = deps.pipeline_service
+    if not pipeline:
+        raise HTTPException(status_code=500, detail="Pipeline service not available")
+
+    if extraction_result is not None:
+        anchor_context = extraction_result.get("article_context")
+        if not anchor_context:
+            raise HTTPException(
+                status_code=status.HTTP_502_BAD_GATEWAY,
+                detail="Anchor extraction produced no usable anchor context",
+            )
+        summary_bullets = extraction_result.get("summary_bullets") or []
+        return transcript_data, anchor_context, summary_bullets
+
+    anchor_context = pipeline.build_article_context_from_anchors(youtube_id)
+    if not anchor_context:
+        raise HTTPException(
+            status_code=400,
+            detail=(
+                f"No anchors found for youtube_id {youtube_id}. "
+                "Run extraction first before article generation."
+            ),
+        )
+    summary_bullets = pipeline.get_latest_executive_summary_bullets(youtube_id)
+    return transcript_data, anchor_context, summary_bullets
 
 
 @router.get("/articles/count")
@@ -311,28 +366,60 @@ def remove_duplicate_articles_per_transcript(
         )
 
 
-@router.post("/article/generate/{journalist}/{tone}/{article_type}/{transcript_id}")
+@router.post("/article/generate/{journalist}/{tone}/{article_type}/{youtube_id}")
 def generate_article_from_strings(
     journalist: Journalist,
     tone: Tone,
     article_type: ArticleType,
-    transcript_id: int,
+    youtube_id: str,
+    text_model: Optional[TextModel] = None,
     deps: AppDependencies = Depends(AppDependencies),
 ) -> Dict[str, Any]:
-    """Generate article using path parameters. Saves to database."""
+    """Generate article from anchors using path parameters. Saves to database."""
     try:
         db = deps.database
         jm = deps.journalist_manager
-        if not db or not jm:
+        pipeline = deps.pipeline_service
+        if not db or not jm or not pipeline:
             raise HTTPException(status_code=500, detail="Database not available")
-        transcript_data = db.get_transcript_by_id(int(transcript_id))
-        if not transcript_data:
-            raise HTTPException(status_code=404, detail=f"No transcript found with ID {transcript_id}")
-        transcript_content = transcript_data[3]
-        journalist_instance = AureliusStone()
+        transcript_data, anchor_context, summary_bullets = _build_anchor_context_for_youtube_id(
+            deps, youtube_id
+        )
+        llm_provider = None
+        llm_model = None
+        if text_model is not None:
+            llm_provider, llm_model = resolve_text_model(text_model)
+        journalist_classes = {
+            Journalist.AURELIUS_STONE: AureliusStone,
+            Journalist.FR_J1: FRJ1,
+        }
+        journalist_class = journalist_classes.get(journalist)
+        if not journalist_class:
+            available_journalists = [j.value for j in Journalist]
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=f"Journalist '{journalist.value}' not implemented yet. Available journalists: {available_journalists}",
+            )
+        journalist_instance = journalist_class()
         base_context = journalist_instance.load_context(tone=tone, article_type=article_type)
-        full_context = f"{base_context}\n\nTRANSCRIPT CONTENT TO ANALYZE:\n{transcript_content}"
-        article_result = journalist_instance.generate_article(full_context, "")
+        source_link_context = (
+            "SOURCE LINK METADATA:\n"
+            f"- youtube_id: {youtube_id}\n"
+            f"- url_template: https://www.youtube.com/watch?v={youtube_id}&t=<SECONDS>s\n"
+            "- Use this youtube_id; do not output UNKNOWN.\n"
+        )
+        full_context = (
+            f"{base_context}\n\n"
+            f"{source_link_context}\n"
+            f"ANCHOR CONTEXT TO ANALYZE:\n{anchor_context}"
+        )
+        article_result = journalist_instance.generate_article(
+            full_context,
+            "",
+            provider=llm_provider,
+            model=llm_model,
+            youtube_id=youtube_id,
+        )
         journalist_data = jm.get_journalist(journalist_instance.FULL_NAME)
         if not journalist_data:
             jm.upsert_journalist(
@@ -346,27 +433,51 @@ def generate_article_from_strings(
             if not journalist_data:
                 raise HTTPException(status_code=500, detail=f"Failed to create or retrieve journalist '{journalist_instance.FULL_NAME}'")
         journalist_id = journalist_data["id"]
+        transcript_id = transcript_data[0]
         committee = transcript_data[1]
-        youtube_id = transcript_data[2]
-        db.add_article(
+        article_content = pipeline.append_ai_editors_note(
+            repair_video_jump_links(article_result["content"]),
+            pipeline.get_unresolved_audit_notes(youtube_id),
+        )
+        new_article_id = db.add_article(
             committee=committee,
             youtube_id=youtube_id,
             journalist_id=journalist_id,
-            content=article_result["content"],
+            content=article_content,
             transcript_id=transcript_id,
             date=datetime.now().isoformat(),
             article_type=article_type.value,
             tone=tone.value,
             title=article_result.get("title", "Untitled Article"),
         )
-        logger.info(f"Article generated successfully by {journalist_instance.NAME} using transcript ID {transcript_id}")
+        if summary_bullets:
+            db.update_article_bullet_points(
+                new_article_id,
+                pipeline.format_bullets_as_html_list(summary_bullets),
+            )
+        inserted_article = db.get_article_by_id(new_article_id)
+        if not inserted_article:
+            raise HTTPException(
+                status_code=500,
+                detail=f"Article insert verification failed for article_id={new_article_id}",
+            )
+        logger.info(
+            "Article generated successfully by %s using youtube_id %s (article_id=%s)",
+            journalist_instance.NAME,
+            youtube_id,
+            new_article_id,
+        )
         return {
             "journalist": journalist_instance.NAME,
+            "article_id": new_article_id,
             "context": full_context,
             "title": article_result.get("title", "Untitled Article") if isinstance(article_result, dict) else "Untitled Article",
-            "content": article_result.get("content", article_result) if isinstance(article_result, dict) else article_result,
-            "transcript_id": int(transcript_id),
-            "transcript_content_length": len(transcript_content),
+            "content": article_content,
+            "transcript_id": transcript_id,
+            "youtube_id": youtube_id,
+            "anchor_context_length": len(anchor_context),
+            "summary_bullets_count": len(summary_bullets),
+            "text_model": text_model.value if text_model else None,
         }
     except ArticleGenerationError as e:
         logger.warning("Article generation rejected: %s", e)
@@ -383,22 +494,71 @@ def generate_article_from_strings(
 
 @router.post("/article/create/manually")
 def generate_article(
-    transcript_id: int,
+    youtube_id: str,
     additional_context: str = "",
-    journalist: Journalist = Journalist.AURELIUS_STONE,
-    tone: Optional[Tone] = None,
-    article_type: Optional[ArticleType] = None,
+    journalist: Journalist = Journalist.FR_J1,
+    tone: Tone = Tone.PROFESSIONAL,
+    article_type: ArticleType = ArticleType.SEQUENTIAL_NEWS,
+    extractor: Extractor = Extractor.GEMMA_NYE,
+    extractor_text_model: Optional[TextModel] = Query(
+        default=TextModel.GEMINI_2_5_PRO,
+        description=(
+            "Text model used by the extractor stage when converting the "
+            "transcript into anchors. Must resolve to a Gemini model. Same "
+            "parameter and default as POST /pipeline/run. Extraction is "
+            "in-memory only; nothing is written to the database."
+        ),
+    ),
+    journalist_text_model: Optional[TextModel] = Query(
+        default=TextModel.GEMINI_2_5_PRO,
+        description=(
+            "Text model used by the journalist to write the article body. "
+            "Same parameter and default as POST /pipeline/run."
+        ),
+    ),
     deps: AppDependencies = Depends(AppDependencies),
 ) -> Dict[str, Any]:
-    """Generate an article from a transcript without writing to the database (preview)."""
+    """Preview article generation: extract anchors and write the article in memory only.
+
+    Shared pipeline defaults for journalist, tone, article_type, extractor,
+    extractor_text_model, and journalist_text_model. Neither anchors nor the
+    article are persisted.
+    """
     try:
-        db = deps.database
-        if not db:
-            raise HTTPException(status_code=500, detail="Database not available")
-        transcript_data = db.get_transcript_by_id(transcript_id)
-        if not transcript_data:
-            raise HTTPException(status_code=404, detail=f"No transcript found with ID {transcript_id}")
-        transcript_content = transcript_data[3]
+        pipeline = deps.pipeline_service
+        if not pipeline:
+            raise HTTPException(status_code=500, detail="Pipeline service not available")
+
+        youtube_id = (youtube_id or "").strip()
+        if not youtube_id:
+            raise HTTPException(status_code=400, detail="youtube_id is required")
+
+        try:
+            resolved_extractor_model = resolve_gemini_text_model(
+                extractor_text_model, field_name="extractor_text_model"
+            )
+        except ValueError as e:
+            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
+
+        extraction_result = pipeline.run_extract_anchors(
+            youtube_id,
+            extractor=extractor,
+            text_model=resolved_extractor_model,
+            persist=False,
+        )
+        if not extraction_result.get("success"):
+            raise HTTPException(
+                status_code=status.HTTP_502_BAD_GATEWAY,
+                detail=(
+                    "Anchor extraction failed: "
+                    f"{extraction_result.get('error') or extraction_result.get('message')}"
+                ),
+            )
+
+        transcript_data, anchor_context, summary_bullets = _build_anchor_context_for_youtube_id(
+            deps, youtube_id, extraction_result=extraction_result
+        )
+        llm_provider, llm_model = resolve_text_model(journalist_text_model)
         journalist_classes = {Journalist.AURELIUS_STONE: AureliusStone, Journalist.FR_J1: FRJ1}
         journalist_class = journalist_classes.get(journalist)
         if not journalist_class:
@@ -409,16 +569,54 @@ def generate_article(
             )
         journalist_instance = journalist_class()
         base_context = journalist_instance.load_context(tone=tone, article_type=article_type)
-        full_context = f"{base_context}\n\nTRANSCRIPT CONTENT TO ANALYZE:\n{transcript_content}"
-        article_result = journalist_instance.generate_article(full_context, additional_context)
-        logger.info(f"Article generated successfully by {journalist_instance.NAME} using transcript ID {transcript_id}")
+        source_link_context = (
+            "SOURCE LINK METADATA:\n"
+            f"- youtube_id: {youtube_id}\n"
+            f"- url_template: https://www.youtube.com/watch?v={youtube_id}&t=<SECONDS>s\n"
+            "- Use this youtube_id; do not output UNKNOWN.\n"
+        )
+        full_context = (
+            f"{base_context}\n\n"
+            f"{source_link_context}\n"
+            f"ANCHOR CONTEXT TO ANALYZE:\n{anchor_context}"
+        )
+        article_result = journalist_instance.generate_article(
+            full_context,
+            additional_context,
+            provider=llm_provider,
+            model=llm_model,
+            youtube_id=youtube_id,
+        )
+        article_content = (
+            pipeline.append_ai_editors_note(
+                repair_video_jump_links(article_result["content"]),
+                extraction_result.get("unresolved_audit_notes") or [],
+            )
+            if isinstance(article_result, dict)
+            else article_result
+        )
+        logger.info(
+            "Article preview generated by %s using youtube_id %s (not persisted)",
+            journalist_instance.NAME,
+            youtube_id,
+        )
         return {
             "journalist": journalist_instance.NAME,
             "context": full_context,
             "article_title": article_result.get("title", "Untitled Article") if isinstance(article_result, dict) else "Untitled Article",
-            "article_content": article_result.get("content", article_result) if isinstance(article_result, dict) else article_result,
-            "transcript_id": transcript_id,
-            "transcript_content_length": len(transcript_content),
+            "article_content": article_content,
+            "transcript_id": transcript_data[0],
+            "youtube_id": youtube_id,
+            "anchor_context_length": len(anchor_context),
+            "summary_bullets_count": len(summary_bullets),
+            "summary_bullets": summary_bullets,
+            "extractor": extractor.value,
+            "extractor_text_model": extractor_text_model.value if extractor_text_model else None,
+            "journalist_text_model": (
+                journalist_text_model.value if journalist_text_model else None
+            ),
+            "persisted": False,
+            "extraction_run_id": extraction_result.get("run_id"),
         }
     except ArticleGenerationError as e:
         logger.warning("Article generation rejected: %s", e)
@@ -441,7 +639,14 @@ async def bulk_generate_articles(
     amount_of_articles: int,
     journalist: Journalist = Journalist.FR_J1,
     tone: Tone = Tone.PROFESSIONAL,
-    article_type: ArticleType = ArticleType.NEWS,
+    article_type: ArticleType = ArticleType.SEQUENTIAL_NEWS,
+    text_model: Optional[TextModel] = Query(
+        default=TextModel.GEMINI_2_5_PRO,
+        description=(
+            "Text model used by the journalist stage to write article body content "
+            "from extracted anchors."
+        ),
+    ),
     deps: AppDependencies = Depends(AppDependencies),
 ) -> Dict[str, Any]:
     """Bulk generate articles from existing transcripts."""
@@ -462,7 +667,11 @@ async def bulk_generate_articles(
             f"journalist={journalist.value}, tone={tone.value}, type={article_type.value}"
         )
         return await pipeline.run_bulk_write_articles(
-            amount_of_articles, journalist, tone, article_type
+            amount_of_articles,
+            journalist,
+            tone,
+            article_type,
+            text_model=text_model,
         )
     except ValueError as e:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
@@ -599,7 +808,9 @@ def generate_article_bullet_points(
             detail=f"Article {article_id} not found",
         )
     journalist = AureliusStone()
-    result = journalist.generate_bullet_points(article["content"])
+    result = journalist.generate_bullet_points(
+        article["content"], youtube_id=article.get("youtube_id")
+    )
     if result.get("error"):
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,

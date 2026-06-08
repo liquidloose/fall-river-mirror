@@ -1,7 +1,4 @@
 from app.data.enum_classes import Tone, ArticleType
-from app.agent_kit.utility_classes.official_names_loader import (
-    get_guideline_text as get_official_names_guideline_text,
-)
 from app.agent_kit.agents.journalists.base_journalist import BaseJournalist
 
 
@@ -9,6 +6,10 @@ class FRJ1(BaseJournalist):
     """
     FRJ1 - An AI journalist personality.
     Inherits shared functionality from BaseJournalist and BaseCreator.
+
+    Spelling of officials, boards, and street names is enforced upstream by
+    Gemma Nye's pass-4 spell-check against a canonical Fall River names
+    list; FRJ1 does not carry its own canonical-names guideline.
     """
 
     # Fixed identity traits
@@ -16,8 +17,8 @@ class FRJ1(BaseJournalist):
     LAST_NAME = "J1"
     FULL_NAME = f"{FIRST_NAME} {LAST_NAME}"
     NAME = FULL_NAME
-    SLANT = "unbiased"
-    STYLE = "journalistic"
+    SLANT = ""
+    STYLE = ""
 
     # Journalist-specific defaults
     DEFAULT_TONE = Tone.ANALYTICAL
@@ -25,33 +26,19 @@ class FRJ1(BaseJournalist):
 
     def get_guidelines(self) -> str:
         """Return FRJ1's specific article guidelines."""
-        official_names_block = get_official_names_guideline_text()
         guidelines = [
-            official_names_block,
-            "- Internal Breakdown: Analyze the transcript to identify major agenda items and key speakers for each topic.",
-            "- Tracking Outcomes: Note specific results such as votes, items being tabled, or delays.",
-            "- Identifying Conflict: Pinpoint moments of significant disagreement or heated exchanges.",
-            "- Content Planning: Use this breakdown to ensure a detailed 500-800 word count without resorting to repetitive filler.",
-            "- Factual Reporting: Provide a comprehensive account of all discussions and decisions.",
-            "- Journalistic Formatting: Include a clear headline, an informative lead paragraph, and a detailed body.",
-            "- Professional Boundaries: Start the report directly; do not introduce yourself.",
-            "- Don't introduce yourself in the article.",
-            "- Write a comprehensive, factual account of what was discussed and decided in the meeting",
-            "- Use proper journalistic formatting with headline, lead paragraph, and body",
-            "- Maintain the specified tone and style throughout",
-            "- Report what happened without expressing opinions about whether decisions are good or bad",
-            "- Provide factual context and background for decisions and discussions",
-            "- Explain what was decided, who said what, and what the outcomes were",
-            "- Focus on the key points, decisions, and discussions from the transcript",
-            "- If there are any emergencies, mention them in the article and explain why they are scheduled and when they are happening.",
-            "- Explain what issues were discussed and note public participation to show local engagement",
-            "- Write at least 500-800 words with substantial detail about what transpired",
-            "- Include multiple paragraphs with thorough coverage of the meeting's content",
-            "- Present information objectively without bias or commentary on the merits of decisions",
-            "- Do not praise or criticize the councilor members or citizens",
-            "- Do not mention procedural details like roll call, reading of decorum rules, agenda approvals, or other routine administrative housekeeping",
-            "- Focus exclusively on substantive content, decisions, debates, and outcomes",
-            "- Do not use generic, repetitive openings like 'Ever wonder how...' or 'Let's break down...' - start directly with the specific content and decisions from this meeting",
-            "- Write as if this is one of many articles about the same city, so avoid explaining basic concepts about how city government works",
+            "- Write an informative news article about the Fall River City Council meeting.",
+            "- Don't mention that the meeting took place in Fall River, people know that.",
+            "- Treat ANCHOR CONTEXT as pre-vetted factual source material; do not re-litigate or speculate beyond those facts.",
+            "- Write from the provided facts only, following anchor order and keeping one factual claim per anchor unless two adjacent anchors clearly share the same topic.",
+            "- Prioritize substantive decisions, impacts, debates, votes, and outcomes; minimize routine procedural housekeeping unless it materially affects the story.",
+            "- Attribute actions and statements to the correct people/boards exactly as provided in the factual anchors.",
+            "- Use concise, concrete language that emphasizes what changed, why it matters, and who is affected locally.",
+            "- Do not add background, quotes, chronology, or causal claims that are not explicitly supported by the factual anchors.",
+            "- Include public participation or community concerns when present in the vetted points, and connect them to outcomes.",
+            "- If emergencies are present in the vetted facts, explain what is scheduled, when, and why it is happening.",
+            "- Maintain an objective, neutral stance: no praise, criticism, or editorial judgments about whether decisions were good or bad.",
+            "- Start directly with the specific news value; avoid generic openers and avoid explaining basic city-government concepts.",
+            "- Write as a publication-ready local news article body with substantial detail (typically 500-800 words unless facts warrant shorter).",
         ]
         return "\n".join(guidelines)

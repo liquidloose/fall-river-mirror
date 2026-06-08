@@ -30,15 +30,22 @@ Error handling:
   ``{"bullet_points": ..., "error": ...}`` so callers can render partial
   failures inline.
 """
+
 import json
 import logging
+import time
+from datetime import datetime, timezone
 from typing import Dict, Any, Optional
 
 from fastapi.responses import JSONResponse
 
 from ....data.enum_classes import Tone, ArticleType, TextLLMProvider
 from ..base_creator import BaseCreator
+from app.agent_kit.utility_classes import run_logging
 from app.agent_kit.utility_classes.llm_text_query import LLMTextQuery, ModelEnum
+from app.agent_kit.utility_classes.prompt_utilities import (
+    inline_timestamp_link_prompt_lines,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -271,6 +278,7 @@ class BaseJournalist(BaseCreator):
         """
         personality = self.get_personality()
         guidelines = self.get_guidelines()
+        timestamp_link_instructions = inline_timestamp_link_prompt_lines()
 
         prompt_parts = [
             context,
@@ -278,7 +286,7 @@ class BaseJournalist(BaseCreator):
             f"You are {personality['name']}, a {personality['slant']} journalist with a {personality['style']} writing style.",
             "",
             "Write an article with the following characteristics:",
-            "- Subject: The transcript content provided above",
+            "- Subject: The pre-vetted ANCHOR CONTEXT provided above",
             f"- Tone: {personality['tone']}",
             f"- Article Type: {personality['article_type']}",
             f"- Style: {personality['style']}",
@@ -291,8 +299,9 @@ class BaseJournalist(BaseCreator):
             "- Do NOT include a title - just the article body content",
             "- Do NOT use <h1> tags - the title is handled separately",
             "- Use HTML paragraph tags (<p>...</p>) for paragraphs",
-            "- You may use <h2>, <h3> for section headers within the article body",
+            "- Use <h2> section headers to group the article into clearly labeled topic sections; use <h3> for sub-points within a section where helpful",
             "- You may use <strong>, <em>, <blockquote>, <ul>, <li> for formatting",
+            *timestamp_link_instructions,
             "- Do NOT include document-level HTML: no <!DOCTYPE>, <html>, <head>, <body>, <meta>, <title>, <style>, <script>",
             "- Do NOT wrap the article in <article> or <div> tags - just the content",
             "- Do NOT include markdown formatting - use HTML only",
@@ -339,6 +348,7 @@ class BaseJournalist(BaseCreator):
         user_content: str,
         provider: Optional[TextLLMProvider] = None,
         model: Optional[ModelEnum] = None,
+        youtube_id: Optional[str] = None,
     ) -> Dict[str, Any]:
         """
         Generate an article body using the configured text-LLM provider.
@@ -371,6 +381,9 @@ class BaseJournalist(BaseCreator):
                 an enum member that matches ``provider`` (validated by
                 :class:`LLMTextQuery`). When ``None``, the provider's default
                 model is used.
+            youtube_id: Source video id, used only to route the per-call debug
+                log and timing/token metrics into ``logs/<youtube_id>/``. When
+                ``None``, logs fall back to a ``logs/unknown/`` folder.
 
         Returns:
             ``{"title": str, "content": str}`` per :meth:`_format_response`.
@@ -394,6 +407,12 @@ class BaseJournalist(BaseCreator):
             provider=provider or TextLLMProvider.XAI,
             model=model,
         )
+        meta = llm.llm_metadata()
+        started_at = datetime.now(timezone.utc).isoformat()
+        perf_start = time.perf_counter()
+        raw_response: Any = None
+        parse_status = "success"
+        error_msg: Optional[str] = None
         try:
             response = llm.get_response(
                 context=system_prompt,
@@ -409,18 +428,38 @@ class BaseJournalist(BaseCreator):
                     )
                 except Exception:
                     err = response.body.decode(errors="replace")[:500]
+                parse_status = "api_error"
+                error_msg = err
+                raw_response = {"error": err}
                 raise ArticleGenerationError(err) from None
 
+            raw_response = response
             return self._format_response(response)
 
         except ArticleGenerationError:
             raise
         except Exception as e:
-            raise ArticleGenerationError(
-                f"Failed to generate article: {str(e)}"
-            ) from e
+            parse_status = parse_status if parse_status != "success" else "api_error"
+            error_msg = error_msg or str(e)
+            raise ArticleGenerationError(f"Failed to generate article: {str(e)}") from e
+        finally:
+            self._record_article_step(
+                youtube_id=youtube_id,
+                step="article_body",
+                llm=llm,
+                meta=meta,
+                started_at=started_at,
+                perf_start=perf_start,
+                system_prompt=system_prompt,
+                user_message=user_message,
+                raw_response=raw_response,
+                parse_status=parse_status,
+                error=error_msg,
+            )
 
-    def generate_bullet_points(self, article_content: str) -> Dict[str, Any]:
+    def generate_bullet_points(
+        self, article_content: str, youtube_id: Optional[str] = None
+    ) -> Dict[str, Any]:
         """
         Generate a bullet-point summary of an already-written article.
 
@@ -437,6 +476,8 @@ class BaseJournalist(BaseCreator):
             article_content: The full article body to summarize (typically
                 the ``content`` field returned by :meth:`generate_article`,
                 including the ``<article>`` wrapper).
+            youtube_id: Source video id, used only to route the per-call debug
+                log and timing/token metrics into ``logs/<youtube_id>/``.
 
         Returns:
             ``{"bullet_points": str | None, "error": str | None}``. On
@@ -456,11 +497,22 @@ class BaseJournalist(BaseCreator):
             + "\n"
             + article_content
         )
-        message = "Now write a bullet point summary of the article content. Keep the summary under 850 characters. If there are any citizen concerns, public comments, or community feedback mentioned, include them as a dedicated bullet point."
+        message = (
+            "Now write a bullet point summary of the article content. "
+            "Keep the summary under 850 characters. "
+            "If there are any citizen concerns, public comments, or community feedback mentioned, include them as a dedicated bullet point. "
+            "Return valid HTML list markup only, using exactly one <ul> with <li> items (no markdown bullets)."
+        )
         logger.info(f"Context: {context}")
         logger.info(f"Message: {message}")
 
         llm = LLMTextQuery(provider=TextLLMProvider.XAI)
+        meta = llm.llm_metadata()
+        started_at = datetime.now(timezone.utc).isoformat()
+        perf_start = time.perf_counter()
+        raw_response: Any = None
+        parse_status = "success"
+        error_msg: Optional[str] = None
         try:
             response = llm.get_response(
                 context=context,
@@ -476,13 +528,103 @@ class BaseJournalist(BaseCreator):
                     )
                 except Exception:
                     err = response.body.decode(errors="replace")[:500]
+                parse_status = "api_error"
+                error_msg = err
+                raw_response = {"error": err}
                 return {
                     "bullet_points": None,
                     "error": f"API error: {err}",
                 }
 
+            raw_response = response
             bullet_points = response.get("response", "")
             return {"bullet_points": bullet_points, "error": None}
 
         except Exception as e:
+            parse_status = "api_error"
+            error_msg = str(e)
             return {"bullet_points": None, "error": str(e)}
+        finally:
+            self._record_article_step(
+                youtube_id=youtube_id,
+                step="bullet_points",
+                llm=llm,
+                meta=meta,
+                started_at=started_at,
+                perf_start=perf_start,
+                system_prompt=context,
+                user_message=message,
+                raw_response=raw_response,
+                parse_status=parse_status,
+                error=error_msg,
+            )
+
+    def _record_article_step(
+        self,
+        *,
+        youtube_id: Optional[str],
+        step: str,
+        llm: LLMTextQuery,
+        meta: Dict[str, str],
+        started_at: str,
+        perf_start: float,
+        system_prompt: str,
+        user_message: str,
+        raw_response: Any,
+        parse_status: str,
+        error: Optional[str],
+    ) -> None:
+        """Write a full article-creation call log + metrics entry.
+
+        Mirrors the extractor's logging: a full debug payload lands in
+        ``logs/<youtube_id>/`` and a timing/token entry is recorded into that
+        video's ``metrics.json`` as a labeled pipeline stage
+        (``article_writing`` for the body, ``bullet_points`` for the summary).
+        Token usage is taken from ``llm.usage_total`` so a step that fires
+        multiple completions (e.g. body + headline) reports their combined
+        tokens. Best-effort.
+        """
+        elapsed_seconds = round(time.perf_counter() - perf_start, 3)
+        token_usage = dict(llm.usage_total)
+        completed_at = datetime.now(timezone.utc).isoformat()
+        journalist = getattr(self, "FULL_NAME", self.__class__.__name__)
+        run_logging.write_call_log(
+            youtube_id,
+            "article",
+            step,
+            started_at,
+            {
+                "youtube_id": youtube_id,
+                "journalist": journalist,
+                "step": step,
+                "provider": meta.get("provider"),
+                "model": meta.get("model"),
+                "started_at": started_at,
+                "completed_at": completed_at,
+                "elapsed_seconds": elapsed_seconds,
+                "token_usage": token_usage,
+                "llm_calls": llm.usage_call_count,
+                "system_instruction": system_prompt,
+                "user_message": user_message,
+                "raw_response": raw_response,
+                "parse_status": parse_status,
+                "error": error,
+            },
+        )
+        if step == "bullet_points":
+            stage_key, label = "bullet_points", "Bullet-point summary"
+        else:
+            stage_key, label = "article_writing", "Article body"
+        run_logging.record_stage(
+            youtube_id,
+            stage_key,
+            label,
+            elapsed_seconds,
+            model=meta.get("model"),
+            tokens=token_usage,
+            extra={
+                "journalist": journalist,
+                "started_at": started_at,
+                "completed_at": completed_at,
+            },
+        )
