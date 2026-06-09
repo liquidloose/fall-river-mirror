@@ -146,6 +146,23 @@ class GemmaNye(BaseExtractor):
     _SPELL_CHECK_SYSTEM_SUFFIX: ClassVar[str] = "_spell_check_system_instructions.md"
     _SPELL_CHECK_USER_SUFFIX: ClassVar[str] = "_spell_check_user_prompt.md"
 
+    @staticmethod
+    def _video_duration_label(
+        video_duration_formatted: Optional[str],
+        video_duration_seconds: Optional[int],
+    ) -> str:
+        """Human-readable duration for extract/fact-check user prompts."""
+        if video_duration_formatted and str(video_duration_formatted).strip():
+            return str(video_duration_formatted).strip()
+        if video_duration_seconds is not None and int(video_duration_seconds) > 0:
+            total = int(video_duration_seconds)
+            hours, rem = divmod(total, 3600)
+            minutes, secs = divmod(rem, 60)
+            if hours:
+                return f"{hours}:{minutes:02d}:{secs:02d}"
+            return f"{minutes}:{secs:02d}"
+        return "unknown"
+
     def extract(
         self,
         transcript: str,
@@ -153,6 +170,8 @@ class GemmaNye(BaseExtractor):
         meeting_date: str,
         primary_committee: Optional[str] = None,
         model: Optional[ModelEnum] = None,
+        video_duration_formatted: Optional[str] = None,
+        video_duration_seconds: Optional[int] = None,
     ) -> Dict[str, Any]:
         """
         Extract structured factual anchors from a Fall River meeting transcript.
@@ -163,6 +182,10 @@ class GemmaNye(BaseExtractor):
                 stable, globally unique identifier and is the FK that
                 ``anchors`` rows carry back to ``transcripts``.
             meeting_date: ISO 8601 date (YYYY-MM-DD) of the meeting.
+            video_duration_formatted: Wall-clock duration from the transcript
+                row (e.g. ``"3:46:49"``), injected into extract/fact-check
+                user prompts as ``VIDEO_DURATION``.
+            video_duration_seconds: Fallback when formatted duration is missing.
             primary_committee: Ignored. Kept in the signature for
                 backward-compat with the previous single-pass call shape;
                 Gemma now classifies the committee herself in pass 3.
@@ -236,9 +259,13 @@ class GemmaNye(BaseExtractor):
             )
 
         run_id = str(uuid.uuid4())
+        video_duration = self._video_duration_label(
+            video_duration_formatted, video_duration_seconds
+        )
         logger.info(
             f"{self.FULL_NAME}: extraction start yt={youtube_video_id} "
-            f"run_id={run_id} transcript_chars={len(transcript or '')}"
+            f"run_id={run_id} transcript_chars={len(transcript or '')} "
+            f"video_duration={video_duration}"
         )
 
         # ─────────────────────────────────────────────────────────────────
@@ -282,7 +309,12 @@ class GemmaNye(BaseExtractor):
 
         try:
             draft = self._pass_extract(
-                cache_name, run_id, youtube_video_id, meeting_date, model=model
+                cache_name,
+                run_id,
+                youtube_video_id,
+                meeting_date,
+                video_duration=video_duration,
+                model=model,
             )
             if not draft["success"]:
                 return draft
@@ -293,6 +325,7 @@ class GemmaNye(BaseExtractor):
                 youtube_video_id,
                 meeting_date,
                 draft["data"]["factual_anchor_items"],
+                video_duration=video_duration,
                 model=model,
             )
             if not corrected["success"]:
@@ -424,6 +457,7 @@ class GemmaNye(BaseExtractor):
         youtube_video_id: str,
         meeting_date: str,
         *,
+        video_duration: str = "unknown",
         model: Optional[ModelEnum] = None,
     ) -> Dict[str, Any]:
         """Pass 1 of 4 — draft factual anchors from the transcript.
@@ -460,6 +494,7 @@ class GemmaNye(BaseExtractor):
                 self._EXTRACT_USER_SUFFIX,
                 youtube_video_id=youtube_video_id,
                 meeting_date=meeting_date,
+                video_duration=video_duration,
             ),
             response_schema=ExtractEnvelope,
             model=model,
@@ -473,6 +508,7 @@ class GemmaNye(BaseExtractor):
         meeting_date: str,
         draft_anchors: List[Dict[str, Any]],
         *,
+        video_duration: str = "unknown",
         model: Optional[ModelEnum] = None,
     ) -> Dict[str, Any]:
         """Pass 2 of 4 — fact-check draft anchors against the transcript.
@@ -514,6 +550,7 @@ class GemmaNye(BaseExtractor):
                 self._FACT_CHECK_USER_SUFFIX,
                 youtube_video_id=youtube_video_id,
                 meeting_date=meeting_date,
+                video_duration=video_duration,
                 draft_anchors_json=draft_anchors_json,
             ),
             response_schema=FactCheckEnvelope,

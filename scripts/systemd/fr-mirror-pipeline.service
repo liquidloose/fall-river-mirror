@@ -1,0 +1,7 @@
+[Unit]
+Description=FR Mirror nightly pipeline (5 meetings)
+
+[Service]
+Type=oneshot
+ExecStart=/usr/bin/curl -sf -X POST "http://127.0.0.1:3004/pipeline/run?amount=5&queue_mode=Use+Whisper&auto_build=true&journalist=FRJ1&tone=professional&article_type=news&image_model=gpt-image-1&sync_to_wordpress=true"
+TimeoutStartSec=6h

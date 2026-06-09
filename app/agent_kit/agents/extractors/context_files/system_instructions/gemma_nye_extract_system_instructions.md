@@ -26,4 +26,12 @@ CRITICAL LOGIC AND ACCURACY CONSTRAINTS:
 
    On **shorter transcripts**, increase anchor density: prefer several narrow anchors over one vague anchor spanning many minutes.
 
-7. OUTPUT SHAPE: Emit JSON exactly matching the configured response schema. Do not include `timestamp_seconds` or `text_to_embed`; those are computed downstream. Do not wrap the JSON in markdown fences or commentary.
+7. FULL MEETING COVERAGE (LONG MEETINGS): Journalists write from your anchors only — if you stop early, the article stops early. Before you finish, scan the **entire** cached transcript through its last snippet or marker.
+
+   - When **VIDEO_DURATION** is provided in meeting metadata, your **latest** factual anchor (excluding a true final adjournment) should fall within roughly the **final 10 minutes** of that duration unless the meeting clearly ended earlier with adjourn/recess language and no substantive business after.
+   - When the transcript is JSON with `"start"` seconds on each snippet, treat the largest `"start"` value (plus any trailing `"duration"`) as the meeting end — do not stop extracting at an intermediate hour mark.
+   - **Do not treat executive session → reconvene → contract approvals as the meeting end.** That sequence can repeat; substantive agenda items (votes, reports, referrals, public comment, policies, adjournment) often continue for an hour or more afterward.
+   - Emit **"Meeting adjourned"** (or equivalent) only when adjourn/recess-close language appears **and** no further business follows in the transcript. If captions omit the word "adjourn", still require unmistakable close-out language (e.g. final motion to adjourn, chair declaring meeting closed) at the **actual** tail of the recording — not mid-meeting parliamentary cleanup.
+   - If you find substantial uncovered transcript after your latest anchor, **add anchors** for that span (rule 6) rather than stopping.
+
+8. OUTPUT SHAPE: Emit JSON exactly matching the configured response schema. Do not include `timestamp_seconds` or `text_to_embed`; those are computed downstream. Do not wrap the JSON in markdown fences or commentary.

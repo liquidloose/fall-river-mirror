@@ -1860,7 +1860,9 @@ class PipelineService:
 
         try:
             db.cursor.execute(
-                "SELECT content, yt_published_date FROM transcripts WHERE youtube_id = ? LIMIT 1",
+                """SELECT content, yt_published_date, video_duration_formatted,
+                          video_duration_seconds
+                   FROM transcripts WHERE youtube_id = ? LIMIT 1""",
                 (youtube_id,),
             )
             row = db.cursor.fetchone()
@@ -1882,6 +1884,8 @@ class PipelineService:
                 "error": "transcript_not_found",
             }
         transcript_content, yt_published_date = row[0], row[1]
+        video_duration_formatted = row[2] if len(row) > 2 else None
+        video_duration_seconds = row[3] if len(row) > 3 else None
         if not transcript_content or not transcript_content.strip():
             return {
                 "success": False,
@@ -1910,6 +1914,8 @@ class PipelineService:
                 youtube_video_id=youtube_id,
                 meeting_date=meeting_date,
                 model=model_override,
+                video_duration_formatted=video_duration_formatted,
+                video_duration_seconds=video_duration_seconds,
             )
         except Exception as e:
             logger.exception(

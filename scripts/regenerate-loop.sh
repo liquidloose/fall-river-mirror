@@ -1,37 +1,6 @@
 #!/usr/bin/env bash
-#
-# REGENERATE LOOP — rewrites your ~2,800 old articles (one batch at a time)
-#
-# How your day is split:
-#   • 1:30 AM  — GitHub Actions runs the MAIN pipeline (5 brand-new meetings).
-#   • 6:00 AM  — this script starts (via VPS cron). It rewrites OLD articles the rest of the day.
-#   • 11:00 PM — this script stops so the server is free for tomorrow's 1:30 AM main run.
-#
-# What one "batch" does:
-#   Picks up to 4 transcripts that never got anchor extraction, runs the full rewrite
-#   (anchors → new article body → WordPress), then waits 5 minutes and does another batch.
-#
-# Rough math (defaults, 6 AM–11 PM window):
-#   Each batch rewrites up to 4 articles; a batch often takes 20–40 min, then 5 min idle.
-#   Expect roughly 80–150 rewrites/day → 2,800 articles in about 3–5 weeks.
-#   Go faster: REGEN_AMOUNT=6  or  REGEN_SLEEP_SEC=120
-#
-# Install on VPS (once):
-#   chmod +x scripts/regenerate-loop.sh
-#   crontab -e   → see scripts/cron-pipeline-schedule.example
-#
-# Run manually right now:
-#   ./scripts/regenerate-loop.sh
-#
-# Watch progress:
-#   tail -f logs/regenerate-loop.log
-#
-# Log line to care about:
-#   found_without_anchors=2847   ← how many old articles still need rewriting (counts DOWN)
-#   found_without_anchors=0    ← you're done; script exits
-#
-# Tune speed (optional):
-#   REGEN_AMOUNT=6 REGEN_SLEEP_SEC=180 ./scripts/regenerate-loop.sh
+# Regenerate backlog: curl POST in a loop until 11 PM or backlog cleared.
+# Scheduled via systemd — see scripts/systemd-install.sh
 
 set -euo pipefail
 
@@ -101,4 +70,4 @@ while ! past_end_time; do
   sleep "$SLEEP_SEC"
 done
 
-log "regenerate-loop stopped for tonight — picks up again tomorrow at 6 AM cron"
+log "regenerate-loop stopped for tonight"
