@@ -138,30 +138,17 @@ class GemmaNye(BaseExtractor):
     # four-pass design needs four separate pairs, so we load each pair by
     # passing an explicit suffix to ``_load_named_prompt`` below.
     _EXTRACT_SYSTEM_SUFFIX: ClassVar[str] = "_extract_system_instructions.md"
+    _SECOND_EXTRACT_SYSTEM_SUFFIX: ClassVar[str] = (
+        "_second_extract_system_instructions.md"
+    )
     _EXTRACT_USER_SUFFIX: ClassVar[str] = "_extract_user_prompt.md"
+    _SECOND_EXTRACT_USER_SUFFIX: ClassVar[str] = "_second_extract_user_prompt.md"
     _FACT_CHECK_SYSTEM_SUFFIX: ClassVar[str] = "_fact_check_system_instructions.md"
     _FACT_CHECK_USER_SUFFIX: ClassVar[str] = "_fact_check_user_prompt.md"
     _BULLETS_SYSTEM_SUFFIX: ClassVar[str] = "_bullets_system_instructions.md"
     _BULLETS_USER_SUFFIX: ClassVar[str] = "_bullets_user_prompt.md"
     _SPELL_CHECK_SYSTEM_SUFFIX: ClassVar[str] = "_spell_check_system_instructions.md"
     _SPELL_CHECK_USER_SUFFIX: ClassVar[str] = "_spell_check_user_prompt.md"
-
-    @staticmethod
-    def _video_duration_label(
-        video_duration_formatted: Optional[str],
-        video_duration_seconds: Optional[int],
-    ) -> str:
-        """Human-readable duration for extract/fact-check user prompts."""
-        if video_duration_formatted and str(video_duration_formatted).strip():
-            return str(video_duration_formatted).strip()
-        if video_duration_seconds is not None and int(video_duration_seconds) > 0:
-            total = int(video_duration_seconds)
-            hours, rem = divmod(total, 3600)
-            minutes, secs = divmod(rem, 60)
-            if hours:
-                return f"{hours}:{minutes:02d}:{secs:02d}"
-            return f"{minutes}:{secs:02d}"
-        return "unknown"
 
     def extract(
         self,
@@ -170,8 +157,6 @@ class GemmaNye(BaseExtractor):
         meeting_date: str,
         primary_committee: Optional[str] = None,
         model: Optional[ModelEnum] = None,
-        video_duration_formatted: Optional[str] = None,
-        video_duration_seconds: Optional[int] = None,
     ) -> Dict[str, Any]:
         """
         Extract structured factual anchors from a Fall River meeting transcript.
@@ -182,10 +167,6 @@ class GemmaNye(BaseExtractor):
                 stable, globally unique identifier and is the FK that
                 ``anchors`` rows carry back to ``transcripts``.
             meeting_date: ISO 8601 date (YYYY-MM-DD) of the meeting.
-            video_duration_formatted: Wall-clock duration from the transcript
-                row (e.g. ``"3:46:49"``), injected into extract/fact-check
-                user prompts as ``VIDEO_DURATION``.
-            video_duration_seconds: Fallback when formatted duration is missing.
             primary_committee: Ignored. Kept in the signature for
                 backward-compat with the previous single-pass call shape;
                 Gemma now classifies the committee herself in pass 3.
@@ -259,13 +240,9 @@ class GemmaNye(BaseExtractor):
             )
 
         run_id = str(uuid.uuid4())
-        video_duration = self._video_duration_label(
-            video_duration_formatted, video_duration_seconds
-        )
         logger.info(
             f"{self.FULL_NAME}: extraction start yt={youtube_video_id} "
-            f"run_id={run_id} transcript_chars={len(transcript or '')} "
-            f"video_duration={video_duration}"
+            f"run_id={run_id} transcript_chars={len(transcript or '')}"
         )
 
         # ─────────────────────────────────────────────────────────────────
@@ -301,11 +278,20 @@ class GemmaNye(BaseExtractor):
             cache_pass_label="cache",
         )
         if not cache_name:
+            logger.warning(
+                f"{self.FULL_NAME}: cache create failed yt={youtube_video_id} "
+                f"run_id={run_id}"
+            )
             return self._failure_envelope(
                 run_id,
                 "Gemini cache create failed; see pcache log for details.",
                 model=model,
             )
+
+        logger.info(
+            f"{self.FULL_NAME}: cache ready yt={youtube_video_id} run_id={run_id} "
+            f"cache_name={cache_name}"
+        )
 
         try:
             draft = self._pass_extract(
@@ -313,29 +299,87 @@ class GemmaNye(BaseExtractor):
                 run_id,
                 youtube_video_id,
                 meeting_date,
-                video_duration=video_duration,
                 model=model,
+                pass_label="first_extract",
             )
             if not draft["success"]:
+                self._log_pass_failure(
+                    youtube_video_id, run_id, "first_extract", draft
+                )
                 return draft
+
+            first_anchor_count = len(draft["data"]["factual_anchor_items"])
+            logger.info(
+                f"{self.FULL_NAME}: first_extract done yt={youtube_video_id} "
+                f"run_id={run_id} anchors={first_anchor_count}"
+            )
+
+            second_draft = self._pass_extract(
+                cache_name,
+                run_id,
+                youtube_video_id,
+                meeting_date,
+                model=model,
+                pass_label="second_extract",
+                draft_anchors=draft["data"]["factual_anchor_items"],
+            )
+
+            if not second_draft["success"]:
+                self._log_pass_failure(
+                    youtube_video_id, run_id, "second_extract", second_draft
+                )
+                return second_draft
+
+            gap_anchor_count = len(second_draft["data"]["factual_anchor_items"])
+            logger.info(
+                f"{self.FULL_NAME}: second_extract done yt={youtube_video_id} "
+                f"run_id={run_id} gap_anchors={gap_anchor_count}"
+            )
+
+            final_draft = self._sort_anchors_chronologically(
+                draft["data"]["factual_anchor_items"]
+                + second_draft["data"]["factual_anchor_items"]
+            )
+            logger.info(
+                f"{self.FULL_NAME}: anchors merged yt={youtube_video_id} run_id={run_id} "
+                f"first={first_anchor_count} gap={gap_anchor_count} "
+                f"total={len(final_draft)} (chronological)"
+            )
 
             corrected = self._pass_fact_check(
                 cache_name,
                 run_id,
                 youtube_video_id,
                 meeting_date,
-                draft["data"]["factual_anchor_items"],
-                video_duration=video_duration,
+                final_draft,
                 model=model,
             )
             if not corrected["success"]:
+                self._log_pass_failure(
+                    youtube_video_id, run_id, "fact_check", corrected
+                )
                 return corrected
+
+            logger.info(
+                f"{self.FULL_NAME}: fact_check done yt={youtube_video_id} run_id={run_id} "
+                f"anchors={len(corrected['data']['factual_anchor_items'])} "
+                f"audit={len(corrected['data'].get('fact_check_audit') or [])}"
+            )
 
             bullets_committee = self._pass_bullets_and_committee(
                 cache_name, run_id, youtube_video_id, meeting_date, model=model
             )
             if not bullets_committee["success"]:
+                self._log_pass_failure(
+                    youtube_video_id, run_id, "bullets", bullets_committee
+                )
                 return bullets_committee
+
+            logger.info(
+                f"{self.FULL_NAME}: bullets done yt={youtube_video_id} run_id={run_id} "
+                f"bullets={len(bullets_committee['data']['executive_summary_bullets'])} "
+                f"committee={bullets_committee['data']['primary_committee']!r}"
+            )
 
             spell_checked = self._pass_spell_check(
                 cache_name,
@@ -347,7 +391,16 @@ class GemmaNye(BaseExtractor):
                 model=model,
             )
             if not spell_checked["success"]:
+                self._log_pass_failure(
+                    youtube_video_id, run_id, "spell_check", spell_checked
+                )
                 return spell_checked
+
+            logger.info(
+                f"{self.FULL_NAME}: spell_check done yt={youtube_video_id} run_id={run_id} "
+                f"anchors={len(spell_checked['data']['factual_anchor_items'])} "
+                f"corrections={len(spell_checked['data'].get('spelling_corrections') or [])}"
+            )
 
             committee_value = bullets_committee["data"]["primary_committee"]
             if isinstance(committee_value, Committee):
@@ -398,6 +451,18 @@ class GemmaNye(BaseExtractor):
     # ------------------------------------------------------------------
     # Per-pass helpers
     # ------------------------------------------------------------------
+
+    def _log_pass_failure(
+        self,
+        youtube_video_id: str,
+        run_id: str,
+        pass_label: str,
+        result: Dict[str, Any],
+    ) -> None:
+        logger.warning(
+            f"{self.FULL_NAME}: {pass_label} failed yt={youtube_video_id} "
+            f"run_id={run_id} message={result.get('message')}"
+        )
 
     def _run_pass_against_cache(
         self,
@@ -456,8 +521,9 @@ class GemmaNye(BaseExtractor):
         run_id: str,
         youtube_video_id: str,
         meeting_date: str,
+        pass_label: str,
         *,
-        video_duration: str = "unknown",
+        draft_anchors: Optional[List[Dict[str, Any]]] = None,
         model: Optional[ModelEnum] = None,
     ) -> Dict[str, Any]:
         """Pass 1 of 4 — draft factual anchors from the transcript.
@@ -482,20 +548,36 @@ class GemmaNye(BaseExtractor):
         YOU ARE HERE: GemmaNye._pass_extract — pass 1 of 4, picks extract prompts + ExtractEnvelope schema.
         See docs/extraction-pipeline-refactor-notes.md for layering rationale and refactor targets.
         """
+        if pass_label == "second_extract":
+            extract_system_suffix = self._SECOND_EXTRACT_SYSTEM_SUFFIX
+            extract_user_suffix = self._SECOND_EXTRACT_USER_SUFFIX
+            first_pass_anchors_json = json.dumps(
+                draft_anchors or [], ensure_ascii=False, indent=2
+            )
+            user_message = self._render_named_user_prompt(
+                extract_user_suffix,
+                youtube_video_id=youtube_video_id,
+                meeting_date=meeting_date,
+                draft_anchors_json=first_pass_anchors_json,
+            )
+        else:
+            extract_system_suffix = self._EXTRACT_SYSTEM_SUFFIX
+            extract_user_suffix = self._EXTRACT_USER_SUFFIX
+            user_message = self._render_named_user_prompt(
+                extract_user_suffix,
+                youtube_video_id=youtube_video_id,
+                meeting_date=meeting_date,
+            )
+
         return self._run_pass_against_cache(
             cache_name,
             run_id=run_id,
-            pass_label="extract",
+            pass_label=pass_label,
             youtube_video_id=youtube_video_id,
             system_instruction=self._load_named_prompt(
-                self.SYSTEM_INSTRUCTION_SUBDIR, self._EXTRACT_SYSTEM_SUFFIX
+                self.SYSTEM_INSTRUCTION_SUBDIR, extract_system_suffix
             ),
-            user_message=self._render_named_user_prompt(
-                self._EXTRACT_USER_SUFFIX,
-                youtube_video_id=youtube_video_id,
-                meeting_date=meeting_date,
-                video_duration=video_duration,
-            ),
+            user_message=user_message,
             response_schema=ExtractEnvelope,
             model=model,
         )
@@ -508,7 +590,6 @@ class GemmaNye(BaseExtractor):
         meeting_date: str,
         draft_anchors: List[Dict[str, Any]],
         *,
-        video_duration: str = "unknown",
         model: Optional[ModelEnum] = None,
     ) -> Dict[str, Any]:
         """Pass 2 of 4 — fact-check draft anchors against the transcript.
@@ -550,7 +631,6 @@ class GemmaNye(BaseExtractor):
                 self._FACT_CHECK_USER_SUFFIX,
                 youtube_video_id=youtube_video_id,
                 meeting_date=meeting_date,
-                video_duration=video_duration,
                 draft_anchors_json=draft_anchors_json,
             ),
             response_schema=FactCheckEnvelope,
@@ -685,6 +765,18 @@ class GemmaNye(BaseExtractor):
     # ------------------------------------------------------------------
     # Local stitching (no LLM involved)
     # ------------------------------------------------------------------
+
+    @classmethod
+    def _sort_anchors_chronologically(
+        cls, anchors: List[Dict[str, Any]]
+    ) -> List[Dict[str, Any]]:
+        """Return anchors sorted by ``timestamp_string`` (earliest first)."""
+
+        def sort_key(anchor: Dict[str, Any]) -> tuple[int, int]:
+            seconds = cls.parse_timestamp_to_seconds(anchor.get("timestamp_string"))
+            return (1 if seconds is None else 0, seconds or 0)
+
+        return sorted(anchors, key=sort_key)
 
     @staticmethod
     def parse_timestamp_to_seconds(ts: Optional[str]) -> Optional[int]:

@@ -1,4 +1,9 @@
 {
+  "TCP": {
+    "443": {
+      "HTTPS": true
+    }
+  },
   "Web": {
     "fr-mirror.ferret-boa.ts.net:443": {
       "Handlers": {
@@ -7,5 +12,8 @@
         }
       }
     }
+  },
+  "AllowFunnel": {
+    "fr-mirror.ferret-boa.ts.net:443": false
   }
 }

@@ -29,6 +29,7 @@ class FRJ1(BaseJournalist):
         guidelines = [
             "- Write an informative news article about the Fall River City Council meeting.",
             "- Don't mention that the meeting took place in Fall River, people know that.",
+            "- Don't bring up the open meeting law announcements, they are not news.",
             "- Treat ANCHOR CONTEXT as pre-vetted factual source material; do not re-litigate or speculate beyond those facts.",
             "- Write from the provided facts only, following anchor order and keeping one factual claim per anchor unless two adjacent anchors clearly share the same topic.",
             "- Prioritize substantive decisions, impacts, debates, votes, and outcomes; minimize routine procedural housekeeping unless it materially affects the story.",
@@ -39,6 +40,6 @@ class FRJ1(BaseJournalist):
             "- If emergencies are present in the vetted facts, explain what is scheduled, when, and why it is happening.",
             "- Maintain an objective, neutral stance: no praise, criticism, or editorial judgments about whether decisions were good or bad.",
             "- Start directly with the specific news value; avoid generic openers and avoid explaining basic city-government concepts.",
-            "- Write as a publication-ready local news article body with substantial detail (typically 500-800 words unless facts warrant shorter).",
+            "- Write as a publication-ready local news article body with substantial detail (typically 500-1000 words unless facts warrant shorter).",
         ]
         return "\n".join(guidelines)
