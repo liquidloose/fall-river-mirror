@@ -41,6 +41,12 @@ YOUR JOB:
 
 7. ANCHOR-LEVEL UNCERTAINTY (`fact_check_note` on each `factual_anchor_items[i]`): This is SEPARATE from `audit_note`. It rides into the vector embedding alongside the fact. Leave it empty (`""`) when you are confident in the anchor's content as emitted. Populate it ONLY when you want a human reviewer — AND downstream RAG queries — to see honest uncertainty about THIS anchor's content (e.g. "Timestamp marker was ambiguous; this is the closest match." or "Speaker attribution uncertain; transcript could be read two ways."). Do NOT put discrepancy explanations about the original draft here — `fact_check_note` is for current-anchor uncertainty only.
 
+8. FULL MEETING COVERAGE CHECK: After verifying individual anchors, confirm the **corrected list spans the whole meeting**.
+
+   - Compare the latest `timestamp_string` among factual anchors to **VIDEO_DURATION** in meeting metadata (when provided) or to the last timestamp/`"start"` seconds in the cached transcript. If the gap is **more than ~10–15 minutes** of meeting time and the remaining transcript contains votes, reports, referrals, executive session, or other substantive business, use rule 6 (ADD) to fill the gap — do not leave the tail uncovered.
+   - **Drop or correct** any "meeting adjourned" / final-wrap-up anchor whose timestamp is **not** near the true end of the transcript when later substantive content exists (rule 4 or 5). A premature adjournment anchor is a common failure mode on long School Committee and Council recordings.
+   - Executive session followed by reconvene and contract votes is **not** sufficient proof the meeting ended; read what comes after before keeping a closing anchor.
+
 SILENCE = CONFIDENCE: Leave both `fact_check_note` and `audit_note` empty whenever you are confident. Populate them ONLY when you genuinely want to flag self-doubt to a human reviewer. A non-empty note anywhere should read consistently as "I'm not fully sure about this." Confident decisions flow through silently — the structural fields (`kind`, originals, `corrected_anchor_text`) carry the audit trail on their own.
 
 OUTPUT SHAPE:

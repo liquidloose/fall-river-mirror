@@ -1,0 +1,7 @@
+[Unit]
+Description=FR Mirror regenerate backlog loop
+
+[Service]
+Type=simple
+ExecStart=@REPO@/scripts/regenerate-loop.sh
+TimeoutStartSec=18h

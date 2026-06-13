@@ -3,6 +3,7 @@ The full meeting transcript is available to you as cached content. A draft list 
 ### MEETING METADATA
 - YOUTUBE_VIDEO_ID: "{youtube_video_id}"
 - MEETING_DATE: "{meeting_date}"
+- VIDEO_DURATION: "{video_duration}"
 
 ### DRAFT ANCHORS TO VERIFY
 {draft_anchors_json}

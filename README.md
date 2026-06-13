@@ -694,36 +694,16 @@ Install test dependencies first if needed: `pip install -r requirements.txt` (py
 
 ### Server reload command
 
-### Scheduled pipeline (GitHub Actions)
+### Scheduled pipeline (systemd)
 
-The workflow `.github/workflows/trigger-pipeline.yml` runs every 15 minutes and POSTs to your deployed API’s `/pipeline/run` endpoint. For it to work, add a repository secret in GitHub (Settings → Secrets and variables → Actions):
-
-- **`PIPELINE_API_URL`** — Base URL of your API with no trailing slash (e.g. `http://YOUR_DROPLET_IP:3004` or `https://your-domain.com`). The workflow appends `/pipeline/run?...` to this.
-
-Scheduled runs use the default branch; ensure the workflow file is on that branch.
-
-**Alternative: cron on the server (e.g. DigitalOcean Droplet)**  
-If the API runs on the same machine, use crontab for a reliable schedule (e.g. every 15 minutes):
+Two timers in `scripts/systemd/` — nightly curl at 1:30 AM ET, regenerate loop at 6 AM ET:
 
 ```bash
-crontab -e
+./scripts/systemd-install.sh
+systemctl --user list-timers 'fr-mirror-*'
 ```
 
-Add (API on port 3004, same host). Use full path to `curl` so cron finds it; the `echo` ensures a log line even if the request fails:
-
-```cron
-*/15 * * * * echo "$(date -u) pipeline cron start" >> /tmp/pipeline-cron.log 2>&1; /usr/bin/curl -sSf -o /tmp/pipeline-response.json -w "\n\%{http_code}" -X POST "http://127.0.0.1:3004/pipeline/run?amount=2&queue_mode=Use%20Whisper&auto_build=true&extractor=Gemma%20Nye&journalist=FRJ1&tone=professional&article_type=news&image_model=gpt-image-1&sync_to_wordpress=true" >> /tmp/pipeline-cron.log 2>&1
-```
-
-If `curl` is elsewhere, run `which curl` and use that path. In crontab, `%` is special (turns into newline), so the curl format must use `\%{http_code}` not `%{http_code}`. Check that `crond` is running: `systemctl status crond`. View cron output: `tail -f /tmp/pipeline-cron.log`.
-
-**Test cron (runs every minute, appends to a log):**
-
-```cron
-* * * * * echo "$(date -u) hello world" >> /tmp/hello-cron.log 2>&1
-```
-
-After a few minutes, `cat /tmp/hello-cron.log` or `tail -f /tmp/hello-cron.log` to confirm. Remove the line from crontab when done testing.
+After reboot, run once as root if timers don't fire: `sudo loginctl enable-linger $USER`
 
 ### Testing the API
 
