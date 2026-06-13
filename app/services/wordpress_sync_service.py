@@ -102,11 +102,35 @@ class WordPressSyncService:
                 :data:`DEFAULT_API_PATH_YOUTUBE_IDS`.
         """
         self._database = database
-        self._base_url = (base_url if base_url is not None else os.environ.get("WORDPRESS_BASE_URL", "")).strip().rstrip("/")
-        self._api_path_create = api_path_create or os.environ.get("WORDPRESS_API_PATH_CREATE_ARTICLE") or DEFAULT_API_PATH_CREATE
-        self._api_path_update = api_path_update or os.environ.get("WORDPRESS_API_PATH_UPDATE_ARTICLE") or DEFAULT_API_PATH_UPDATE
-        self._api_path_update_body = api_path_update_body or os.environ.get("WORDPRESS_API_PATH_UPDATE_ARTICLE_BODY") or DEFAULT_API_PATH_UPDATE_BODY
-        self._api_path_youtube_ids = api_path_youtube_ids or os.environ.get("WORDPRESS_API_PATH_ARTICLE_YOUTUBE_IDS") or DEFAULT_API_PATH_YOUTUBE_IDS
+        self._base_url = (
+            (
+                base_url
+                if base_url is not None
+                else os.environ.get("WORDPRESS_BASE_URL", "")
+            )
+            .strip()
+            .rstrip("/")
+        )
+        self._api_path_create = (
+            api_path_create
+            or os.environ.get("WORDPRESS_API_PATH_CREATE_ARTICLE")
+            or DEFAULT_API_PATH_CREATE
+        )
+        self._api_path_update = (
+            api_path_update
+            or os.environ.get("WORDPRESS_API_PATH_UPDATE_ARTICLE")
+            or DEFAULT_API_PATH_UPDATE
+        )
+        self._api_path_update_body = (
+            api_path_update_body
+            or os.environ.get("WORDPRESS_API_PATH_UPDATE_ARTICLE_BODY")
+            or DEFAULT_API_PATH_UPDATE_BODY
+        )
+        self._api_path_youtube_ids = (
+            api_path_youtube_ids
+            or os.environ.get("WORDPRESS_API_PATH_ARTICLE_YOUTUBE_IDS")
+            or DEFAULT_API_PATH_YOUTUBE_IDS
+        )
 
     def _headers(self) -> Dict[str, str]:
         """JSON request headers; adds ``Authorization: Bearer`` when ``WORDPRESS_JWT_TOKEN`` is set."""
@@ -129,7 +153,9 @@ class WordPressSyncService:
         except ValueError:
             return False
 
-    def _is_auth_missing_or_forbidden_response(self, response: requests.Response) -> bool:
+    def _is_auth_missing_or_forbidden_response(
+        self, response: requests.Response
+    ) -> bool:
         """
         Return True for auth failures that should trigger a token refresh.
 
@@ -148,7 +174,9 @@ class WordPressSyncService:
         except ValueError:
             return False
 
-    def _request_with_jwt_retry(self, request_fn: Callable[[], requests.Response]) -> requests.Response:
+    def _request_with_jwt_retry(
+        self, request_fn: Callable[[], requests.Response]
+    ) -> requests.Response:
         """
         Execute ``request_fn`` (typically a closure over ``requests.get/post``).
 
@@ -219,7 +247,10 @@ class WordPressSyncService:
             try:
                 data = response.json()
             except ValueError:
-                logger.warning("WordPress JWT token response was not valid JSON: %s", (response.text or "")[:500])
+                logger.warning(
+                    "WordPress JWT token response was not valid JSON: %s",
+                    (response.text or "")[:500],
+                )
                 return {
                     "success": False,
                     "status_code": response.status_code,
@@ -227,7 +258,9 @@ class WordPressSyncService:
                 }
             token = (data.get("token") or "").strip()
             if not token:
-                logger.warning("WordPress JWT token response missing 'token' field: %s", data)
+                logger.warning(
+                    "WordPress JWT token response missing 'token' field: %s", data
+                )
                 return {
                     "success": False,
                     "status_code": response.status_code,
@@ -242,7 +275,9 @@ class WordPressSyncService:
             }
         except requests.exceptions.RequestException as e:
             resp = getattr(e, "response", None)
-            status_code = resp.status_code if resp is not None else status.HTTP_502_BAD_GATEWAY
+            status_code = (
+                resp.status_code if resp is not None else status.HTTP_502_BAD_GATEWAY
+            )
             body = (resp.text if resp is not None and resp.text else None) or str(e)
             logger.error(
                 "WordPress JWT token POST failed: %s | status=%s body=%s",
@@ -282,7 +317,9 @@ class WordPressSyncService:
             )
             if r.status_code in (401, 403):
                 logger.warning(
-                    "WordPress returned %s for article-youtube-ids: %s", r.status_code, url
+                    "WordPress returned %s for article-youtube-ids: %s",
+                    r.status_code,
+                    url,
                 )
             r.raise_for_status()
             data = r.json()
@@ -298,8 +335,14 @@ class WordPressSyncService:
             if not isinstance(raw, list):
                 # Preserve WordPress/plugin error payload when endpoint does not
                 # return the expected field.
-                wp_message = data.get("message") if isinstance(data.get("message"), str) else None
-                wp_code = data.get("code") if isinstance(data.get("code"), str) else None
+                wp_message = (
+                    data.get("message")
+                    if isinstance(data.get("message"), str)
+                    else None
+                )
+                wp_code = (
+                    data.get("code") if isinstance(data.get("code"), str) else None
+                )
                 payload_error = (
                     f"article-youtube-ids response missing/invalid youtube_ids list"
                     + (f" (code={wp_code})" if wp_code else "")
@@ -314,7 +357,9 @@ class WordPressSyncService:
                 }
             return {
                 "success": True,
-                "youtube_ids": set((yid or "").strip() for yid in raw if (yid or "").strip()),
+                "youtube_ids": set(
+                    (yid or "").strip() for yid in raw if (yid or "").strip()
+                ),
             }
         except Exception as e:
             resp = getattr(e, "response", None)
@@ -328,7 +373,9 @@ class WordPressSyncService:
                 "success": False,
                 "youtube_ids": set(),
                 "http_status": (
-                    resp.status_code if resp is not None else status.HTTP_502_BAD_GATEWAY
+                    resp.status_code
+                    if resp is not None
+                    else status.HTTP_502_BAD_GATEWAY
                 ),
                 "error": str(e),
                 "raw_response": (resp.text if resp is not None and resp.text else None),
@@ -367,7 +414,10 @@ class WordPressSyncService:
             try:
                 data = r.json()
                 raw = data.get("youtube_ids") or []
-                response_body = {"youtube_ids_count": len(raw), "youtube_ids": list(raw)[:5]}
+                response_body = {
+                    "youtube_ids_count": len(raw),
+                    "youtube_ids": list(raw)[:5],
+                }
             except Exception:
                 response_body = None
             return {
@@ -411,28 +461,40 @@ class WordPressSyncService:
                 url = f"{base}/wp-json/wp/v2/article?per_page=100&context=edit&page={page}"
                 r = requests.get(url, headers=self._headers(), timeout=15)
                 if r.status_code == 401:
-                    logger.warning("WordPress returned 401 for wp/v2/article (audit): %s", url)
+                    logger.warning(
+                        "WordPress returned 401 for wp/v2/article (audit): %s", url
+                    )
                 r.raise_for_status()
                 data = r.json()
                 if not isinstance(data, list):
                     break
                 for item in data:
                     meta = item.get("meta") or {}
-                    yid = (meta.get("_article_youtube_id") or "")
+                    yid = meta.get("_article_youtube_id") or ""
                     yid = (yid if isinstance(yid, str) else str(yid)).strip()
                     title_obj = item.get("title") or {}
                     title = title_obj.get("raw") or title_obj.get("rendered") or ""
                     title = title if isinstance(title, str) else str(title)
-                    content = meta.get("_article_content") or (item.get("content") or {}).get("raw") or ""
+                    content = (
+                        meta.get("_article_content")
+                        or (item.get("content") or {}).get("raw")
+                        or ""
+                    )
                     content = content if isinstance(content, str) else str(content)
-                    all_items.append({
-                        "youtube_id": yid,
-                        "post_id": item.get("id"),
-                        "title": title,
-                        "content": content,
-                    })
+                    all_items.append(
+                        {
+                            "youtube_id": yid,
+                            "post_id": item.get("id"),
+                            "title": title,
+                            "content": content,
+                        }
+                    )
                 total_header = r.headers.get("X-WP-Total")
-                total = int(total_header) if total_header is not None and str(total_header).isdigit() else len(data)
+                total = (
+                    int(total_header)
+                    if total_header is not None and str(total_header).isdigit()
+                    else len(data)
+                )
                 if len(data) < 100 or len(all_items) >= total:
                     break
                 page += 1
@@ -522,16 +584,20 @@ class WordPressSyncService:
                     content = content if isinstance(content, str) else str(content)
                     bullet_points = meta.get("_article_bullet_points") or ""
                     bullet_points = (
-                        bullet_points if isinstance(bullet_points, str) else str(bullet_points)
+                        bullet_points
+                        if isinstance(bullet_points, str)
+                        else str(bullet_points)
                     )
-                    out.append({
-                        "post_id": item.get("id"),
-                        "youtube_id": yid,
-                        "title": title,
-                        "meeting_date": md,
-                        "content": content,
-                        "bullet_points": bullet_points,
-                    })
+                    out.append(
+                        {
+                            "post_id": item.get("id"),
+                            "youtube_id": yid,
+                            "title": title,
+                            "meeting_date": md,
+                            "content": content,
+                            "bullet_points": bullet_points,
+                        }
+                    )
                     if limit is not None and len(out) >= limit:
                         break
                 if limit is not None and len(out) >= limit:
@@ -586,8 +652,14 @@ class WordPressSyncService:
                 "error": "WORDPRESS_BASE_URL is not set or is blank.",
                 "http_status": status.HTTP_500_INTERNAL_SERVER_ERROR,
             }
-        max_scan = iteration_limit if iteration_limit is not None and iteration_limit > 0 else None
-        max_repair = repair_limit if repair_limit is not None and repair_limit >= 0 else None
+        max_scan = (
+            iteration_limit
+            if iteration_limit is not None and iteration_limit > 0
+            else None
+        )
+        max_repair = (
+            repair_limit if repair_limit is not None and repair_limit >= 0 else None
+        )
 
         scanned = 0
         repaired = 0
@@ -620,7 +692,9 @@ class WordPressSyncService:
                     meta = item.get("meta") or {}
                     youtube_id_raw = meta.get("_article_youtube_id") or ""
                     youtube_id = (
-                        youtube_id_raw if isinstance(youtube_id_raw, str) else str(youtube_id_raw)
+                        youtube_id_raw
+                        if isinstance(youtube_id_raw, str)
+                        else str(youtube_id_raw)
                     ).strip()
                     title_obj = item.get("title") or {}
                     title_val = title_obj.get("raw") or title_obj.get("rendered") or ""
@@ -636,7 +710,9 @@ class WordPressSyncService:
                         media_url = f"{base}/wp-json/wp/v2/media/{featured_media_id}?context=edit"
                         try:
                             mr = self._request_with_jwt_retry(
-                                lambda: requests.get(media_url, headers=self._headers(), timeout=10)
+                                lambda: requests.get(
+                                    media_url, headers=self._headers(), timeout=10
+                                )
                             )
                             if mr.status_code in (401, 403):
                                 logger.warning(
@@ -685,9 +761,8 @@ class WordPressSyncService:
                     }
 
                     # Attempt repair only up to repair_limit (if set) and only when we have a youtube_id.
-                    should_repair = (
-                        youtube_id
-                        and (max_repair is None or repaired < max_repair)
+                    should_repair = youtube_id and (
+                        max_repair is None or repaired < max_repair
                     )
                     if should_repair:
                         result = self.repair_article_featured_image(youtube_id)
@@ -697,7 +772,9 @@ class WordPressSyncService:
                         else:
                             item_info["repaired"] = False
                             item_info["repair_error"] = (
-                                result.get("error") or result.get("response") or "Unknown error"
+                                result.get("error")
+                                or result.get("response")
+                                or "Unknown error"
                             )
                     elif not youtube_id:
                         item_info["repair_error"] = "No youtube_id set on post meta"
@@ -711,8 +788,10 @@ class WordPressSyncService:
                     if total_header is not None and str(total_header).isdigit()
                     else len(data)
                 )
-                if len(data) < 100 or (max_scan is None and scanned >= total) or (
-                    max_scan is not None and scanned >= max_scan
+                if (
+                    len(data) < 100
+                    or (max_scan is None and scanned >= total)
+                    or (max_scan is not None and scanned >= max_scan)
                 ):
                     break
                 page += 1
@@ -754,7 +833,11 @@ class WordPressSyncService:
                     continue
             if not date_obj:
                 try:
-                    s = date_str.replace("Z", "+00:00") if date_str.endswith("Z") else date_str
+                    s = (
+                        date_str.replace("Z", "+00:00")
+                        if date_str.endswith("Z")
+                        else date_str
+                    )
                     date_obj = datetime.fromisoformat(s)
                 except ValueError:
                     pass
@@ -819,10 +902,15 @@ class WordPressSyncService:
                         image_format = "png"
                         if len(image_data) >= 2 and image_data[:2] == b"\xff\xd8":
                             image_format = "jpeg"
-                        elif len(image_data) >= 8 and image_data[:8] == b"\x89PNG\r\n\x1a\n":
+                        elif (
+                            len(image_data) >= 8
+                            and image_data[:8] == b"\x89PNG\r\n\x1a\n"
+                        ):
                             image_format = "png"
                         base64_data = base64.b64encode(image_data).decode("utf-8")
-                        featured_image = f"data:image/{image_format};base64,{base64_data}"
+                        featured_image = (
+                            f"data:image/{image_format};base64,{base64_data}"
+                        )
             except Exception as e:
                 logger.warning(
                     "Failed to fetch/process image for article %s: %s",
@@ -921,11 +1009,17 @@ class WordPressSyncService:
                     ),
                     "raw_response": youtube_ids_result.get("raw_response"),
                 }
-            existing_on_wp = youtube_id in (youtube_ids_result.get("youtube_ids") or set())
+            existing_on_wp = youtube_id in (
+                youtube_ids_result.get("youtube_ids") or set()
+            )
 
         if existing_on_wp:
             # Already on WordPress: skip. We don't create or update; content is already there.
-            logger.info("Skipping article %s (youtube_id=%s already on WordPress)", article_id, youtube_id)
+            logger.info(
+                "Skipping article %s (youtube_id=%s already on WordPress)",
+                article_id,
+                youtube_id,
+            )
             return {
                 "success": True,
                 "article_id": article_id,
@@ -944,7 +1038,7 @@ class WordPressSyncService:
             "meeting_date": meeting_date or "",
             "view_count": article.get("view_count") or 0,
             "featured_image": featured_image or "",
-            "status": "draft",
+            "status": "publish",
         }
         wordpress_url = self._base_url + self._api_path_create
         try:
@@ -963,13 +1057,16 @@ class WordPressSyncService:
                     wordpress_url,
                 )
             response.raise_for_status()
-            logger.info("Successfully synced article %s to WordPress (create)", article_id)
+            logger.info(
+                "Successfully synced article %s to WordPress (create)", article_id
+            )
             try:
                 wp_response = response.json()
             except (ValueError, TypeError) as e:
                 logger.error(
                     "sync_one_article: WordPress returned non-JSON response for article %s: %s",
-                    article_id, e,
+                    article_id,
+                    e,
                 )
                 return {
                     "success": False,
@@ -986,7 +1083,9 @@ class WordPressSyncService:
             }
         except requests.exceptions.RequestException as e:
             resp = getattr(e, "response", None)
-            status_code = resp.status_code if resp is not None else status.HTTP_502_BAD_GATEWAY
+            status_code = (
+                resp.status_code if resp is not None else status.HTTP_502_BAD_GATEWAY
+            )
             body = (resp.text if resp is not None and resp.text else None) or ""
             logger.error(
                 "sync_one_article POST to WordPress failed: %s | response: status=%s body=%s",
@@ -1003,7 +1102,8 @@ class WordPressSyncService:
         except Exception as e:
             logger.error(
                 "sync_one_article unexpected error for article %s: %s",
-                article_id, e,
+                article_id,
+                e,
                 exc_info=True,
             )
             return {
@@ -1080,7 +1180,9 @@ class WordPressSyncService:
             }
         except requests.exceptions.RequestException as e:
             resp = getattr(e, "response", None)
-            status_code = resp.status_code if resp is not None else status.HTTP_502_BAD_GATEWAY
+            status_code = (
+                resp.status_code if resp is not None else status.HTTP_502_BAD_GATEWAY
+            )
             body = (resp.text if resp is not None and resp.text else None) or ""
             logger.error(
                 "update_article_title_and_content POST to WordPress failed: %s | response: status=%s body=%s",
@@ -1148,7 +1250,9 @@ class WordPressSyncService:
         metadata = self._resolve_wordpress_article_metadata(article)
         if metadata.get("committee"):
             payload["committee"] = metadata["committee"]
-        create_on_miss = youtube_id not in (youtube_ids_result.get("youtube_ids") or set())
+        create_on_miss = youtube_id not in (
+            youtube_ids_result.get("youtube_ids") or set()
+        )
         if create_on_miss:
             if metadata.get("meeting_date"):
                 payload["meeting_date"] = metadata["meeting_date"]
@@ -1192,7 +1296,9 @@ class WordPressSyncService:
             }
         except requests.exceptions.RequestException as e:
             resp = getattr(e, "response", None)
-            status_code = resp.status_code if resp is not None else status.HTTP_502_BAD_GATEWAY
+            status_code = (
+                resp.status_code if resp is not None else status.HTTP_502_BAD_GATEWAY
+            )
             body = (resp.text if resp is not None and resp.text else None) or ""
             logger.error(
                 "update_article_body_on_wordpress POST to WordPress failed: %s | response: status=%s body=%s",
@@ -1245,7 +1351,9 @@ class WordPressSyncService:
         youtube_id = (youtube_id or "").strip()
         image_result = db.get_featured_image_by_youtube_id(youtube_id)
         if not image_result:
-            logger.warning("Repair featured image: no image for youtube_id=%s", youtube_id)
+            logger.warning(
+                "Repair featured image: no image for youtube_id=%s", youtube_id
+            )
             return {
                 "success": False,
                 "error": "No image for this youtube_id",
@@ -1256,7 +1364,9 @@ class WordPressSyncService:
         data_url = f"data:image/{image_format};base64,{base64_data}"
         payload = {"youtube_id": youtube_id, "featured_image": data_url}
         if not (self._base_url or "").strip():
-            logger.warning("Repair featured image: WORDPRESS_BASE_URL is not set or blank")
+            logger.warning(
+                "Repair featured image: WORDPRESS_BASE_URL is not set or blank"
+            )
             return {
                 "success": False,
                 "error": "WORDPRESS_BASE_URL is not set or is blank.",
@@ -1265,7 +1375,9 @@ class WordPressSyncService:
         url = (self._base_url or "").rstrip("/") + (self._api_path_update or "")
         logger.info(
             "Repair featured image request: url=%s youtube_id=%s image_size_bytes=%d",
-            url, youtube_id, len(image_data),
+            url,
+            youtube_id,
+            len(image_data),
         )
         try:
             response = self._request_with_jwt_retry(
@@ -1278,7 +1390,8 @@ class WordPressSyncService:
             )
             logger.info(
                 "Repair featured image response: status_code=%s response_body=%s",
-                response.status_code, (response.text or "")[:500],
+                response.status_code,
+                (response.text or "")[:500],
             )
             return {
                 "success": 200 <= response.status_code < 300,
@@ -1288,9 +1401,13 @@ class WordPressSyncService:
             }
         except requests.exceptions.RequestException as e:
             resp = getattr(e, "response", None)
-            status_code = resp.status_code if resp is not None else status.HTTP_502_BAD_GATEWAY
+            status_code = (
+                resp.status_code if resp is not None else status.HTTP_502_BAD_GATEWAY
+            )
             body = (resp.text if resp is not None and resp.text else None) or str(e)
-            logger.error("Repair featured image POST failed: %s | %s %s", url, status_code, body)
+            logger.error(
+                "Repair featured image POST failed: %s | %s %s", url, status_code, body
+            )
             return {
                 "success": False,
                 "status_code": status_code,

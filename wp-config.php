@@ -93,8 +93,8 @@ define('NONCE_SALT',       getenv_docker('WORDPRESS_NONCE_SALT',       '12f91e8d
  * You can have multiple installations in one database if you give each
  * a unique prefix. Only numbers, letters, and underscores please!
  */
-define( 'WP_SITEURL', 'http://fr-mirror.ferret-boa.ts.net' );
-define( 'WP_HOME', 'http://fr-mirror.ferret-boa.ts.net' );
+define( 'WP_SITEURL', 'https://fr-mirror.ferret-boa.ts.net' );
+define( 'WP_HOME', 'https://fr-mirror.ferret-boa.ts.net' );
 $table_prefix = getenv_docker('WORDPRESS_TABLE_PREFIX', 'wp_');
 
 /**
@@ -139,6 +139,9 @@ if ($configExtra = getenv_docker('WORDPRESS_CONFIG_EXTRA', '')) {
 
 define( 'JWT_AUTH_SECRET_KEY', getenv_docker( 'JWT_AUTH_SECRET_KEY', '' ) );
 define( 'JWT_AUTH_CORS_ENABLE', true );
+if($wp_public_url == 'http://fr-mirror.ferret-boa.ts.net') {
+	define( 'WP_ENVIRONMENT_TYPE', 'local' );
+}
 
 define( 'AS3CF_SETTINGS', serialize( array(
 	'provider'          => 'gcp',
